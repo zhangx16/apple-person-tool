@@ -35,11 +35,11 @@ enum LivePlatform: String, CaseIterable, Identifiable, Hashable, Codable {
         }
     }
 
-    /// iOS AVPlayer cannot play FLV. These sites are FLV-first → prefer in-room web.
-    var prefersWebPlayback: Bool {
+    /// Sites that historically only expose FLV (VLC required for in-app play).
+    var isFLVPrimary: Bool {
         switch self {
         case .huya, .douyu, .kuaishou: return true
-        case .douyin: return false // often has HLS
+        case .douyin: return false
         }
     }
 

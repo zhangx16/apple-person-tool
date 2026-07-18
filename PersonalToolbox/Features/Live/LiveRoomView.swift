@@ -9,7 +9,8 @@ import UIKit
 @MainActor
 final class LiveRoomViewModel: ObservableObject {
     enum PlayMode: String, CaseIterable, Identifiable {
-        case native = "原生"
+        /// App 内：VLC 播 FLV/HLS（对齐 SimpleLive media_kit 能力）
+        case native = "应用内"
         case web = "网页"
         var id: String { rawValue }
     }
@@ -22,20 +23,28 @@ final class LiveRoomViewModel: ObservableObject {
     @Published var isLoading = true
     @Published var statusText: String = "正在连接…"
     @Published var errorMessage: String?
-    @Published private(set) var player: AVPlayer?
     @Published var playMode: PlayMode = .native
     @Published var webURL: URL?
 
+    /// Active stream for VLC / AVPlayer.
+    @Published var streamURL: URL?
+    @Published var streamHeaders: [String: String] = [:]
+    /// True when current stream is FLV (must use VLC).
+    @Published private(set) var streamIsFLV = false
+
     private var loadTask: Task<Void, Never>?
     private var failWatchTask: Task<Void, Never>?
-    /// Keeps resource loader alive for the current item.
     private var headerLoader: LiveHeaderResourceLoader?
+    private var avPlayer: AVPlayer?
+
+    /// Exposed for rare AVPlayer fallback (HLS only, no VLC binary).
+    var systemPlayer: AVPlayer? { avPlayer }
 
     init(room: LiveRoomItem) {
         self.room = room
         webURL = URL(string: defaultWebURL)
-        // 虎牙/斗鱼/快手主线路为 FLV，iOS AVPlayer 不可播 → 默认网页。
-        playMode = room.platform.prefersWebPlayback ? .web : .native
+        // With VLC, FLV sites use in-app player by default.
+        playMode = .native
     }
 
     private var defaultWebURL: String {
@@ -57,10 +66,7 @@ final class LiveRoomViewModel: ObservableObject {
         loadTask = nil
         failWatchTask?.cancel()
         failWatchTask = nil
-        player?.pause()
-        player?.replaceCurrentItem(with: nil)
-        player = nil
-        headerLoader = nil
+        clearStream()
     }
 
     func retryNative() {
@@ -70,10 +76,20 @@ final class LiveRoomViewModel: ObservableObject {
     }
 
     func switchToWeb() {
-        player?.pause()
+        clearStream()
         playMode = .web
         statusText = "网页播放"
         isLoading = false
+    }
+
+    private func clearStream() {
+        avPlayer?.pause()
+        avPlayer?.replaceCurrentItem(with: nil)
+        avPlayer = nil
+        headerLoader = nil
+        streamURL = nil
+        streamHeaders = [:]
+        streamIsFLV = false
     }
 
     private func load() async {
@@ -86,7 +102,6 @@ final class LiveRoomViewModel: ObservableObject {
             let d = try await LiveSiteRouter.roomDetail(platform: room.platform, roomId: room.roomId)
             guard !Task.isCancelled else { return }
             detail = d
-            // Prefer mobile web pages for web mode.
             if let u = URL(string: mobileWebURL(for: d)) {
                 webURL = u
             } else if let u = URL(string: d.webURL), u.scheme == "http" || u.scheme == "https" {
@@ -95,9 +110,7 @@ final class LiveRoomViewModel: ObservableObject {
 
             if playMode == .web {
                 statusText = d.isLive ? "网页播放中" : "未开播 · 网页可试"
-                isLoading = false
-                // Warm qualities in background for optional native switch.
-                Task { await warmNativeQualities(detail: d) }
+                Task { await warmQualities(detail: d) }
                 return
             }
 
@@ -112,7 +125,7 @@ final class LiveRoomViewModel: ObservableObject {
             guard !Task.isCancelled else { return }
             qualities = qs
             guard let first = qs.first else {
-                statusText = "无原生线路，使用网页"
+                statusText = "无播放线路，使用网页"
                 playMode = .web
                 return
             }
@@ -138,7 +151,7 @@ final class LiveRoomViewModel: ObservableObject {
         }
     }
 
-    private func warmNativeQualities(detail: LiveRoomDetail) async {
+    private func warmQualities(detail: LiveRoomDetail) async {
         guard detail.isLive else { return }
         if let qs = try? await LiveSiteRouter.playQualities(detail: detail), !qs.isEmpty {
             qualities = qs
@@ -159,54 +172,91 @@ final class LiveRoomViewModel: ObservableObject {
             let result = try await LiveSiteRouter.playURLs(detail: detail, quality: quality)
             guard !Task.isCancelled else { return }
 
-            // HLS only — FLV cannot play in AVPlayer on iOS.
-            var candidates = result.urls.filter {
-                $0.contains(".m3u8") || $0.contains("m3u8")
-            }
-            candidates = candidates.filter { URL(string: $0) != nil }
-
-            guard !candidates.isEmpty else {
-                // Not an error for 虎牙/斗鱼/快手 — expected FLV-first sites.
+            // Prefer order: HLS first (lighter), then FLV (needs VLC), skip empty.
+            let ordered = Self.rankURLs(result.urls)
+            guard !ordered.isEmpty else {
                 errorMessage = nil
-                statusText = "该平台线路为 FLV，iOS 请用网页播放"
+                statusText = "无可用地址，使用网页"
                 playMode = .web
                 return
             }
 
             var lastErr: String?
-            for urlString in candidates.prefix(5) {
+            for urlString in ordered.prefix(6) {
                 guard let url = URL(string: urlString) else { continue }
-                statusText = "连接 \(quality.name)…"
-                if await startPlayer(url: url, headers: result.headers) {
+                let isFLV = urlString.lowercased().contains(".flv")
+                statusText = isFLV ? "VLC 播放 FLV…" : "连接 \(quality.name)…"
+
+                #if canImport(MobileVLCKit)
+                // VLC handles both FLV and HLS.
+                clearStream()
+                streamHeaders = result.headers
+                streamIsFLV = isFLV
+                streamURL = url
+                playMode = .native
+                errorMessage = nil
+                statusText = "播放中 · \(quality.name)" + (isFLV ? " · FLV" : " · HLS")
+                return
+                #else
+                // No VLC: only try HLS via AVPlayer.
+                if isFLV {
+                    lastErr = "无 VLC，跳过 FLV"
+                    continue
+                }
+                if await startAVPlayer(url: url, headers: result.headers) {
+                    streamIsFLV = false
+                    streamURL = url
+                    streamHeaders = result.headers
+                    playMode = .native
                     errorMessage = nil
                     statusText = "播放中 · \(quality.name)"
-                    playMode = .native
                     return
                 }
-                lastErr = "线路不可用"
+                lastErr = "线路失败"
+                #endif
             }
-            errorMessage = (lastErr ?? "播放失败") + "，已切换网页"
-            statusText = "网页播放"
+
+            #if canImport(MobileVLCKit)
+            errorMessage = (lastErr ?? "播放失败") + "，可切网页"
+            statusText = "播放失败"
+            #else
+            errorMessage = "当前包未集成 VLC，FLV 请用网页或重新 pod install"
+            statusText = "改用网页"
             playMode = .web
-            player = nil
+            #endif
         } catch is CancellationError {
             return
         } catch {
             guard !Task.isCancelled else { return }
             errorMessage = error.localizedDescription
-            statusText = "拉流失败，网页播放"
-            playMode = .web
+            statusText = "拉流失败，可切网页"
         }
     }
 
-    private func startPlayer(url: URL, headers: [String: String]) async -> Bool {
-        // 1) Direct HTTPS with header options (works when CDN allows).
-        if await attachPlayer(
+    private static func rankURLs(_ urls: [String]) -> [String] {
+        urls
+            .filter { URL(string: $0) != nil }
+            .sorted { a, b in
+                let am = a.contains(".m3u8") || a.contains("m3u8")
+                let bm = b.contains(".m3u8") || b.contains("m3u8")
+                if am != bm { return am && !bm }
+                let aflv = a.lowercased().contains(".flv")
+                let bflv = b.lowercased().contains(".flv")
+                // Prefer non-mcdn
+                let amd = a.contains("mcdn")
+                let bmd = b.contains("mcdn")
+                if amd != bmd { return !amd && bmd }
+                if aflv != bflv { return !aflv && bflv }
+                return false
+            }
+    }
+
+    private func startAVPlayer(url: URL, headers: [String: String]) async -> Bool {
+        if await attachAV(
             asset: AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": headers])
         ) {
             return true
         }
-        // 2) Custom-scheme loader injects Referer/Cookie for the playlist request.
         guard var comps = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return false }
         let originalScheme = comps.scheme ?? "https"
         comps.scheme = "livehdr"
@@ -215,20 +265,20 @@ final class LiveRoomViewModel: ObservableObject {
         headerLoader = loader
         let asset = AVURLAsset(url: proxyURL)
         asset.resourceLoader.setDelegate(loader, queue: loader.queue)
-        return await attachPlayer(asset: asset)
+        return await attachAV(asset: asset)
     }
 
-    private func attachPlayer(asset: AVURLAsset) async -> Bool {
+    private func attachAV(asset: AVURLAsset) async -> Bool {
         let item = AVPlayerItem(asset: asset)
         let p = AVPlayer(playerItem: item)
         p.automaticallyWaitsToMinimizeStalling = true
-        player?.pause()
-        player?.replaceCurrentItem(with: nil)
-        player = p
+        avPlayer?.pause()
+        avPlayer?.replaceCurrentItem(with: nil)
+        avPlayer = p
         p.play()
         try? await Task.sleep(nanoseconds: 900_000_000)
         if item.status == .failed {
-            player = nil
+            avPlayer = nil
             return false
         }
         return true
@@ -237,20 +287,23 @@ final class LiveRoomViewModel: ObservableObject {
     private func scheduleAutoWebFallback() {
         failWatchTask?.cancel()
         failWatchTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            try? await Task.sleep(nanoseconds: 8_000_000_000)
             guard let self, !Task.isCancelled else { return }
-            if self.playMode == .native, self.player == nil || self.player?.timeControlStatus == .waitingToPlayAtSpecifiedRate {
-                // Still no stable playback — fall back.
-                if self.player?.timeControlStatus != .playing {
-                    self.errorMessage = (self.errorMessage.map { $0 + " · " } ?? "") + "原生无画面，已切网页"
-                    self.switchToWeb()
-                }
+            #if canImport(MobileVLCKit)
+            // VLC path: only fall back if still loading with no URL.
+            if self.playMode == .native, self.streamURL == nil, self.isLoading == false {
+                self.statusText = "无画面，可手动切网页"
             }
+            #else
+            if self.playMode == .native, self.avPlayer == nil {
+                self.switchToWeb()
+            }
+            #endif
         }
     }
 }
 
-// MARK: - Header-injecting resource loader (Referer/Cookie for Bilibili CDN)
+// MARK: - Header-injecting resource loader (AVPlayer HLS)
 
 final class LiveHeaderResourceLoader: NSObject, AVAssetResourceLoaderDelegate {
     let headers: [String: String]
@@ -282,7 +335,6 @@ final class LiveHeaderResourceLoader: NSObject, AVAssetResourceLoaderDelegate {
         for (k, v) in headers {
             req.setValue(v, forHTTPHeaderField: k)
         }
-        // Forward range if any.
         if let range = loadingRequest.request.value(forHTTPHeaderField: "Range") {
             req.setValue(range, forHTTPHeaderField: "Range")
         }
@@ -347,7 +399,7 @@ struct LiveRoomView: View {
                     .pickerStyle(.segmented)
                     .onChange(of: vm.playMode) { _, mode in
                         if mode == .web {
-                            vm.player?.pause()
+                            vm.switchToWeb()
                         } else {
                             vm.retryNative()
                         }
@@ -362,6 +414,16 @@ struct LiveRoomView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
+                    #if canImport(MobileVLCKit)
+                    Text("应用内播放器：VLC（可播 FLV，对齐 SimpleLive）")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                    #else
+                    Text("未链接 VLC，FLV 将回退网页")
+                        .font(.caption2)
+                        .foregroundStyle(.orange)
+                    #endif
+
                     if let errorMessage = vm.errorMessage {
                         Text(errorMessage)
                             .font(.footnote)
@@ -369,7 +431,7 @@ struct LiveRoomView: View {
                     }
 
                     HStack {
-                        Button("重试原生") { vm.retryNative() }
+                        Button("重试应用内") { vm.retryNative() }
                             .buttonStyle(.bordered)
                         Button("网页播放") { vm.switchToWeb() }
                             .buttonStyle(.borderedProminent)
@@ -433,12 +495,20 @@ struct LiveRoomView: View {
                 if let url = vm.webURL {
                     LiveRoomWebView(url: url)
                 } else {
-                    Text("无网页地址")
-                        .foregroundStyle(.white)
+                    Text("无网页地址").foregroundStyle(.white)
                 }
             case .native:
-                if let player = vm.player {
-                    VideoPlayer(player: player)
+                if let url = vm.streamURL {
+                    #if canImport(MobileVLCKit)
+                    LiveVLCPlayerView(url: url, headers: vm.streamHeaders, isPlaying: true)
+                        .id(url.absoluteString)
+                    #else
+                    if let p = vm.systemPlayer {
+                        VideoPlayer(player: p)
+                    } else {
+                        ProgressView().tint(.white)
+                    }
+                    #endif
                 } else if vm.isLoading {
                     VStack(spacing: 10) {
                         ProgressView().tint(.white)
@@ -514,7 +584,7 @@ struct LiveRoomView: View {
     }
 }
 
-// MARK: - In-room web player (proven working in 2.4)
+// MARK: - In-room web player
 
 struct LiveRoomWebView: UIViewRepresentable {
     let url: URL

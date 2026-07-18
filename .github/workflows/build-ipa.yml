@@ -17,7 +17,7 @@ jobs:
   build:
     name: Archive & export IPA
     runs-on: macos-14
-    timeout-minutes: 45
+    timeout-minutes: 75
 
     steps:
       - name: Checkout
@@ -108,8 +108,18 @@ jobs:
           security find-identity -v -p codesigning "$KEYCHAIN_PATH" | grep -q "iPhone Distribution"
           echo "Codesigning identity ready"
 
+      - name: CocoaPods (MobileVLCKit for FLV)
+        run: |
+          set -euo pipefail
+          # Align with SimpleLive media_kit: need a non-AVPlayer engine for HTTP-FLV.
+          gem install cocoapods --no-document || sudo gem install cocoapods --no-document
+          pod --version
+          pod install --repo-update
+          test -f PersonalToolbox.xcworkspace/contents.xcworkspacedata
+          ls -la Pods/ | head
+
       - name: Resolve schemes
-        run: xcodebuild -project PersonalToolbox.xcodeproj -list
+        run: xcodebuild -workspace PersonalToolbox.xcworkspace -list
 
       - name: Configure Share Extension (optional)
         env:
@@ -123,7 +133,7 @@ jobs:
           set -o pipefail
           set +e
           xcodebuild \
-            -project PersonalToolbox.xcodeproj \
+            -workspace PersonalToolbox.xcworkspace \
             -scheme PersonalToolbox \
             -configuration Release \
             -destination 'generic/platform=iOS' \

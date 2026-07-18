@@ -8,3 +8,6 @@ DerivedData/
 *.credentials*
 PersonalToolbox.ipa
 *.ipa
+
+# CocoaPods
+Pods/

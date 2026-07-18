@@ -154,7 +154,7 @@ enum ActionRouter {
         let lower = t.lowercased()
         if let url = extractFirstURL(from: t) {
             if lower.contains("下载") || lower.contains("download") {
-                if DouyinService.isDouyinURL(url) {
+                if isDouyinURL(url) {
                     return .init(action: .downloadDouyin, text: t, url: url)
                 }
                 return .init(action: .downloadYouTube, text: t, url: url)
@@ -189,5 +189,20 @@ enum ActionRouter {
             return .init(action: .openHealth, text: t)
         }
         return suggest(from: t).first
+    }
+
+    /// Local copy of Douyin host detection (nonisolated-safe).
+    static func isDouyinURL(_ raw: String) -> Bool {
+        let s = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if s.contains("douyin.com") || s.contains("iesdouyin.com") || s.contains("v.douyin.com") || s.contains("抖音") {
+            return true
+        }
+        guard let host = URL(string: s)?.host?.lowercased()
+                ?? URL(string: s.hasPrefix("http") ? s : "https://\(s)")?.host?.lowercased() else {
+            return false
+        }
+        return host == "douyin.com" || host.hasSuffix(".douyin.com")
+            || host == "iesdouyin.com" || host.hasSuffix(".iesdouyin.com")
+            || host.contains("douyin")
     }
 }

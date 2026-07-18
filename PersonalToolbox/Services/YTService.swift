@@ -5,6 +5,31 @@ actor YTService {
     private let client = NetworkClient.shared
     private var token: String?
 
+    /// Keychain account for optional session token persistence.
+    private static let tokenKeychainKey = "ytSessionToken"
+    /// UserDefaults key for token save timestamp (seconds since 1970).
+    private static let tokenSavedAtKey = "ytTokenSavedAt"
+    /// Re-login before backend sessionTTL (7d); refresh at ~6.5 days.
+    private static let tokenMaxAge: TimeInterval = 6.5 * 24 * 60 * 60
+
+    init() {
+        // Restore token from Keychain if still within soft TTL.
+        if let saved = KeychainStore.get(Self.tokenKeychainKey), !saved.isEmpty {
+            let savedAt = UserDefaults.standard.double(forKey: Self.tokenSavedAtKey)
+            if savedAt > 0 {
+                let age = Date().timeIntervalSince1970 - savedAt
+                if age < Self.tokenMaxAge {
+                    token = saved
+                } else {
+                    KeychainStore.delete(Self.tokenKeychainKey)
+                    UserDefaults.standard.removeObject(forKey: Self.tokenSavedAtKey)
+                }
+            } else {
+                token = saved
+            }
+        }
+    }
+
     func login(baseURL: String, username: String, password: String) async throws {
         struct Body: Encodable {
             let username: String
@@ -22,20 +47,32 @@ actor YTService {
             throw NetworkClient.httpError(status: http.statusCode, body: data)
         }
         // Response is a raw JSON string token
+        let resolved: String?
         if let s = try? JSONDecoder().decode(String.self, from: data) {
-            token = s
-            return
+            resolved = s
+        } else if let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let t = obj["token"] as? String {
+            resolved = t
+        } else {
+            let raw = String(data: data, encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .trimmingCharacters(in: CharacterSet(charactersIn: "\""))
+            resolved = (raw?.isEmpty == false) ? raw : nil
         }
-        if let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-           let t = obj["token"] as? String {
-            token = t
-            return
-        }
-        let raw = String(data: data, encoding: .utf8)?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .trimmingCharacters(in: CharacterSet(charactersIn: "\""))
-        guard let raw, !raw.isEmpty else { throw NetworkError.message("登录响应无效") }
-        token = raw
+        guard let resolved, !resolved.isEmpty else { throw NetworkError.message("登录响应无效") }
+        persistToken(resolved)
+    }
+
+    private func persistToken(_ value: String) {
+        token = value
+        KeychainStore.set(value, for: Self.tokenKeychainKey)
+        UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: Self.tokenSavedAtKey)
+    }
+
+    private func clearPersistedToken() {
+        token = nil
+        KeychainStore.delete(Self.tokenKeychainKey)
+        UserDefaults.standard.removeObject(forKey: Self.tokenSavedAtKey)
     }
 
     private func authHeaders() throws -> [String: String] {
@@ -44,13 +81,24 @@ actor YTService {
     }
 
     func ensureLogin(baseURL: String, username: String, password: String) async throws {
-        if token != nil { return }
+        if let token, !token.isEmpty {
+            // Soft TTL: re-login if persisted token is older than ~6.5 days.
+            let savedAt = UserDefaults.standard.double(forKey: Self.tokenSavedAtKey)
+            if savedAt > 0 {
+                let age = Date().timeIntervalSince1970 - savedAt
+                if age >= Self.tokenMaxAge {
+                    clearPersistedToken()
+                    try await login(baseURL: baseURL, username: username, password: password)
+                }
+            }
+            return
+        }
         try await login(baseURL: baseURL, username: username, password: password)
     }
 
-    /// Drops the in-memory auth token (Settings「注销全部会话」).
+    /// Drops the in-memory and Keychain auth token (Settings「注销全部会话」).
     func logout() {
-        token = nil
+        clearPersistedToken()
     }
 
     private func withAuthRetry<T>(
@@ -63,7 +111,7 @@ actor YTService {
         do {
             return try await work()
         } catch NetworkError.unauthorized {
-            token = nil
+            clearPersistedToken()
             try await login(baseURL: baseURL, username: username, password: password)
             return try await work()
         }
@@ -155,7 +203,7 @@ actor YTService {
         preset: YTFormatOption
     ) async throws {
         try await withAuthRetry(baseURL: baseURL, username: username, password: password) {
-            // Match yt-dlp-web-ui frontend payload
+            // Match yt-dlp-web-ui frontend payload + qualityFormats
             let params: [String: Any] = [
                 "URL": url,
                 "Params": ["--no-playlist", "-f", preset.format, "--merge-output-format", "mp4"],
@@ -220,6 +268,9 @@ actor YTService {
                 rows = []
             }
             return rows.compactMap { row in
+                // Skip directories when the backend marks them.
+                if let isDir = row["isDirectory"] as? Bool, isDir { return nil }
+                if let isDir = row["IsDir"] as? Bool, isDir { return nil }
                 let name = (row["name"] as? String)
                     ?? (row["Name"] as? String)
                     ?? (row["filename"] as? String)
@@ -230,6 +281,7 @@ actor YTService {
                 if let s = row["size"] as? Int64 { size = s }
                 else if let s = row["Size"] as? Int64 { size = s }
                 else if let s = row["size"] as? Int { size = Int64(s) }
+                else if let s = row["size"] as? Double { size = Int64(s) }
                 else { size = nil }
                 return YTFileItem(id: path, name: name, size: size, path: path)
             }
@@ -259,18 +311,30 @@ actor YTService {
         }
     }
 
+    /// Build download URL. Path segment is **base64.StdEncoding** of the file path,
+    /// then percent-encoded (matches frontend `encodedPath` / backend `handleFileDownload`).
     func downloadURL(baseURL: String, path: String) throws -> URL {
-        guard let token else { throw NetworkError.unauthorized }
+        guard let token, !token.isEmpty else { throw NetworkError.unauthorized }
         var raw = baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
         if raw.hasSuffix("/") { raw.removeLast() }
-        let encodedPath = path.split(separator: "/").map {
-            String($0).addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? String($0)
-        }.joined(separator: "/")
-        let urlString = "\(raw)/filebrowser/d/\(encodedPath)?token=\(token)"
+        let pathData = Data(path.utf8)
+        let b64 = pathData.base64EncodedString() // StdEncoding (default)
+        // Match encodeURIComponent: encode + / = and other reserved chars so path
+        // segment is a single component (urlPathAllowed keeps `/` which breaks decode).
+        var allowed = CharacterSet.alphanumerics
+        allowed.insert(charactersIn: "-_.")
+        let encoded = b64.addingPercentEncoding(withAllowedCharacters: allowed) ?? b64
+        let tokenQ = token.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? token
+        let urlString = "\(raw)/filebrowser/d/\(encoded)?token=\(tokenQ)"
         guard let url = URL(string: urlString) else { throw NetworkError.invalidURL }
         return url
     }
 
+    // MARK: - parseTasks
+
+    /// Parse `Service.Running` result. Prefer nested `info` / `progress` / `output`.
+    /// process_status: 0 pending, 1 running, **2 completed**, **3 failed**.
+    /// percentage `"-1"` means complete → UI 100%.
     private func parseTasks(_ result: Any?) -> [YTTask] {
         let rows: [[String: Any]]
         if let arr = result as? [[String: Any]] {
@@ -285,42 +349,123 @@ actor YTService {
         }
 
         return rows.compactMap { row in
+            let info = row["info"] as? [String: Any]
+            let progressObj = row["progress"] as? [String: Any]
+            let output = row["output"] as? [String: Any]
+
             let id = (row["id"] as? String)
                 ?? (row["Id"] as? String)
                 ?? (row["pid"] as? String)
                 ?? UUID().uuidString
-            let url = (row["url"] as? String) ?? (row["URL"] as? String) ?? ""
-            let title = (row["title"] as? String) ?? (row["Title"] as? String) ?? url
-            let status = (row["status"] as? String)
-                ?? (row["Progress"] as? [String: Any])?["status"] as? String
-                ?? "unknown"
-            var progress = 0.0
-            if let p = row["progress"] as? Double { progress = p > 1 ? p / 100 : p }
-            else if let p = row["percentage"] as? Double { progress = p > 1 ? p / 100 : p }
-            else if let p = (row["Progress"] as? [String: Any])?["percentage"] as? Double {
-                progress = p > 1 ? p / 100 : p
-            }
-            let speed = (row["speed"] as? String)
-                ?? (row["Speed"] as? String)
-                ?? ((row["Progress"] as? [String: Any])?["speed"] as? String)
+
+            let url = (info?["url"] as? String)
+                ?? (row["url"] as? String)
+                ?? (row["URL"] as? String)
                 ?? ""
-            let eta = (row["eta"] as? String)
-                ?? ((row["Progress"] as? [String: Any])?["eta"] as? String)
+
+            let title = (info?["title"] as? String)
+                ?? (row["title"] as? String)
+                ?? (row["Title"] as? String)
+                ?? url
+
+            let thumbnail = info?["thumbnail"] as? String
+
+            // process_status: prefer Int; tolerate Double/String from loose JSON.
+            let processStatus: Int = {
+                if let v = progressObj?["process_status"] as? Int { return v }
+                if let v = progressObj?["process_status"] as? Double { return Int(v) }
+                if let v = progressObj?["process_status"] as? String, let i = Int(v) { return i }
+                if let v = row["process_status"] as? Int { return v }
+                return 0
+            }()
+
+            let percentageRaw: String = {
+                if let s = progressObj?["percentage"] as? String { return s }
+                if let n = progressObj?["percentage"] as? Double {
+                    return n < 0 ? "-1" : "\(n)%"
+                }
+                if let s = row["percentage"] as? String { return s }
+                return "0%"
+            }()
+
+            let progress = Self.progress01(percentageRaw: percentageRaw, processStatus: processStatus)
+
+            let speed: String = {
+                if let n = progressObj?["speed"] as? Double {
+                    return Self.formatSpeed(n)
+                }
+                if let n = progressObj?["speed"] as? Int {
+                    return Self.formatSpeed(Double(n))
+                }
+                if let s = progressObj?["speed"] as? String, !s.isEmpty {
+                    return s
+                }
+                if let s = row["speed"] as? String { return s }
+                return ""
+            }()
+
+            let eta = (progressObj?["eta"] as? String)
+                ?? (row["eta"] as? String)
                 ?? ""
-            let filepath = (row["filepath"] as? String) ?? (row["filename"] as? String)
-            let error = row["error"] as? String
+
+            let filepath = (output?["savedFilePath"] as? String)
+                ?? (row["filepath"] as? String)
+                ?? (row["filename"] as? String)
+
+            let error: String? = {
+                if let e = row["error"] as? String, !e.isEmpty { return e }
+                return nil
+            }()
+
+            let statusLabel: String = {
+                switch processStatus {
+                case 0: return "等待中"
+                case 1: return "下载中"
+                case 2: return "已完成"
+                case 3: return "失败"
+                case 4: return "直播"
+                default: return "未知"
+                }
+            }()
+
             return YTTask(
                 id: id,
                 url: url,
                 title: title.isEmpty ? url : title,
-                status: status,
+                status: statusLabel,
+                processStatus: processStatus,
+                percentageRaw: percentageRaw,
                 progress: progress,
                 speed: speed,
                 eta: eta,
                 filepath: filepath,
-                error: error
+                error: error,
+                thumbnail: thumbnail
             )
         }
+    }
+
+    /// Convert backend percentage string to 0...1. `"-1"` or status 2 → 1.0.
+    /// Backend always sends percent units (`"45.2%"`, `"1%"`, `"0.5%"`) — never fractions.
+    static func progress01(percentageRaw: String, processStatus: Int) -> Double {
+        if percentageRaw == "-1" || processStatus == 2 { return 1 }
+        if processStatus == 0 { return 0 }
+        let trimmed = percentageRaw.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "%", with: "")
+        guard let value = Double(trimmed), value.isFinite else { return 0 }
+        // Negative sentinel (other than the string "-1") → complete.
+        if value < 0 { return 1 }
+        // Always interpret as percent units: "1%" → 0.01, not 1.0.
+        return max(0, min(1, value / 100))
+    }
+
+    /// Format bytes/s number to human string (e.g. `1.2 MB/s`).
+    static func formatSpeed(_ bytesPerSec: Double) -> String {
+        guard bytesPerSec > 0, bytesPerSec.isFinite else { return "" }
+        let formatter = ByteCountFormatter()
+        formatter.countStyle = .file
+        formatter.allowsNonnumericFormatting = false
+        return formatter.string(fromByteCount: Int64(bytesPerSec.rounded())) + "/s"
     }
 
     private func formatDuration(_ seconds: Double) -> String {

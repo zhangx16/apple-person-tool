@@ -29,6 +29,9 @@
 		AA0000010000000000000018 /* MessageDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000018 /* MessageDetailView.swift */; };
 		AA0000010000000000000019 /* MailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000019 /* MailViewModel.swift */; };
 		AA0000010000000000000010 /* DownloadHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000010 /* DownloadHomeView.swift */; };
+		AA0000010000000000000017 /* DownloadViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000017 /* DownloadViewModel.swift */; };
+		AA0000010000000000000018 /* TaskRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000018 /* TaskRowView.swift */; };
+		AA0000010000000000000019 /* FilesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000019 /* FilesListView.swift */; };
 		AA0000010000000000000011 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000011 /* SettingsView.swift */; };
 		AA0000010000000000000015 /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000015 /* SettingsViewModel.swift */; };
 		AA0000010000000000000016 /* ServiceProbeRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000016 /* ServiceProbeRow.swift */; };
@@ -64,6 +67,9 @@
 		BB0000010000000000000018 /* MessageDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageDetailView.swift; sourceTree = "<group>"; };
 		BB0000010000000000000019 /* MailViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailViewModel.swift; sourceTree = "<group>"; };
 		BB0000010000000000000010 /* DownloadHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadHomeView.swift; sourceTree = "<group>"; };
+		BB0000010000000000000017 /* DownloadViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadViewModel.swift; sourceTree = "<group>"; };
+		BB0000010000000000000018 /* TaskRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskRowView.swift; sourceTree = "<group>"; };
+		BB0000010000000000000019 /* FilesListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilesListView.swift; sourceTree = "<group>"; };
 		BB0000010000000000000011 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		BB0000010000000000000015 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
 		BB0000010000000000000016 /* ServiceProbeRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceProbeRow.swift; sourceTree = "<group>"; };
@@ -219,6 +225,9 @@
 			isa = PBXGroup;
 			children = (
 				BB0000010000000000000010 /* DownloadHomeView.swift */,
+				BB0000010000000000000017 /* DownloadViewModel.swift */,
+				BB0000010000000000000018 /* TaskRowView.swift */,
+				BB0000010000000000000019 /* FilesListView.swift */,
 			);
 			path = Download;
 			sourceTree = "<group>";
@@ -331,6 +340,9 @@
 				AA0000010000000000000018 /* MessageDetailView.swift in Sources */,
 				AA0000010000000000000019 /* MailViewModel.swift in Sources */,
 				AA0000010000000000000010 /* DownloadHomeView.swift in Sources */,
+				AA0000010000000000000017 /* DownloadViewModel.swift in Sources */,
+				AA0000010000000000000018 /* TaskRowView.swift in Sources */,
+				AA0000010000000000000019 /* FilesListView.swift in Sources */,
 				AA0000010000000000000011 /* SettingsView.swift in Sources */,
 				AA0000010000000000000015 /* SettingsViewModel.swift in Sources */,
 				AA0000010000000000000016 /* ServiceProbeRow.swift in Sources */,

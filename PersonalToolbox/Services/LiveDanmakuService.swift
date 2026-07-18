@@ -69,7 +69,11 @@ final class LiveDanmakuService: ObservableObject {
         session = URLSession(configuration: config)
         var req = URLRequest(url: url)
         if !cookie.isEmpty { req.setValue(cookie, forHTTPHeaderField: "Cookie") }
-        let ws = session!.webSocketTask(with: req)
+        guard let sess = session else {
+            statusText = "弹幕会话失败"
+            return
+        }
+        let ws = sess.webSocketTask(with: req)
         webSocket = ws
         ws.resume()
         statusText = "弹幕连接中…"
@@ -206,7 +210,11 @@ final class LiveDanmakuService: ObservableObject {
     private func connectDouyu(roomId: String) {
         guard let url = URL(string: "wss://danmuproxy.douyu.com:8506") else { return }
         session = URLSession(configuration: .default)
-        let ws = session!.webSocketTask(with: url)
+        guard let sess = session else {
+            statusText = "弹幕会话失败"
+            return
+        }
+        let ws = sess.webSocketTask(with: url)
         webSocket = ws
         ws.resume()
         statusText = "弹幕连接中…"
@@ -337,7 +345,11 @@ final class LiveDanmakuService: ObservableObject {
         }
         guard let url = URL(string: "wss://cdnws.api.huya.com") else { return }
         session = URLSession(configuration: .default)
-        let ws = session!.webSocketTask(with: url)
+        guard let sess = session else {
+            statusText = "弹幕会话失败"
+            return
+        }
+        let ws = sess.webSocketTask(with: url)
         webSocket = ws
         ws.resume()
         statusText = "弹幕连接中…"
@@ -392,7 +404,10 @@ final class LiveDanmakuService: ObservableObject {
         let ua =
             "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.5845.97 Safari/537.36 Core/1.116.567.400 QQBrowser/19.7.6764.400"
         let ts = Int(Date().timeIntervalSince1970 * 1000)
-        var comps = URLComponents(string: "wss://webcast3-ws-web-lq.douyin.com/webcast/im/push/v2/")!
+        guard var comps = URLComponents(string: "wss://webcast3-ws-web-lq.douyin.com/webcast/im/push/v2/") else {
+            statusText = "抖音弹幕地址无效"
+            return
+        }
         comps.queryItems = [
             URLQueryItem(name: "app_name", value: "douyin_web"),
             URLQueryItem(name: "version_code", value: "180800"),
@@ -439,7 +454,11 @@ final class LiveDanmakuService: ObservableObject {
         req.setValue(cookie, forHTTPHeaderField: "Cookie")
         req.setValue("https://live.douyin.com", forHTTPHeaderField: "Origin")
         req.setValue("https://live.douyin.com/\(webRid)", forHTTPHeaderField: "Referer")
-        let ws = session!.webSocketTask(with: req)
+        guard let sess = session else {
+            statusText = "弹幕会话失败"
+            return
+        }
+        let ws = sess.webSocketTask(with: req)
         webSocket = ws
         ws.resume()
         statusText = "弹幕连接中…"
@@ -522,7 +541,11 @@ final class LiveDanmakuService: ObservableObject {
         req.setValue("https://live.kuaishou.com", forHTTPHeaderField: "Origin")
         req.setValue("https://live.kuaishou.com/u/\(roomId)", forHTTPHeaderField: "Referer")
         if !cookie.isEmpty { req.setValue(cookie, forHTTPHeaderField: "Cookie") }
-        let ws = session!.webSocketTask(with: req)
+        guard let sess = session else {
+            statusText = "弹幕会话失败"
+            return
+        }
+        let ws = sess.webSocketTask(with: req)
         webSocket = ws
         ws.resume()
         statusText = "弹幕连接中…"

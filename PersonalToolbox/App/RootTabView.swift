@@ -24,7 +24,7 @@ struct RootTabView: View {
                     .tag(AppTab.chat)
                     .accessibilityLabel("助手")
 
-                LiveHomeView()
+                LiveHomeView(isTabSelected: selectedTab == .live)
                     .tabItem { Label("直播", systemImage: "play.tv.fill") }
                     .tag(AppTab.live)
                     .accessibilityLabel("直播")

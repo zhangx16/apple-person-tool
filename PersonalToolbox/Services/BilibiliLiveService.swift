@@ -107,6 +107,51 @@ actor BilibiliLiveService {
     }
 
     func getRoomDetail(roomId: String) async throws -> LiveRoomDetail {
+        // Prefer legacy get_info (stable). getInfoByRoom often returns -352 without full WBI risk pass.
+        if let d = try? await roomDetailFromGetInfo(roomId: roomId) {
+            return d
+        }
+        if let d = try? await roomDetailFromInfoByRoom(roomId: roomId) {
+            return d
+        }
+        // Last resort: play-info only (has live_status).
+        return try await roomDetailFromPlayInfo(roomId: roomId)
+    }
+
+    private func roomDetailFromGetInfo(roomId: String) async throws -> LiveRoomDetail {
+        let json = try await getJSON(
+            "https://api.live.bilibili.com/room/v1/Room/get_info",
+            query: ["room_id": roomId],
+            signed: false,
+            allowBusinessError: false
+        )
+        guard let room = json["data"] as? [String: Any] else {
+            throw NetworkError.message("无法获取直播间信息")
+        }
+        let realId = "\(room["room_id"] ?? roomId)"
+        var cover = "\(room["user_cover"] ?? room["keyframe"] ?? room["cover"] ?? "")"
+        if cover.hasPrefix("//") { cover = "https:" + cover }
+        var uname = "\(room["uname"] ?? "")"
+        if uname.isEmpty {
+            // get_info sometimes omits uname; leave blank
+            uname = ""
+        }
+        return LiveRoomDetail(
+            platform: .bilibili,
+            roomId: realId,
+            title: "\(room["title"] ?? "")",
+            cover: cover,
+            userName: uname,
+            userAvatar: "",
+            online: Int("\(room["online"] ?? room["attention"] ?? 0)") ?? 0,
+            isLive: (Int("\(room["live_status"] ?? 0)") ?? 0) == 1,
+            webURL: "https://live.bilibili.com/\(realId)",
+            introduction: "\(room["description"] ?? "")",
+            danmakuJSON: "{}"
+        )
+    }
+
+    private func roomDetailFromInfoByRoom(roomId: String) async throws -> LiveRoomDetail {
         let base = "https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByRoom"
         var params = ["room_id": roomId]
         params = try await wbiSign(params)
@@ -119,10 +164,6 @@ actor BilibiliLiveService {
         let anchor = (data["anchor_info"] as? [String: Any])?["base_info"] as? [String: Any]
         var face = "\(anchor?["face"] ?? "")"
         if !face.isEmpty, !face.contains("@") { face += "@100w.jpg" }
-        var danmakuJSON = "{}"
-        if let dm = try? await getDanmuInfo(roomId: realId) {
-            danmakuJSON = LiveJSON.encode(dm)
-        }
         return LiveRoomDetail(
             platform: .bilibili,
             roomId: realId,
@@ -132,9 +173,28 @@ actor BilibiliLiveService {
             userAvatar: face,
             online: Int("\(room["online"] ?? 0)") ?? 0,
             isLive: (Int("\(room["live_status"] ?? 0)") ?? 0) == 1,
-            webURL: "https://live.bilibili.com/\(roomId)",
+            webURL: "https://live.bilibili.com/\(realId)",
             introduction: "\(room["description"] ?? "")",
-            danmakuJSON: danmakuJSON
+            danmakuJSON: "{}"
+        )
+    }
+
+    private func roomDetailFromPlayInfo(roomId: String) async throws -> LiveRoomDetail {
+        let data = try await roomPlayInfoData(roomId: roomId, qn: 250)
+        let live = (Int("\(data["live_status"] ?? 0)") ?? 0) == 1
+        let realId = "\(data["room_id"] ?? roomId)"
+        return LiveRoomDetail(
+            platform: .bilibili,
+            roomId: realId,
+            title: "直播间 \(realId)",
+            cover: "",
+            userName: "",
+            userAvatar: "",
+            online: 0,
+            isLive: live,
+            webURL: "https://live.bilibili.com/\(realId)",
+            introduction: "",
+            danmakuJSON: "{}"
         )
     }
 
@@ -175,45 +235,73 @@ actor BilibiliLiveService {
         var qualities: [LivePlayQuality] = []
         for a in accepted {
             let qn = Int("\(a)") ?? 0
-            qualities.append(LivePlayQuality(name: map[qn] ?? "\(qn)", qn: qn))
+            if qn > 0 {
+                qualities.append(LivePlayQuality(name: map[qn] ?? "\(qn)", qn: qn))
+            }
         }
         if qualities.isEmpty {
-            // fallback common qn
+            // iOS-friendly ladder (prefer mid rates first in UI order)
             qualities = [
-                LivePlayQuality(name: "原画", qn: 10000),
-                LivePlayQuality(name: "蓝光", qn: 400),
-                LivePlayQuality(name: "超清", qn: 250),
-                LivePlayQuality(name: "高清", qn: 150)
+                LivePlayQuality(name: "高清", qn: 250),
+                LivePlayQuality(name: "超清", qn: 400),
+                LivePlayQuality(name: "流畅", qn: 150),
+                LivePlayQuality(name: "原画", qn: 10000)
             ]
         }
         return qualities
     }
 
     func getPlayURLs(roomId: String, qn: Int) async throws -> LivePlayResult {
+        // Request HLS-capable formats. AVPlayer cannot play FLV.
         let play = try await roomPlayInfo(roomId: roomId, qn: qn)
-        var urls: [String] = []
+        struct Cand {
+            var url: String
+            var score: Int
+        }
+        var cands: [Cand] = []
         for stream in (play["stream"] as? [[String: Any]]) ?? [] {
             for format in (stream["format"] as? [[String: Any]]) ?? [] {
+                let formatName = "\(format["format_name"] ?? "")".lowercased()
                 for codec in (format["codec"] as? [[String: Any]]) ?? [] {
+                    let codecName = "\(codec["codec_name"] ?? "")".lowercased()
                     let baseURL = "\(codec["base_url"] ?? "")"
                     for info in (codec["url_info"] as? [[String: Any]]) ?? [] {
                         let host = "\(info["host"] ?? "")"
                         let extra = "\(info["extra"] ?? "")"
                         let full = host + baseURL + extra
-                        if full.hasPrefix("http") { urls.append(full) }
+                        guard full.hasPrefix("http") else { continue }
+                        // Score for AVPlayer: HLS first, AVC over HEVC, avoid mcdn.
+                        var score = 0
+                        if full.contains(".m3u8") || formatName == "ts" || formatName == "fmp4" {
+                            score += 100
+                        }
+                        if formatName == "fmp4" { score += 20 }
+                        if formatName == "ts" { score += 15 }
+                        if formatName == "flv" || full.contains(".flv") { score -= 200 }
+                        if codecName.contains("avc") || codecName.contains("h264") { score += 30 }
+                        if codecName.contains("hevc") || codecName.contains("h265") { score -= 10 }
+                        if full.contains("mcdn") { score -= 40 }
+                        cands.append(Cand(url: full, score: score))
                     }
                 }
             }
         }
-        urls.sort { a, b in
-            if a.contains("mcdn") { return false }
-            if b.contains("mcdn") { return true }
-            return false
+        // Keep only positive scores (HLS-like); if empty, keep original non-flv.
+        var picked = cands.filter { $0.score >= 100 }.sorted { $0.score > $1.score }.map(\.url)
+        if picked.isEmpty {
+            picked = cands.filter { !$0.url.contains(".flv") }.sorted { $0.score > $1.score }.map(\.url)
         }
-        guard !urls.isEmpty else { throw NetworkError.message("未获取到播放地址") }
-        return LivePlayResult(urls: urls, headers: [
+        // Dedupe preserve order
+        var seen = Set<String>()
+        picked = picked.filter { seen.insert($0).inserted }
+        guard !picked.isEmpty else { throw NetworkError.message("未获取到可播放地址（HLS）") }
+
+        if buvid3.isEmpty { await refreshBuvid() }
+        return LivePlayResult(urls: picked, headers: [
             "Referer": "https://live.bilibili.com",
-            "User-Agent": ua
+            "Origin": "https://live.bilibili.com",
+            "User-Agent": ua,
+            "Cookie": "buvid3=\(buvid3);buvid4=\(buvid4);"
         ])
     }
 
@@ -234,24 +322,39 @@ actor BilibiliLiveService {
         )
     }
 
-    private func roomPlayInfo(roomId: String, qn: Int?) async throws -> [String: Any] {
+    private func roomPlayInfoData(roomId: String, qn: Int?) async throws -> [String: Any] {
         var params: [String: String] = [
             "room_id": roomId,
             "protocol": "0,1",
+            // 0=flv 1=ts 2=fmp4 — still request all; client filters for AVPlayer
             "format": "0,1,2",
             "codec": "0,1",
-            "platform": "web"
+            "platform": "web",
+            "dolby": "5",
+            "panorama": "1"
         ]
         if let qn { params["qn"] = "\(qn)" }
         let json = try await getJSON(
             "https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo",
-            query: params
+            query: params,
+            signed: false
         )
-        guard let data = json["data"] as? [String: Any],
-              let playurlInfo = data["playurl_info"] as? [String: Any],
-              let playurl = playurlInfo["playurl"] as? [String: Any] else {
+        guard let data = json["data"] as? [String: Any] else {
             let msg = "\(json["message"] ?? "播放信息异常")"
             throw NetworkError.message(msg)
+        }
+        return data
+    }
+
+    private func roomPlayInfo(roomId: String, qn: Int?) async throws -> [String: Any] {
+        let data = try await roomPlayInfoData(roomId: roomId, qn: qn)
+        guard let playurlInfo = data["playurl_info"] as? [String: Any],
+              let playurl = playurlInfo["playurl"] as? [String: Any] else {
+            // Offline rooms have empty playurl_info
+            if (Int("\(data["live_status"] ?? 0)") ?? 0) != 1 {
+                throw NetworkError.message("当前未开播")
+            }
+            throw NetworkError.message("播放信息异常")
         }
         return playurl
     }
@@ -331,11 +434,14 @@ actor BilibiliLiveService {
         return String(s.prefix(32))
     }
 
-    private func getJSON(_ url: String, query: [String: String], signed: Bool = true) async throws -> [String: Any] {
+    private func getJSON(
+        _ url: String,
+        query: [String: String],
+        signed: Bool = true,
+        allowBusinessError: Bool = false
+    ) async throws -> [String: Any] {
+        _ = signed
         var q = query
-        if signed, !query.isEmpty {
-            // already signed by caller when needed
-        }
         guard var comps = URLComponents(string: url) else { throw NetworkError.invalidURL }
         if !q.isEmpty {
             comps.queryItems = q.map { URLQueryItem(name: $0.key, value: $0.value) }
@@ -353,10 +459,9 @@ actor BilibiliLiveService {
         guard let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw NetworkError.message("JSON 解析失败")
         }
-        if let code = obj["code"] as? Int, code != 0 {
+        if let code = obj["code"] as? Int, code != 0, !allowBusinessError {
             let msg = "\(obj["message"] ?? obj["msg"] ?? "错误 \(code)")"
-            // some endpoints return code -352 without fully failing list - still throw
-            if code != 0 { throw NetworkError.message(msg) }
+            throw NetworkError.message(msg)
         }
         return obj
     }

@@ -17,9 +17,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0</string>
+	<string>1.2</string>
 	<key>CFBundleVersion</key>
-	<string>2</string>
+	<string>3</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>
@@ -43,10 +43,43 @@
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>用于选择图片作为 Grok Imagine 图像编辑的输入图源。</string>
+	<string>用于选择图片作为 Grok Imagine 输入、设置纪念日头像，以及从相册识别二维码。</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>如通过系统分享将生成的图片或视频保存到相册，需要相册写入权限。</string>
+	<string>用于保存生成的二维码图片，以及通过系统分享保存媒体到相册。</string>
+	<key>NSCameraUsageDescription</key>
+	<string>用于扫描二维码，识别后可复制内容或按规则跳转到对应 App。</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>用于在开启「启动时需要面容/触控 ID」时验证身份并解锁 Xin tools。</string>
+	<key>NSUserNotificationsUsageDescription</key>
+	<string>用于在生日、纪念日到来前提醒你，避免错过重要日子。</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>weixin</string>
+		<string>weixinULAPI</string>
+		<string>alipay</string>
+		<string>alipays</string>
+		<string>mqqapi</string>
+		<string>mqq</string>
+		<string>taobao</string>
+		<string>tbopen</string>
+		<string>snssdk1128</string>
+		<string>openapp.jdmobile</string>
+		<string>imeituan</string>
+		<string>xhsdiscover</string>
+		<string>dtxuexi</string>
+	</array>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>ip-api.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+		</dict>
+	</dict>
 </dict>
 </plist>

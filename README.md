@@ -46,8 +46,13 @@ xcodebuild -project PersonalToolbox.xcodeproj -scheme PersonalToolbox \
 3. **下载** — 解析、清晰度、队列、完成文件分享  
 4. **服务 → SublinkX** — 完整管理台：登录、看板、节点增删改/批量导入、订阅增删改、复制 Clash/V2Ray/Surge 客户端链接  
 5. **服务 → Komari** — 公开监控台：节点列表/搜索、在线状态、详情负载历史与 Ping、30s 自动刷新（[komari](https://github.com/komari-monitor/komari) 公开 API）  
-6. **监控 Tab（Sub2 管理）** — 对齐 [sub2api-mobile](https://github.com/ckken/sub2api-mobile)：仪表盘 + 上游账号调度/测试/刷新 + 用户启停/余额/API Keys + 分组浏览  
-7. **设置** — 各服务凭证、连通性探测、外观与隐私（Face ID 默认关）
+6. **服务 → 纪念日** — 本地人物与纪念日（公历/农历、倒计时、本地通知）；图标 `IconAnniversary`；数据仅存本机 Documents  
+7. **服务 → 二维码助手** — 相机/相册扫码、生成二维码、历史、关键字智能跳转规则；图标 `IconQRAssistant`  
+8. **服务 → 翻译器** — 多引擎并行翻译（默认 Sub2API / Google）；图标 `IconTranslator`；可配自定义 AI 接口  
+9. **服务 → 财联社电报** — RSS 电报列表、下拉刷新、本地缓存、复制；图标 `IconCLS`  
+10. **服务 → 监控** — Sub2 管理、Komari、**Cloudflare**（域名/DNS/今日用量/清缓存）、**IP 检测**（出口 IP / 分流启发式）  
+11. **监控 Tab（Sub2 管理）** — 对齐 [sub2api-mobile](https://github.com/ckken/sub2api-mobile)：仪表盘 + 上游账号调度/测试/刷新 + 用户启停/余额/API Keys + 分组浏览  
+12. **设置** — 各服务凭证（含 Cloudflare Token）、连通性探测、外观与隐私（Face ID 默认关）
 ## 仓库说明
 
 - 集成产物在 `main`（`PLAN_ID=dbf5d164` 执行计划完成态）  

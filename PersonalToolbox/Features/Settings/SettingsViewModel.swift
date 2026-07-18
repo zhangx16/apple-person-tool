@@ -8,6 +8,7 @@ final class SettingsViewModel: ObservableObject {
     @Published private(set) var ytProbe: ServiceProbeState = .unknown
     @Published private(set) var sublinkProbe: ServiceProbeState = .unknown
     @Published private(set) var komariProbe: ServiceProbeState = .unknown
+    @Published private(set) var cloudflareProbe: ServiceProbeState = .unknown
     @Published private(set) var discoveredModels: [String] = []
     @Published var logoutNotice: String?
 
@@ -17,6 +18,7 @@ final class SettingsViewModel: ObservableObject {
     private let yt = YTService.shared
     private let sublink = SublinkService.shared
     private let komari = KomariService.shared
+    private let cloudflare = CloudflareService.shared
     private let network = NetworkClient.shared
 
     init(settings: AppSettings = .shared) {
@@ -165,6 +167,59 @@ final class SettingsViewModel: ObservableObject {
             Haptics.success()
         } catch {
             komariProbe = .failure(Self.chineseError(error))
+            Haptics.error()
+        }
+    }
+
+    func testCloudflare() async {
+        guard !cloudflareProbe.isProbing else { return }
+        guard settings.isCloudflareConfigured else {
+            cloudflareProbe = .failure("请填写 API Token")
+            Haptics.error()
+            return
+        }
+        cloudflareProbe = .probing
+        let start = ContinuousClock.now
+        do {
+            let cred = CFCredentials(settings: settings)
+            let verify = try await cloudflare.verifyToken(cred: cred)
+            let zones = try await cloudflare.listZones(cred: cred, page: 1, perPage: 5)
+            cloudflareProbe = .success(
+                latencyMs: elapsedMs(since: start),
+                detail: "\(verify.status) · \(zones.count)+ 域名"
+            )
+            Haptics.success()
+        } catch {
+            cloudflareProbe = .failure(Self.chineseError(error))
+            Haptics.error()
+        }
+    }
+
+    func fetchCloudflareAccounts() async {
+        guard settings.isCloudflareConfigured else {
+            cloudflareProbe = .failure("请填写 API Token")
+            Haptics.error()
+            return
+        }
+        cloudflareProbe = .probing
+        let start = ContinuousClock.now
+        do {
+            let cred = CFCredentials(settings: settings)
+            let accounts = try await cloudflare.listAccounts(cred: cred)
+            guard let first = accounts.first else {
+                cloudflareProbe = .failure("未找到可访问账户")
+                Haptics.error()
+                return
+            }
+            settings.cloudflareAccountId = first.id
+            settings.cloudflareAccountName = first.name
+            cloudflareProbe = .success(
+                latencyMs: elapsedMs(since: start),
+                detail: "\(first.name) · 共 \(accounts.count) 个账户"
+            )
+            Haptics.success()
+        } catch {
+            cloudflareProbe = .failure(Self.chineseError(error))
             Haptics.error()
         }
     }

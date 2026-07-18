@@ -15,6 +15,7 @@ struct SettingsView: View {
                 ytSection
                 sublinkSection
                 komariSection
+                cloudflareSection
                 appearanceSection
                 privacySection
                 aboutSection
@@ -197,6 +198,46 @@ struct SettingsView: View {
             settingsHeader(brand: .komari, title: "Komari 探针")
         } footer: {
             Text("默认 https://komari.996616.xyz · 使用公开 /api/nodes 接口")
+        }
+    }
+
+    // MARK: - Cloudflare
+
+    private var cloudflareSection: some View {
+        Section {
+            SecureField("API Token / Global Key", text: $settings.cloudflareAPIToken)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .privacySensitive()
+            TextField("Email（仅 Global Key 时填写）", text: $settings.cloudflareEmail)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .keyboardType(.emailAddress)
+            TextField("Account ID", text: $settings.cloudflareAccountId)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            if !settings.cloudflareAccountName.isEmpty {
+                LabeledContent("账户名", value: settings.cloudflareAccountName)
+            }
+            ServiceProbeRow(state: viewModel.cloudflareProbe)
+            Button {
+                Task { await viewModel.testCloudflare() }
+            } label: {
+                Label("测试 Cloudflare", systemImage: "bolt.fill")
+            }
+            .buttonStyle(PressableButtonStyle())
+            .disabled(viewModel.cloudflareProbe.isProbing)
+            Button {
+                Task { await viewModel.fetchCloudflareAccounts() }
+            } label: {
+                Label("拉取账户并填入第一个", systemImage: "person.2")
+            }
+            .buttonStyle(PressableButtonStyle())
+            .disabled(viewModel.cloudflareProbe.isProbing)
+        } header: {
+            settingsHeader(brand: .cloudflare, title: "Cloudflare")
+        } footer: {
+            Text("推荐使用 API Token（Bearer）。填写 Email 时按 Global API Key 方式鉴权。Account ID 用于 Workers/Pages 用量。")
         }
     }
 

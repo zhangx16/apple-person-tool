@@ -49,6 +49,32 @@
 		000000000000000000000152 /* YTService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000151 /* YTService.swift */; };
 		000000000000000000000154 /* AppleTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000153 /* AppleTheme.swift */; };
 		000000000000000000000156 /* ServiceBrandIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000155 /* ServiceBrandIcon.swift */; };
+		000000000000000000000161 /* AnniversaryModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000160 /* AnniversaryModels.swift */; };
+		000000000000000000000163 /* AnniversaryDateUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000162 /* AnniversaryDateUtils.swift */; };
+		000000000000000000000165 /* AnniversaryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000164 /* AnniversaryStore.swift */; };
+		000000000000000000000167 /* AnniversaryHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000166 /* AnniversaryHomeView.swift */; };
+		000000000000000000000169 /* AnniversaryEditors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000168 /* AnniversaryEditors.swift */; };
+		000000000000000000000171 /* QRAssistantModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000170 /* QRAssistantModels.swift */; };
+		000000000000000000000173 /* QRCodeToolkit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000172 /* QRCodeToolkit.swift */; };
+		000000000000000000000175 /* QRAssistantStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000174 /* QRAssistantStore.swift */; };
+		000000000000000000000177 /* QRAssistantHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000176 /* QRAssistantHomeView.swift */; };
+		000000000000000000000179 /* QRScannerViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000178 /* QRScannerViews.swift */; };
+		00000000000000000000017B /* QRRedirectConfigView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000017A /* QRRedirectConfigView.swift */; };
+		000000000000000000000181 /* TranslatorModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000180 /* TranslatorModels.swift */; };
+		000000000000000000000183 /* TranslatorService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000182 /* TranslatorService.swift */; };
+		000000000000000000000185 /* TranslatorStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000184 /* TranslatorStore.swift */; };
+		000000000000000000000187 /* TranslatorHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000186 /* TranslatorHomeView.swift */; };
+		000000000000000000000189 /* TranslatorSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000188 /* TranslatorSettingsView.swift */; };
+		000000000000000000000191 /* CloudflareModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000190 /* CloudflareModels.swift */; };
+		000000000000000000000193 /* CloudflareService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000192 /* CloudflareService.swift */; };
+		000000000000000000000195 /* CloudflareHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000194 /* CloudflareHomeView.swift */; };
+		000000000000000000000197 /* CloudflareZoneDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000196 /* CloudflareZoneDetailView.swift */; };
+		0000000000000000000001A1 /* CLSModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000001A0 /* CLSModels.swift */; };
+		0000000000000000000001A3 /* CLSNewsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000001A2 /* CLSNewsService.swift */; };
+		0000000000000000000001A5 /* CLSNewsHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000001A4 /* CLSNewsHomeView.swift */; };
+		0000000000000000000001B1 /* IPCheckModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000001B0 /* IPCheckModels.swift */; };
+		0000000000000000000001B3 /* IPCheckService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000001B2 /* IPCheckService.swift */; };
+		0000000000000000000001B5 /* IPCheckHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000001B4 /* IPCheckHomeView.swift */; };
 		000000000000000000000208 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000200 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -96,6 +122,32 @@
 		000000000000000000000151 /* YTService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTService.swift; sourceTree = "<group>"; };
 		000000000000000000000153 /* AppleTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleTheme.swift; sourceTree = "<group>"; };
 		000000000000000000000155 /* ServiceBrandIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceBrandIcon.swift; sourceTree = "<group>"; };
+		000000000000000000000160 /* AnniversaryModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnniversaryModels.swift; sourceTree = "<group>"; };
+		000000000000000000000162 /* AnniversaryDateUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnniversaryDateUtils.swift; sourceTree = "<group>"; };
+		000000000000000000000164 /* AnniversaryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnniversaryStore.swift; sourceTree = "<group>"; };
+		000000000000000000000166 /* AnniversaryHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnniversaryHomeView.swift; sourceTree = "<group>"; };
+		000000000000000000000168 /* AnniversaryEditors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnniversaryEditors.swift; sourceTree = "<group>"; };
+		000000000000000000000170 /* QRAssistantModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRAssistantModels.swift; sourceTree = "<group>"; };
+		000000000000000000000172 /* QRCodeToolkit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRCodeToolkit.swift; sourceTree = "<group>"; };
+		000000000000000000000174 /* QRAssistantStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRAssistantStore.swift; sourceTree = "<group>"; };
+		000000000000000000000176 /* QRAssistantHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRAssistantHomeView.swift; sourceTree = "<group>"; };
+		000000000000000000000178 /* QRScannerViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRScannerViews.swift; sourceTree = "<group>"; };
+		00000000000000000000017A /* QRRedirectConfigView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QRRedirectConfigView.swift; sourceTree = "<group>"; };
+		000000000000000000000180 /* TranslatorModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranslatorModels.swift; sourceTree = "<group>"; };
+		000000000000000000000182 /* TranslatorService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranslatorService.swift; sourceTree = "<group>"; };
+		000000000000000000000184 /* TranslatorStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranslatorStore.swift; sourceTree = "<group>"; };
+		000000000000000000000186 /* TranslatorHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranslatorHomeView.swift; sourceTree = "<group>"; };
+		000000000000000000000188 /* TranslatorSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranslatorSettingsView.swift; sourceTree = "<group>"; };
+		000000000000000000000190 /* CloudflareModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudflareModels.swift; sourceTree = "<group>"; };
+		000000000000000000000192 /* CloudflareService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudflareService.swift; sourceTree = "<group>"; };
+		000000000000000000000194 /* CloudflareHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudflareHomeView.swift; sourceTree = "<group>"; };
+		000000000000000000000196 /* CloudflareZoneDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudflareZoneDetailView.swift; sourceTree = "<group>"; };
+		0000000000000000000001A0 /* CLSModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLSModels.swift; sourceTree = "<group>"; };
+		0000000000000000000001A2 /* CLSNewsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLSNewsService.swift; sourceTree = "<group>"; };
+		0000000000000000000001A4 /* CLSNewsHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLSNewsHomeView.swift; sourceTree = "<group>"; };
+		0000000000000000000001B0 /* IPCheckModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IPCheckModels.swift; sourceTree = "<group>"; };
+		0000000000000000000001B2 /* IPCheckService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IPCheckService.swift; sourceTree = "<group>"; };
+		0000000000000000000001B4 /* IPCheckHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IPCheckHomeView.swift; sourceTree = "<group>"; };
 		000000000000000000000200 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		000000000000000000000201 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		000000000000000000000202 /* PersonalToolbox.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PersonalToolbox.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -120,6 +172,8 @@
 				00000000000000000000010B /* KeychainStore.swift */,
 				00000000000000000000010D /* NetworkClient.swift */,
 				00000000000000000000010F /* SSEParser.swift */,
+				000000000000000000000162 /* AnniversaryDateUtils.swift */,
+				000000000000000000000172 /* QRCodeToolkit.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -142,6 +196,12 @@
 				00000000000000000000013F /* DownloadModels.swift */,
 				000000000000000000000141 /* KomariModels.swift */,
 				000000000000000000000143 /* SublinkModels.swift */,
+				000000000000000000000160 /* AnniversaryModels.swift */,
+				000000000000000000000170 /* QRAssistantModels.swift */,
+				000000000000000000000180 /* TranslatorModels.swift */,
+				000000000000000000000190 /* CloudflareModels.swift */,
+				0000000000000000000001A0 /* CLSModels.swift */,
+				0000000000000000000001B0 /* IPCheckModels.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -156,6 +216,13 @@
 				00000000000000000000014D /* Sub2AdminService.swift */,
 				00000000000000000000014F /* SublinkService.swift */,
 				000000000000000000000151 /* YTService.swift */,
+				000000000000000000000164 /* AnniversaryStore.swift */,
+				000000000000000000000174 /* QRAssistantStore.swift */,
+				000000000000000000000182 /* TranslatorService.swift */,
+				000000000000000000000184 /* TranslatorStore.swift */,
+				000000000000000000000192 /* CloudflareService.swift */,
+				0000000000000000000001A2 /* CLSNewsService.swift */,
+				0000000000000000000001B2 /* IPCheckService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -229,6 +296,59 @@
 			path = Komari;
 			sourceTree = "<group>";
 		};
+		000000000000000000000311 /* Anniversary */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000166 /* AnniversaryHomeView.swift */,
+				000000000000000000000168 /* AnniversaryEditors.swift */,
+			);
+			path = Anniversary;
+			sourceTree = "<group>";
+		};
+		000000000000000000000312 /* QRAssistant */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000176 /* QRAssistantHomeView.swift */,
+				000000000000000000000178 /* QRScannerViews.swift */,
+				00000000000000000000017A /* QRRedirectConfigView.swift */,
+			);
+			path = QRAssistant;
+			sourceTree = "<group>";
+		};
+		000000000000000000000313 /* Translator */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000186 /* TranslatorHomeView.swift */,
+				000000000000000000000188 /* TranslatorSettingsView.swift */,
+			);
+			path = Translator;
+			sourceTree = "<group>";
+		};
+		000000000000000000000314 /* Cloudflare */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000194 /* CloudflareHomeView.swift */,
+				000000000000000000000196 /* CloudflareZoneDetailView.swift */,
+			);
+			path = Cloudflare;
+			sourceTree = "<group>";
+		};
+		000000000000000000000315 /* CLSNews */ = {
+			isa = PBXGroup;
+			children = (
+				0000000000000000000001A4 /* CLSNewsHomeView.swift */,
+			);
+			path = CLSNews;
+			sourceTree = "<group>";
+		};
+		000000000000000000000316 /* IPCheck */ = {
+			isa = PBXGroup;
+			children = (
+				0000000000000000000001B4 /* IPCheckHomeView.swift */,
+			);
+			path = IPCheck;
+			sourceTree = "<group>";
+		};
 		000000000000000000000306 /* Features */ = {
 			isa = PBXGroup;
 			children = (
@@ -237,6 +357,12 @@
 				00000000000000000000030B /* ServicesHub */,
 				00000000000000000000030C /* Sublink */,
 				00000000000000000000030D /* Komari */,
+				000000000000000000000311 /* Anniversary */,
+				000000000000000000000312 /* QRAssistant */,
+				000000000000000000000313 /* Translator */,
+				000000000000000000000314 /* Cloudflare */,
+				000000000000000000000315 /* CLSNews */,
+				000000000000000000000316 /* IPCheck */,
 				000000000000000000000308 /* Download */,
 				000000000000000000000309 /* Settings */,
 			);
@@ -374,6 +500,32 @@
 				000000000000000000000152 /* YTService.swift in Sources */,
 				000000000000000000000154 /* AppleTheme.swift in Sources */,
 				000000000000000000000156 /* ServiceBrandIcon.swift in Sources */,
+				000000000000000000000161 /* AnniversaryModels.swift in Sources */,
+				000000000000000000000163 /* AnniversaryDateUtils.swift in Sources */,
+				000000000000000000000165 /* AnniversaryStore.swift in Sources */,
+				000000000000000000000167 /* AnniversaryHomeView.swift in Sources */,
+				000000000000000000000169 /* AnniversaryEditors.swift in Sources */,
+				000000000000000000000171 /* QRAssistantModels.swift in Sources */,
+				000000000000000000000173 /* QRCodeToolkit.swift in Sources */,
+				000000000000000000000175 /* QRAssistantStore.swift in Sources */,
+				000000000000000000000177 /* QRAssistantHomeView.swift in Sources */,
+				000000000000000000000179 /* QRScannerViews.swift in Sources */,
+				00000000000000000000017B /* QRRedirectConfigView.swift in Sources */,
+				000000000000000000000181 /* TranslatorModels.swift in Sources */,
+				000000000000000000000183 /* TranslatorService.swift in Sources */,
+				000000000000000000000185 /* TranslatorStore.swift in Sources */,
+				000000000000000000000187 /* TranslatorHomeView.swift in Sources */,
+				000000000000000000000189 /* TranslatorSettingsView.swift in Sources */,
+				000000000000000000000191 /* CloudflareModels.swift in Sources */,
+				000000000000000000000193 /* CloudflareService.swift in Sources */,
+				000000000000000000000195 /* CloudflareHomeView.swift in Sources */,
+				000000000000000000000197 /* CloudflareZoneDetailView.swift in Sources */,
+				0000000000000000000001A1 /* CLSModels.swift in Sources */,
+				0000000000000000000001A3 /* CLSNewsService.swift in Sources */,
+				0000000000000000000001A5 /* CLSNewsHomeView.swift in Sources */,
+				0000000000000000000001B1 /* IPCheckModels.swift in Sources */,
+				0000000000000000000001B3 /* IPCheckService.swift in Sources */,
+				0000000000000000000001B5 /* IPCheckHomeView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -412,14 +564,14 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = PersonalToolbox/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = ( "$(inherited)", "@executable_path/Frameworks", );
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.2;
 				PRODUCT_BUNDLE_IDENTIFIER = app.parsnip6345.lake8262;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "00008150-001A088E148B401C6F01CD";
@@ -437,14 +589,14 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = PersonalToolbox/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = ( "$(inherited)", "@executable_path/Frameworks", );
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.2;
 				PRODUCT_BUNDLE_IDENTIFIER = app.parsnip6345.lake8262;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "00008150-001A088E148B401C6F01CD";

@@ -7,6 +7,12 @@ enum ServiceBrand: String, CaseIterable, Identifiable {
     case komari
     case youtube
     case sub2
+    case anniversary
+    case qrAssistant
+    case translator
+    case cloudflare
+    case clsNews
+    case ipCheck
     case chat
     case settings
 
@@ -19,6 +25,12 @@ enum ServiceBrand: String, CaseIterable, Identifiable {
         case .komari: return "IconKomari"
         case .youtube: return "IconYouTube"
         case .sub2: return "IconSub2"
+        case .anniversary: return "IconAnniversary"
+        case .qrAssistant: return "IconQRAssistant"
+        case .translator: return "IconTranslator"
+        case .cloudflare: return "IconCloudflare"
+        case .clsNews: return "IconCLS"
+        case .ipCheck: return "IconIPCheck"
         case .chat, .settings: return nil
         }
     }
@@ -30,6 +42,12 @@ enum ServiceBrand: String, CaseIterable, Identifiable {
         case .komari: return "server.rack"
         case .youtube: return "play.rectangle.fill"
         case .sub2: return "chart.bar.fill"
+        case .anniversary: return "heart.text.square.fill"
+        case .qrAssistant: return "qrcode.viewfinder"
+        case .translator: return "translate"
+        case .cloudflare: return "bolt.fill"
+        case .clsNews: return "newspaper.fill"
+        case .ipCheck: return "antenna.radiowaves.left.and.right"
         case .chat: return "sparkles"
         case .settings: return "gearshape.fill"
         }
@@ -41,6 +59,12 @@ enum ServiceBrand: String, CaseIterable, Identifiable {
         case .komari: return "Komari"
         case .youtube: return "视频下载"
         case .sub2: return "Sub2API"
+        case .anniversary: return "纪念日"
+        case .qrAssistant: return "二维码助手"
+        case .translator: return "翻译器"
+        case .cloudflare: return "Cloudflare"
+        case .clsNews: return "财联社电报"
+        case .ipCheck: return "IP 检测"
         case .chat: return "助手"
         case .settings: return "设置"
         }

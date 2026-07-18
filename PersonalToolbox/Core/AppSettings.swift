@@ -64,6 +64,30 @@ final class AppSettings: ObservableObject {
         didSet { UserDefaults.standard.set(komariBaseURL, forKey: Keys.komariBaseURL) }
     }
 
+    // MARK: - Cloudflare (CFPanel-style)
+
+    /// API Token (Bearer) or Global API Key when email is set.
+    @Published var cloudflareAPIToken: String {
+        didSet { KeychainStore.set(cloudflareAPIToken, for: Keys.cloudflareAPIToken) }
+    }
+    /// Optional: when non-empty, auth uses X-Auth-Email + X-Auth-Key.
+    @Published var cloudflareEmail: String {
+        didSet { UserDefaults.standard.set(cloudflareEmail, forKey: Keys.cloudflareEmail) }
+    }
+    @Published var cloudflareAccountId: String {
+        didSet { UserDefaults.standard.set(cloudflareAccountId, forKey: Keys.cloudflareAccountId) }
+    }
+    @Published var cloudflareAccountName: String {
+        didSet { UserDefaults.standard.set(cloudflareAccountName, forKey: Keys.cloudflareAccountName) }
+    }
+
+    // MARK: - 财联社电报
+
+    /// RSS/Atom feed URL (default pyrsshub cls/telegraph).
+    @Published var clsFeedURL: String {
+        didSet { UserDefaults.standard.set(clsFeedURL, forKey: Keys.clsFeedURL) }
+    }
+
     // MARK: - Appearance / privacy
 
     @Published var appearance: String {
@@ -97,6 +121,11 @@ final class AppSettings: ObservableObject {
         static let sublinkUsername = "sublinkUsername"
         static let sublinkPassword = "sublinkPassword"
         static let komariBaseURL = "komariBaseURL"
+        static let cloudflareAPIToken = "cloudflareAPIToken"
+        static let cloudflareEmail = "cloudflareEmail"
+        static let cloudflareAccountId = "cloudflareAccountId"
+        static let cloudflareAccountName = "cloudflareAccountName"
+        static let clsFeedURL = "clsFeedURL"
         static let appearance = "appearance"
         static let hideSensitiveInAppSwitcher = "hideSensitiveInAppSwitcher"
         static let requireBiometricUnlock = "requireBiometricUnlock"
@@ -144,6 +173,11 @@ final class AppSettings: ObservableObject {
         sublinkUsername = d.string(forKey: Keys.sublinkUsername) ?? "admin"
         sublinkPassword = KeychainStore.get(Keys.sublinkPassword) ?? ""
         komariBaseURL = d.string(forKey: Keys.komariBaseURL) ?? "https://komari.996616.xyz"
+        cloudflareAPIToken = KeychainStore.get(Keys.cloudflareAPIToken) ?? ""
+        cloudflareEmail = d.string(forKey: Keys.cloudflareEmail) ?? ""
+        cloudflareAccountId = d.string(forKey: Keys.cloudflareAccountId) ?? ""
+        cloudflareAccountName = d.string(forKey: Keys.cloudflareAccountName) ?? ""
+        clsFeedURL = d.string(forKey: Keys.clsFeedURL) ?? CLSNewsParsing.defaultFeedURL
         appearance = d.string(forKey: Keys.appearance) ?? Appearance.system.rawValue
         hideSensitiveInAppSwitcher = d.object(forKey: Keys.hideSensitiveInAppSwitcher) as? Bool ?? false
         requireBiometricUnlock = d.object(forKey: Keys.requireBiometricUnlock) as? Bool ?? false
@@ -165,5 +199,9 @@ final class AppSettings: ObservableObject {
 
     var isSublinkConfigured: Bool {
         !sublinkUsername.isEmpty && !sublinkPassword.isEmpty
+    }
+
+    var isCloudflareConfigured: Bool {
+        !cloudflareAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 }

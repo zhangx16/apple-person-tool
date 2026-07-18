@@ -13,7 +13,7 @@ struct RootTabView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            ChatListView()
+            ChatListView(selectedTab: $selectedTab)
                 .tabItem {
                     Label("助手", systemImage: "sparkles")
                 }

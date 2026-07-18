@@ -1,5 +1,21 @@
 import Foundation
 
+/// Caps for chat API history construction (DESIGN.md Chat 实现契约).
+enum ChatLimits {
+    /// Max user/assistant turns sent to the API (system prompt excluded).
+    static let maxHistoryMessages = 40
+    /// Per-message content cap (~12k chars, non-tokenizer).
+    static let maxMessageCharacters = 12_000
+    /// Conversation title: first N characters of first user message.
+    static let titlePrefixLength = 24
+}
+
+/// Media attachment kind on messages (PR-3c fills runtime usage).
+enum MediaKind: String, Codable, Hashable {
+    case image
+    case video
+}
+
 struct ChatMessage: Identifiable, Hashable, Codable {
     enum Role: String, Codable { case system, user, assistant }
     let id: UUID

@@ -73,6 +73,8 @@ struct EmptyStateView: View {
     let symbol: String
     let title: String
     let message: String
+    var actionTitle: String? = nil
+    var action: (() -> Void)? = nil
 
     var body: some View {
         VStack(spacing: 12) {
@@ -87,6 +89,19 @@ struct EmptyStateView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 24)
+            if let actionTitle, let action {
+                Button(action: action) {
+                    Text(actionTitle)
+                        .font(.body.weight(.semibold))
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 12)
+                        .foregroundStyle(.white)
+                        .background(Color.accentColor, in: Capsule())
+                }
+                .buttonStyle(PressableButtonStyle())
+                .padding(.top, 4)
+                .frame(minHeight: 44)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

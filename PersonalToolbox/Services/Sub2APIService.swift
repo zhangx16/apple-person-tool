@@ -29,7 +29,17 @@ actor Sub2APIService {
         return AppSettings.defaultModels
     }
 
+    /// Text-only model IDs (exclude Grok Imagine family).
+    static func isTextModel(_ id: String) -> Bool {
+        !id.localizedCaseInsensitiveContains("imagine")
+    }
+
     /// Stream chat completions (OpenAI-compatible). Yields text deltas.
+    ///
+    /// Cancellation: consumer cancel / `onTermination` cancels the producer `Task`,
+    /// which cancels the underlying `URLSession` bytes request.
+    /// Fallback: non-stream only when the stream failed with **zero** deltas
+    /// (partial content never falls back; cancellation never falls back).
     func streamChat(
         baseURL: String,
         apiKey: String,
@@ -38,27 +48,43 @@ actor Sub2APIService {
         temperature: Double = 0.7
     ) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
-            Task {
+            let task = Task {
+                var receivedAnyDelta = false
                 do {
+                    try Task.checkCancellation()
                     let body = try JSONEncoder().encode(
                         ChatCompletionRequest(model: model, messages: messages, stream: true, temperature: temperature)
                     )
-                    let (bytes, _) = try await client.stream(
+                    let (bytes, _) = try await self.client.stream(
                         base: baseURL,
                         path: "/v1/chat/completions",
-                        headers: headers(apiKey: apiKey),
+                        headers: self.headers(apiKey: apiKey),
                         body: body
                     )
+
                     for try await line in bytes.lines {
+                        try Task.checkCancellation()
                         for delta in SSEParser.deltas(from: line) {
+                            receivedAnyDelta = true
                             continuation.yield(delta)
                         }
                     }
                     continuation.finish()
+                } catch is CancellationError {
+                    continuation.finish()
                 } catch {
-                    // Fallback: non-stream request if stream fails hard on first attempt shape
+                    if Task.isCancelled {
+                        continuation.finish()
+                        return
+                    }
+                    // Zero-delta hard failure only → one non-stream fallback.
+                    guard !receivedAnyDelta else {
+                        continuation.finish(throwing: error)
+                        return
+                    }
                     do {
-                        let text = try await nonStreamChat(
+                        try Task.checkCancellation()
+                        let text = try await self.nonStreamChat(
                             baseURL: baseURL,
                             apiKey: apiKey,
                             model: model,
@@ -67,10 +93,15 @@ actor Sub2APIService {
                         )
                         if !text.isEmpty { continuation.yield(text) }
                         continuation.finish()
+                    } catch is CancellationError {
+                        continuation.finish()
                     } catch {
                         continuation.finish(throwing: error)
                     }
                 }
+            }
+            continuation.onTermination = { @Sendable _ in
+                task.cancel()
             }
         }
     }

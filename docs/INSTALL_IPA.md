@@ -21,6 +21,12 @@
    | `P12_PASSWORD` | p12 导出密码 |
    | `BUILD_PROVISION_PROFILE_BASE64` | `profile.mobileprovision` 的 base64 |
    | `KEYCHAIN_PASSWORD` | 任意随机字符串（仅 CI 临时钥匙串） |
+   | `SHARE_BUILD_PROVISION_PROFILE_BASE64` | （可选）Share Extension 描述文件 base64 |
+   | `SHARE_PROVISION_PROFILE_SPECIFIER` | （可选）Share Extension 描述文件名称 |
+
+   Share Extension Bundle ID：`app.parsnip6345.lake8262.share`  
+   App Group：`group.app.parsnip6345.lake8262`  
+   未配置 Share 描述文件时，CI **自动去掉 Extension**，只打主 App IPA（主功能不受影响）。
 
 2. **Actions → Build Ad Hoc IPA → Run workflow**（或 push 到 `main`）。
 3. 构建成功后，在 run 页面 **Artifacts** 下载 `PersonalToolbox-ipa`。

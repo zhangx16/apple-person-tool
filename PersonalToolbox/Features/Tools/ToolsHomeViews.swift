@@ -181,6 +181,11 @@ struct QuickActionsHomeView: View {
         }
         .navigationTitle("快捷动作")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            if input.isEmpty, let item = clipboard.capturePasteboard() {
+                input = item.text
+            }
+        }
     }
 
     private func toolLink<V: View>(_ title: String, _ icon: String, @ViewBuilder dest: () -> V) -> some View {
@@ -604,9 +609,9 @@ struct MarketQuotesHomeView: View {
                 }
             } footer: {
                 if let t = market.updatedAt {
-                    Text("更新于 \(t.formatted(date: .omitted, time: .standard)) · 数据仅供参考")
+                    Text("更新于 \(t.formatted(date: .omitted, time: .standard)) · 安徽零售油价优先 · 数据仅供参考")
                 } else {
-                    Text("汇率 Frankfurter · 原油 stooq · 金价尽力拉取")
+                    Text("安徽油价 iamwawa · 汇率 Frankfurter · 原油 stooq · 金价尽力拉取")
                 }
             }
         }
@@ -631,6 +636,7 @@ struct MarketQuotesHomeView: View {
 
 struct ExpressHomeView: View {
     var prefill: String? = nil
+    @EnvironmentObject private var settings: AppSettings
     @StateObject private var store = ExpressService.shared
     @State private var number = ""
     @State private var note = ""
@@ -638,6 +644,15 @@ struct ExpressHomeView: View {
     var body: some View {
         List {
             Section {
+                if store.hasAPICredentials {
+                    Label("快递100 实时查询已配置", systemImage: "checkmark.seal.fill")
+                        .font(.caption)
+                        .foregroundStyle(.green)
+                } else {
+                    Text("未配置快递100密钥：可添加单号并跳转网页；配置后可查实时轨迹。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
                 TextField("快递单号", text: $number)
                     .textInputAutocapitalization(.characters)
                     .autocorrectionDisabled()
@@ -650,7 +665,11 @@ struct ExpressHomeView: View {
                 }
                 .disabled(number.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             } footer: {
-                Text("单号保存在本机。实时轨迹多需商业 API；可一键跳转快递 100 查询。")
+                Text("实时接口：快递100 poll/query（设置 → 快递100）。注册 https://api.kuaidi100.com 获取 customer 与 key。")
+            }
+
+            if let msg = store.lastLookupMessage {
+                Section { Text(msg).font(.caption).foregroundStyle(.secondary) }
             }
 
             Section("包裹 (\(store.packages.count))") {
@@ -658,28 +677,22 @@ struct ExpressHomeView: View {
                     Text("暂无包裹").foregroundStyle(.secondary)
                 } else {
                     ForEach(store.packages) { p in
-                        VStack(alignment: .leading, spacing: 6) {
-                            HStack {
-                                Text(p.trackingNo).font(.subheadline.weight(.semibold).monospaced())
-                                Spacer()
-                                Text(p.carrierHint).font(.caption).foregroundStyle(.secondary)
-                            }
-                            if !p.note.isEmpty {
-                                Text(p.note).font(.caption).foregroundStyle(.secondary)
-                            }
-                            Text(p.lastStatus).font(.caption2).foregroundStyle(.secondary)
-                            HStack {
-                                Button("刷新说明") {
-                                    Task { await store.lookup(p.id) }
+                        NavigationLink {
+                            ExpressDetailView(packageId: p.id)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text(p.trackingNo).font(.subheadline.weight(.semibold).monospaced())
+                                    Spacer()
+                                    Text(p.carrierName).font(.caption).foregroundStyle(.secondary)
                                 }
-                                .buttonStyle(.borderless)
-                                if let url = ExpressService.kuaidi100URL(trackingNo: p.trackingNo) {
-                                    Link("快递100查询", destination: url)
-                                        .font(.caption)
-                                }
+                                Text(p.lastStatus)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(2)
                             }
+                            .padding(.vertical, 2)
                         }
-                        .padding(.vertical, 2)
                     }
                     .onDelete { idx in
                         idx.map { store.packages[$0].id }.forEach(store.delete)
@@ -692,6 +705,71 @@ struct ExpressHomeView: View {
         .onAppear {
             if let prefill, !prefill.isEmpty, number.isEmpty {
                 number = ActionRouter.extractTrackingNumber(from: prefill) ?? prefill
+            }
+        }
+    }
+}
+
+struct ExpressDetailView: View {
+    let packageId: String
+    @StateObject private var store = ExpressService.shared
+
+    private var package: ExpressRecord? {
+        store.packages.first { $0.id == packageId }
+    }
+
+    var body: some View {
+        List {
+            if let p = package {
+                Section("运单") {
+                    LabeledContent("单号", value: p.trackingNo)
+                    LabeledContent("承运商", value: p.carrierName)
+                    if !p.note.isEmpty { LabeledContent("备注", value: p.note) }
+                    Text(p.lastStatus).font(.subheadline)
+                    if let t = p.updatedAt {
+                        Text("更新于 \(t.formatted(date: .abbreviated, time: .shortened))")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    Button {
+                        Task { await store.lookup(p.id) }
+                    } label: {
+                        if store.isQuerying {
+                            ProgressView()
+                        } else {
+                            Label("实时查询", systemImage: "arrow.clockwise")
+                        }
+                    }
+                    .disabled(store.isQuerying)
+                    if let url = ExpressService.kuaidi100URL(trackingNo: p.trackingNo) {
+                        Link("在快递100网页打开", destination: url)
+                    }
+                }
+                Section("轨迹 (\(p.tracks.count))") {
+                    if p.tracks.isEmpty {
+                        Text("暂无轨迹，请点「实时查询」").foregroundStyle(.secondary)
+                    } else {
+                        ForEach(p.tracks) { ev in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(ev.time).font(.caption2).foregroundStyle(.secondary)
+                                Text(ev.context).font(.subheadline)
+                                if let loc = ev.location, !loc.isEmpty {
+                                    Text(loc).font(.caption2).foregroundStyle(.secondary)
+                                }
+                            }
+                            .padding(.vertical, 2)
+                        }
+                    }
+                }
+            } else {
+                Text("包裹不存在")
+            }
+        }
+        .navigationTitle("物流详情")
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            if let p = package, p.tracks.isEmpty {
+                await store.lookup(p.id)
             }
         }
     }

@@ -10,6 +10,7 @@ enum AppTab: Hashable {
 
 struct RootTabView: View {
     @EnvironmentObject private var settings: AppSettings
+    @EnvironmentObject private var shareInbox: ShareInbox
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var selectedTab: AppTab = .chat
@@ -63,9 +64,31 @@ struct RootTabView: View {
         }
         .animation(AppleTheme.preferredSnappy, value: hideForSwitcher)
         .animation(AppleTheme.preferredSnappy, value: isUnlocked)
+        .sheet(isPresented: $shareInbox.showSheet) {
+            if let payload = shareInbox.pendingPayload {
+                NavigationStack {
+                    QuickActionsHomeView()
+                        .navigationTitle("分享传入")
+                        .toolbar {
+                            ToolbarItem(placement: .cancellationAction) {
+                                Button("关闭") { shareInbox.showSheet = false }
+                            }
+                        }
+                        .onAppear {
+                            // Prefill via pasteboard for action center
+                            if !payload.combinedText.isEmpty {
+                                ClipboardStore.shared.copyToPasteboard(payload.combinedText)
+                            }
+                        }
+                }
+                .environmentObject(settings)
+                .presentationDetents([.medium, .large])
+            }
+        }
         .onAppear {
             applyInitialLockState()
             updateSwitcherRedaction(for: scenePhase)
+            shareInbox.consumeOnLaunch()
         }
         .onChange(of: scenePhase) { _, phase in
             handleScenePhase(phase)

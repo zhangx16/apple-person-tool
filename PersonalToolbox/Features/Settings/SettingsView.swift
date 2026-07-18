@@ -75,6 +75,16 @@ struct SettingsView: View {
                     ) {
                         CloudflareSettingsPage(viewModel: viewModel)
                     }
+
+                    NavigationLink {
+                        Kuaidi100SettingsPage()
+                    } label: {
+                        projectRow(
+                            systemImage: "shippingbox.fill",
+                            title: "快递100",
+                            subtitle: settings.kuaidi100Customer.isEmpty ? "未配置" : "customer 已填"
+                        )
+                    }
                 } header: {
                     Text("服务配置")
                 } footer: {
@@ -521,6 +531,34 @@ struct CloudflareSettingsPage: View {
                 ServiceBrandTitle(brand: .cloudflare, title: "Cloudflare")
             }
         }
+    }
+}
+
+struct Kuaidi100SettingsPage: View {
+    @EnvironmentObject private var settings: AppSettings
+
+    var body: some View {
+        Form {
+            Section {
+                TextField("Customer", text: $settings.kuaidi100Customer)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                SecureField("Key", text: $settings.kuaidi100Key)
+                    .textInputAutocapitalization(.never)
+                    .privacySensitive()
+            } header: {
+                Text("实时查询凭证")
+            } footer: {
+                Text("在 https://api.kuaidi100.com 注册后获取 customer 与 key。Key 存于 Keychain。用于 poll/query 实时轨迹与自动识别快递公司。")
+            }
+            Section("说明") {
+                Text("未配置时仍可保存单号并跳转快递100网页。配置后在「服务 → 快递」点实时查询即可拉轨迹。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .navigationTitle("快递100")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

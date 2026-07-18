@@ -111,6 +111,12 @@ jobs:
       - name: Resolve schemes
         run: xcodebuild -project PersonalToolbox.xcodeproj -list
 
+      - name: Configure Share Extension (optional)
+        env:
+          SHARE_BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.SHARE_BUILD_PROVISION_PROFILE_BASE64 }}
+          SHARE_PROVISION_PROFILE_SPECIFIER: ${{ secrets.SHARE_PROVISION_PROFILE_SPECIFIER }}
+        run: bash scripts/ci-configure-share-extension.sh
+
       - name: Archive
         run: |
           set -euo pipefail

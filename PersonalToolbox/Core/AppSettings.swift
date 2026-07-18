@@ -118,6 +118,15 @@ final class AppSettings: ObservableObject {
         didSet { UserDefaults.standard.set(notifyDownloadCompleted, forKey: Keys.notifyDownloadCompleted) }
     }
 
+    // MARK: - 快递100 realtime API
+
+    @Published var kuaidi100Customer: String {
+        didSet { UserDefaults.standard.set(kuaidi100Customer, forKey: Keys.kuaidi100Customer) }
+    }
+    @Published var kuaidi100Key: String {
+        didSet { KeychainStore.set(kuaidi100Key, for: Keys.kuaidi100Key) }
+    }
+
     enum Appearance: String, CaseIterable, Identifiable {
         case system, light, dark
         var id: String { rawValue }
@@ -150,6 +159,8 @@ final class AppSettings: ObservableObject {
         static let hideSensitiveInAppSwitcher = "hideSensitiveInAppSwitcher"
         static let requireBiometricUnlock = "requireBiometricUnlock"
         static let notifyDownloadCompleted = "notifyDownloadCompleted"
+        static let kuaidi100Customer = "kuaidi100Customer"
+        static let kuaidi100Key = "kuaidi100Key"
     }
 
     nonisolated static let defaultTextModel = "grok-4.3"
@@ -206,6 +217,8 @@ final class AppSettings: ObservableObject {
         hideSensitiveInAppSwitcher = d.object(forKey: Keys.hideSensitiveInAppSwitcher) as? Bool ?? false
         requireBiometricUnlock = d.object(forKey: Keys.requireBiometricUnlock) as? Bool ?? false
         notifyDownloadCompleted = d.object(forKey: Keys.notifyDownloadCompleted) as? Bool ?? true
+        kuaidi100Customer = d.string(forKey: Keys.kuaidi100Customer) ?? ""
+        kuaidi100Key = KeychainStore.get(Keys.kuaidi100Key) ?? ""
     }
 
     var isAIConfigured: Bool {

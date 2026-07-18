@@ -127,6 +127,17 @@ final class AppSettings: ObservableObject {
         didSet { KeychainStore.set(kuaidi100Key, for: Keys.kuaidi100Key) }
     }
 
+    // MARK: - 快手直播（可选登录 Cookie，用于弹幕）
+
+    /// 浏览器登录 live.kuaishou.com 后复制的 Cookie 全文。
+    @Published var kuaishouCookie: String {
+        didSet { UserDefaults.standard.set(kuaishouCookie, forKey: Keys.kuaishouCookie) }
+    }
+    /// 可选 Kww / kwfv1 派生值；多数情况下从 Cookie 的 kwfv1 自动解析。
+    @Published var kuaishouKww: String {
+        didSet { UserDefaults.standard.set(kuaishouKww, forKey: Keys.kuaishouKww) }
+    }
+
     enum Appearance: String, CaseIterable, Identifiable {
         case system, light, dark
         var id: String { rawValue }
@@ -161,6 +172,8 @@ final class AppSettings: ObservableObject {
         static let notifyDownloadCompleted = "notifyDownloadCompleted"
         static let kuaidi100Customer = "kuaidi100Customer"
         static let kuaidi100Key = "kuaidi100Key"
+        static let kuaishouCookie = "kuaishouCookie"
+        static let kuaishouKww = "kuaishouKww"
     }
 
     nonisolated static let defaultTextModel = "grok-4.3"
@@ -220,6 +233,8 @@ final class AppSettings: ObservableObject {
         // 快递100：仅从本机 UserDefaults / Keychain 读取，不在仓库中预置密钥
         kuaidi100Customer = d.string(forKey: Keys.kuaidi100Customer) ?? ""
         kuaidi100Key = KeychainStore.get(Keys.kuaidi100Key) ?? ""
+        kuaishouCookie = d.string(forKey: Keys.kuaishouCookie) ?? ""
+        kuaishouKww = d.string(forKey: Keys.kuaishouKww) ?? ""
     }
 
     var isAIConfigured: Bool {

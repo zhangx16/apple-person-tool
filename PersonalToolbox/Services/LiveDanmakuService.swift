@@ -504,7 +504,7 @@ final class LiveDanmakuService: ObservableObject {
             urls = a.map { LiveJSON.string($0) }.filter { !$0.isEmpty }
         }
         guard !token.isEmpty, !liveStreamId.isEmpty, let first = urls.first, let url = URL(string: first) else {
-            statusText = "快手弹幕凭证无效（可能需 Cookie/登录）"
+            statusText = "快手弹幕需登录 Cookie（设置 → 快手直播）"
             return
         }
         let roomId = LiveJSON.string(ctx["roomId"])

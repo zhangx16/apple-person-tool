@@ -8,13 +8,43 @@ actor KuaishouLiveService {
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     private var cookie = ""
     private var cookieObj: [String: String] = [:]
-    /// 可选用户 Cookie（日后可挂设置项）
+    /// 用户设置的 Cookie（App 设置 → 快手直播）
     private var customCookie = ""
     private var customKww = ""
+    private var bootstrapped = false
+    /// roomId → playContextJSON 缓存（列表页常自带 playUrls，进房可秒开）
+    private var playCache: [String: String] = [:]
 
     private static let imageExts: Set<String> = [
         "png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "avif", "ico", "tif", "tiff"
     ]
+
+    private func syncUserCredentials() async {
+        let pair = await MainActor.run {
+            (AppSettings.shared.kuaishouCookie, AppSettings.shared.kuaishouKww)
+        }
+        customCookie = pair.0.trimmingCharacters(in: .whitespacesAndNewlines)
+        customKww = pair.1.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func ensureSession() async {
+        await syncUserCredentials()
+        if !bootstrapped {
+            bootstrapped = true
+            // 先访问首页拿 did 等匿名 Cookie
+            _ = try? await getText("https://live.kuaishou.com/", headers: baseHeaders)
+            await harvestCookies(for: "https://live.kuaishou.com/")
+            if cookieObj["did"] == nil || cookieObj["did"]?.isEmpty == true {
+                let did = "web_" + String((0..<32).map { _ in "0123456789abcdef".randomElement()! })
+                cookieObj["did"] = did
+                cookie = formatCookieHeader(cookieObj)
+            }
+        }
+        if !customCookie.isEmpty {
+            cookieObj.merge(parseCookieHeader(customCookie)) { _, new in new }
+            cookie = formatCookieHeader(cookieObj)
+        }
+    }
 
     // MARK: - Headers
 
@@ -51,6 +81,7 @@ actor KuaishouLiveService {
     // MARK: - Categories
 
     func getCategories() async throws -> [LiveCategory] {
+        await ensureSession()
         let parents: [(String, String)] = [
             ("1", "热门"), ("2", "网游"), ("3", "单机"), ("4", "手游"),
             ("5", "棋牌"), ("6", "娱乐"), ("7", "综合"), ("8", "文化")
@@ -95,6 +126,7 @@ actor KuaishouLiveService {
     }
 
     func getCategoryRooms(category: LiveSubCategory, page: Int = 1) async throws -> [LiveRoomItem] {
+        await ensureSession()
         let api = category.id.count < 7
             ? "https://live.kuaishou.com/live_api/gameboard/list"
             : "https://live.kuaishou.com/live_api/non-gameboard/list"
@@ -106,10 +138,11 @@ actor KuaishouLiveService {
                 "gameId": category.id,
                 "page": "\(page)"
             ],
-            headers: baseHeaders
+            headers: headersWithCookie
         )
         let list = LiveJSON.array(LiveJSON.object(json["data"])?["list"]) ?? []
         return list.compactMap { item in
+            cachePlayURLsIfPresent(item)
             let author = LiveJSON.object(item["author"]) ?? [:]
             let roomId = LiveJSON.string(author["id"])
             guard !roomId.isEmpty else { return nil }
@@ -118,7 +151,7 @@ actor KuaishouLiveService {
             return LiveRoomItem(
                 platform: .kuaishou,
                 roomId: roomId,
-                title: LiveJSON.string(item["caption"]),
+                title: LiveJSON.string(item["caption"]).ifEmpty(LiveJSON.string(author["name"])),
                 cover: cover,
                 userName: LiveJSON.string(author["name"]),
                 online: LiveJSON.int(item["watchingCount"])
@@ -129,23 +162,29 @@ actor KuaishouLiveService {
     // MARK: - Recommend
 
     func getRecommendRooms(page: Int = 1) async throws -> [LiveRoomItem] {
+        await ensureSession()
         // Official home/list; page>1 often empty
         if page > 1 { return [] }
+        // Prefer hot list (flat, includes playUrls)
+        if let hot = try? await hotList(), !hot.isEmpty {
+            return hot
+        }
         let json = try await getJSON(
             "https://live.kuaishou.com/live_api/home/list",
-            headers: baseHeaders
+            headers: headersWithCookie
         )
         let labels = LiveJSON.array(LiveJSON.object(json["data"])?["list"]) ?? []
         var items: [LiveRoomItem] = []
         for label in labels {
             for sitem in LiveJSON.array(label["gameLiveInfo"]) ?? [] {
                 for titem in LiveJSON.array(sitem["liveInfo"]) ?? [] {
+                    cachePlayURLsIfPresent(titem)
                     let author = LiveJSON.object(titem["author"]) ?? [:]
                     let gameInfo = LiveJSON.object(titem["gameInfo"]) ?? [:]
                     let roomId = LiveJSON.string(author["id"])
                     guard !roomId.isEmpty else { continue }
-                    var cover = LiveJSON.string(gameInfo["poster"])
-                    if cover.isEmpty { cover = LiveJSON.string(titem["poster"]) }
+                    var cover = LiveJSON.string(titem["poster"])
+                    if cover.isEmpty { cover = LiveJSON.string(gameInfo["poster"]) }
                     items.append(LiveRoomItem(
                         platform: .kuaishou,
                         roomId: roomId,
@@ -160,20 +199,17 @@ actor KuaishouLiveService {
         if items.contains(where: { $0.online > 0 }) {
             items.sort { $0.online > $1.online }
         }
-        // Fallback hot list
-        if items.isEmpty, let hot = try? await hotList() {
-            return hot
-        }
         return items
     }
 
     private func hotList() async throws -> [LiveRoomItem] {
         let json = try await getJSON(
             "https://live.kuaishou.com/live_api/hot/list?page=1",
-            headers: baseHeaders
+            headers: headersWithCookie
         )
         let list = LiveJSON.array(LiveJSON.object(json["data"])?["list"]) ?? []
         return list.compactMap { live in
+            cachePlayURLsIfPresent(live)
             let author = LiveJSON.object(live["author"]) ?? [:]
             let roomId = LiveJSON.string(author["id"]).ifEmpty(LiveJSON.string(live["id"]))
             guard !roomId.isEmpty else { return nil }
@@ -188,9 +224,59 @@ actor KuaishouLiveService {
         }
     }
 
+    /// 把列表里的 playUrls（数组或 h264 字典）缓存为进房可用 playContext。
+    private func cachePlayURLsIfPresent(_ item: [String: Any]) {
+        let author = LiveJSON.object(item["author"]) ?? [:]
+        let roomId = LiveJSON.string(author["id"]).ifEmpty(LiveJSON.string(item["id"]))
+        guard !roomId.isEmpty else { return }
+        if let ctx = encodePlayContext(from: item["playUrls"]) {
+            playCache[roomId] = ctx
+        }
+    }
+
+    private func encodePlayContext(from playUrls: Any?) -> String? {
+        guard let playUrls else { return nil }
+        // Dict form: { h264: { adaptationSet: ... } }
+        if let map = playUrls as? [String: Any], !map.isEmpty {
+            return LiveJSON.encode(map)
+        }
+        // Array form (gameboard/hot): [{ type, adaptationSet: { representation: [...] } }]
+        if let arr = playUrls as? [Any], !arr.isEmpty {
+            var qualities: [[String: Any]] = []
+            for (idx, block) in arr.enumerated() {
+                guard let map = block as? [String: Any] else { continue }
+                if let adapt = LiveJSON.object(map["adaptationSet"]),
+                   let reps = adapt["representation"] as? [[String: Any]] {
+                    for rep in reps {
+                        let url = LiveJSON.string(rep["url"])
+                        guard !url.isEmpty else { continue }
+                        qualities.append([
+                            "name": LiveJSON.string(rep["name"]).ifEmpty(LiveJSON.string(rep["shortName"])).ifEmpty("画质"),
+                            "level": LiveJSON.int(rep["level"]),
+                            "urls": [url]
+                        ])
+                    }
+                }
+                if let urls = map["urls"] as? [[String: Any]] {
+                    for u in urls {
+                        let url = LiveJSON.string(u["url"])
+                        if !url.isEmpty {
+                            qualities.append(["name": "默认\(idx)", "level": 0, "urls": [url]])
+                        }
+                    }
+                }
+            }
+            if !qualities.isEmpty {
+                return LiveJSON.encode(["qualities": qualities])
+            }
+        }
+        return nil
+    }
+
     // MARK: - Search
 
     func searchRooms(keyword: String, page: Int = 1) async throws -> [LiveRoomItem] {
+        await ensureSession()
         let kw = keyword.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !kw.isEmpty else { return [] }
         if let direct = try? await searchLiveStreams(keyword: kw, page: page), !direct.isEmpty {
@@ -277,23 +363,45 @@ actor KuaishouLiveService {
     // MARK: - Room detail
 
     func getRoomDetail(roomId: String) async throws -> LiveRoomDetail {
+        await ensureSession()
         let rid = roomId.trimmingCharacters(in: .whitespacesAndNewlines)
         let url = "https://live.kuaishou.com/u/\(rid)"
         await refreshCookie(url: url)
         await registerDid()
 
-        if let anon = try? await loadRoomDetail(url: url, roomId: rid, withCookie: false),
-           anon.isLive {
-            return anon
+        var pageDetail: LiveRoomDetail?
+        if let withC = try? await loadRoomDetail(url: url, roomId: rid, withCookie: true) {
+            pageDetail = withC
+        } else if let anon = try? await loadRoomDetail(url: url, roomId: rid, withCookie: false) {
+            pageDetail = anon
         }
-        if !currentCookieHeader().isEmpty,
-           let withC = try? await loadRoomDetail(url: url, roomId: rid, withCookie: true) {
-            return withC
+
+        // 列表缓存的播放地址：页面解析失败或 play 为空时回退
+        if let cached = playCache[rid], !cached.isEmpty {
+            if var d = pageDetail {
+                if d.playContextJSON == "{}" || d.playContextJSON.isEmpty {
+                    d.playContextJSON = cached
+                    d.isLive = true
+                }
+                return d
+            }
+            return LiveRoomDetail(
+                platform: .kuaishou,
+                roomId: rid,
+                title: rid,
+                cover: "",
+                userName: rid,
+                userAvatar: "",
+                online: 0,
+                isLive: true,
+                webURL: "https://live.kuaishou.com/u/\(rid)",
+                introduction: "",
+                playContextJSON: cached,
+                danmakuJSON: "{}"
+            )
         }
-        if let anon = try? await loadRoomDetail(url: url, roomId: rid, withCookie: false) {
-            return anon
-        }
-        // Fallback mobile page
+
+        if let d = pageDetail { return d }
         if let m = try? await parseMobileFallback(rid) { return m }
         throw NetworkError.message("快手直播间不存在、未开播或需要 Cookie/登录")
     }
@@ -416,45 +524,32 @@ actor KuaishouLiveService {
     // MARK: - Play
 
     func getPlayQualities(detail: LiveRoomDetail) async throws -> [LivePlayQuality] {
-        let ctx = LiveJSON.decodeObject(detail.playContextJSON)
+        var ctx = LiveJSON.decodeObject(detail.playContextJSON)
+        if ctx.isEmpty, let cached = playCache[detail.roomId] {
+            ctx = LiveJSON.decodeObject(cached)
+        }
         var qualities: [LivePlayQuality] = []
 
-        // Official path: playUrls.h264.adaptationSet.representation
-        if let h264 = LiveJSON.object(ctx["h264"]),
-           let adapt = LiveJSON.object(h264["adaptationSet"]),
-           let reps = adapt["representation"] as? [[String: Any]] {
+        // Codec keys: h264 / hevc / freeTraffic...
+        for (codecKey, codecVal) in ctx {
+            if codecKey == "qualities" || codecKey == "urls" || codecKey == "raw" { continue }
+            guard let codec = codecVal as? [String: Any],
+                  let adapt = LiveJSON.object(codec["adaptationSet"]),
+                  let reps = adapt["representation"] as? [[String: Any]] else { continue }
             for (idx, rep) in reps.enumerated() {
                 let url = LiveJSON.string(rep["url"])
                 guard !url.isEmpty else { continue }
+                let name = LiveJSON.string(rep["name"]).ifEmpty(LiveJSON.string(rep["shortName"]))
                 qualities.append(LivePlayQuality(
-                    id: "ks-h264-\(idx)",
-                    name: LiveJSON.string(rep["name"]).ifEmpty("画质\(idx + 1)"),
+                    id: "ks-\(codecKey)-\(idx)",
+                    name: name.isEmpty ? codecKey : "\(name)",
                     qn: LiveJSON.int(rep["level"]),
                     readyURLs: [url]
                 ))
             }
         }
 
-        // Also try freeTrafficCdn / hevc etc.
-        if qualities.isEmpty {
-            for (codecKey, codecVal) in ctx {
-                guard let codec = codecVal as? [String: Any],
-                      let adapt = LiveJSON.object(codec["adaptationSet"]),
-                      let reps = adapt["representation"] as? [[String: Any]] else { continue }
-                for (idx, rep) in reps.enumerated() {
-                    let url = LiveJSON.string(rep["url"])
-                    guard !url.isEmpty else { continue }
-                    qualities.append(LivePlayQuality(
-                        id: "ks-\(codecKey)-\(idx)",
-                        name: "\(LiveJSON.string(rep["name"]).ifEmpty(codecKey))",
-                        qn: LiveJSON.int(rep["level"]),
-                        readyURLs: [url]
-                    ))
-                }
-            }
-        }
-
-        // Nested list style from earlier home/list cache
+        // Cached qualities list
         if qualities.isEmpty, let quals = LiveJSON.array(ctx["qualities"]) {
             for (idx, q) in quals.enumerated() {
                 let urls: [String]
@@ -476,7 +571,16 @@ actor KuaishouLiveService {
             qualities = [LivePlayQuality(id: "ks-default", name: "默认", qn: 0, readyURLs: urls)]
         }
 
-        qualities.sort { $0.qn > $1.qn }
+        // Prefer non-hevc first for AVPlayer compatibility, then by level
+        qualities.sort { a, b in
+            let aHevc = a.id.contains("hevc")
+            let bHevc = b.id.contains("hevc")
+            if aHevc != bHevc { return !aHevc && bHevc }
+            return a.qn > b.qn
+        }
+        guard !qualities.isEmpty else {
+            throw NetworkError.message("快手无可用清晰度")
+        }
         return qualities
     }
 
@@ -497,26 +601,36 @@ actor KuaishouLiveService {
             var req = URLRequest(url: u)
             req.timeoutInterval = 20
             for (k, v) in headersWithCookie { req.setValue(v, forHTTPHeaderField: k) }
-            let (_, resp) = try await URLSession.shared.data(for: req)
-            var values = parseCookieHeader(customCookie)
-            if let cookies = HTTPCookieStorage.shared.cookies(for: u) {
-                for c in cookies { values[c.name] = c.value }
+            _ = try await URLSession.shared.data(for: req)
+            await harvestCookies(for: url)
+        } catch {
+            if cookieObj.isEmpty {
+                cookieObj = parseCookieHeader(customCookie)
+                cookie = formatCookieHeader(cookieObj)
             }
-            if let http = resp as? HTTPURLResponse {
-                // URLSession may set cookies automatically; also parse Set-Cookie if present
-                _ = http
-            }
-            if let cookies = HTTPCookieStorage.shared.cookies {
-                for c in cookies where c.domain.contains("kuaishou") || c.domain.contains("gifshow") {
+        }
+    }
+
+    private func harvestCookies(for urlString: String) async {
+        var values = cookieObj
+        values.merge(parseCookieHeader(customCookie)) { _, new in new }
+        if let u = URL(string: urlString),
+           let cookies = HTTPCookieStorage.shared.cookies(for: u) {
+            for c in cookies { values[c.name] = c.value }
+        }
+        if let all = HTTPCookieStorage.shared.cookies {
+            for c in all {
+                let host = c.domain
+                if host.contains("kuaishou") || host.contains("gifshow") || host.contains("ksapisrv") {
                     values[c.name] = c.value
                 }
             }
-            cookieObj = values
-            cookie = formatCookieHeader(values)
-        } catch {
-            cookieObj = parseCookieHeader(customCookie)
-            cookie = formatCookieHeader(cookieObj)
         }
+        if values["did"] == nil || values["did"]?.isEmpty == true {
+            values["did"] = "web_" + String((0..<32).map { _ in "0123456789abcdef".randomElement()! })
+        }
+        cookieObj = values
+        cookie = formatCookieHeader(values)
     }
 
     private func registerDid() async {

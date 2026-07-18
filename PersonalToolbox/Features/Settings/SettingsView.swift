@@ -85,6 +85,16 @@ struct SettingsView: View {
                             subtitle: settings.kuaidi100Customer.isEmpty ? "未配置" : "customer 已填"
                         )
                     }
+
+                    NavigationLink {
+                        KuaishouLiveSettingsPage()
+                    } label: {
+                        projectRow(
+                            systemImage: "video.fill",
+                            title: "快手直播",
+                            subtitle: settings.kuaishouCookie.isEmpty ? "匿名可播 · 弹幕需 Cookie" : "Cookie 已配置"
+                        )
+                    }
                 } header: {
                     Text("服务配置")
                 } footer: {
@@ -558,6 +568,35 @@ struct Kuaidi100SettingsPage: View {
             }
         }
         .navigationTitle("快递100")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+struct KuaishouLiveSettingsPage: View {
+    @EnvironmentObject private var settings: AppSettings
+
+    var body: some View {
+        Form {
+            Section {
+                TextField("Cookie", text: $settings.kuaishouCookie, axis: .vertical)
+                    .lineLimit(3...8)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                TextField("Kww（可选）", text: $settings.kuaishouKww)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+            } header: {
+                Text("登录凭证（弹幕）")
+            } footer: {
+                Text("列表与播放多数可匿名。弹幕需在浏览器登录 live.kuaishou.com 后复制 Cookie；若 Cookie 含 kwfv1= 会自动生成 Kww。与 SimpleLive「快手账号」一致。")
+            }
+            Section("说明") {
+                Text("不配置 Cookie 也可看直播；仅弹幕连接可能提示凭证无效。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .navigationTitle("快手直播")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

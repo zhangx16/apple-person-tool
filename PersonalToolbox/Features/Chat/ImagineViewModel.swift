@@ -154,10 +154,15 @@ final class ImagineViewModel: ObservableObject {
 
         runTask = Task { @MainActor [weak self] in
             guard let self else { return }
+            var trackedConvID: UUID?
             defer {
                 self.isRunning = false
                 self.progressNote = nil
                 self.runTask = nil
+                // Always refresh thread after any terminal path (success / fail / timeout / cancel).
+                if let id = trackedConvID {
+                    self.onConversationUpdated?(id)
+                }
             }
             do {
                 let convID = try self.ensureConversation(
@@ -165,6 +170,7 @@ final class ImagineViewModel: ObservableObject {
                     conversationID: conversationID,
                     prompt: text
                 )
+                trackedConvID = convID
                 let userID = UUID()
                 let assistantID = UUID()
                 let now = Date()
@@ -229,9 +235,9 @@ final class ImagineViewModel: ObservableObject {
                 self.prompt = ""
                 if modeSnapshot == .edit { self.selectedImageData = nil }
                 Haptics.success()
-                self.onConversationUpdated?(convID)
             } catch is CancellationError {
-                // User cancelled — keep partial if any was written.
+                // Terminal caption written inside runVideo when applicable.
+                self.progressNote = "已取消"
             } catch {
                 self.errorMessage = ChatViewModel.chineseError(error)
                 Haptics.error()
@@ -241,7 +247,8 @@ final class ImagineViewModel: ObservableObject {
 
     func cancel() {
         runTask?.cancel()
-        runTask = nil
+        // Do not nil `runTask` before cancellation handlers finish marking the message;
+        // the task's defer clears state and refreshes the conversation.
         isRunning = false
         progressNote = "已取消"
     }
@@ -364,60 +371,131 @@ final class ImagineViewModel: ObservableObject {
             mediaType: MediaKind.video.rawValue,
             mediaRequestID: requestID
         )
+        // Mid-flight refresh so the thread shows the pending bubble immediately.
         onConversationUpdated?(conversationID)
 
         progressNote = "等待视频完成…"
-        let status = try await service.pollVideoUntilDone(
-            baseURL: baseURL,
-            apiKey: apiKey,
-            requestID: requestID
-        ) { [weak self] status in
-            await MainActor.run {
-                switch status {
-                case .pending:
-                    self?.progressNote = "视频排队中…"
-                case .processing:
-                    self?.progressNote = "视频生成中…"
-                case .completed:
-                    self?.progressNote = "下载视频…"
-                case .failed(let message):
-                    self?.progressNote = message
+        do {
+            let status = try await service.pollVideoUntilDone(
+                baseURL: baseURL,
+                apiKey: apiKey,
+                requestID: requestID
+            ) { [weak self] status in
+                await MainActor.run {
+                    switch status {
+                    case .pending:
+                        self?.progressNote = "视频排队中…"
+                    case .processing:
+                        self?.progressNote = "视频生成中…"
+                    case .completed:
+                        self?.progressNote = "下载视频…"
+                    case .failed(let message):
+                        self?.progressNote = message
+                    case .timedOut:
+                        self?.progressNote = "视频生成超时…"
+                    }
                 }
             }
-        }
 
-        switch status {
-        case .completed(let url, let data):
-            progressNote = "保存视频…"
-            var asset = ImagineAsset(remoteURL: url, data: data, fileExtension: "mp4")
-            if asset.data == nil, let url, !url.isEmpty {
-                asset.data = try await service.downloadData(from: url)
+            switch status {
+            case .completed(let url, let data):
+                progressNote = "保存视频…"
+                do {
+                    var asset = ImagineAsset(remoteURL: url, data: data, fileExtension: "mp4")
+                    if asset.data == nil, let url, !url.isEmpty {
+                        asset.data = try await service.downloadData(from: url)
+                    }
+                    let cached = try await service.materializeToCache(asset, preferredExtension: "mp4")
+                    try store.updateMessageMedia(
+                        messageID: assistantID,
+                        content: caption,
+                        mediaType: MediaKind.video.rawValue,
+                        videoPath: cached.relativePath,
+                        mediaRemoteURL: cached.remoteURL ?? url,
+                        mediaRequestID: requestID
+                    )
+                } catch {
+                    // Download / cache failed after upstream completed — still terminal, keep request_id.
+                    try markVideoTerminal(
+                        store: store,
+                        messageID: assistantID,
+                        content: "视频失败：\(ChatViewModel.chineseError(error))",
+                        requestID: requestID
+                    )
+                    throw error
+                }
+
+            case .failed(let message):
+                try markVideoTerminal(
+                    store: store,
+                    messageID: assistantID,
+                    content: "视频失败：\(message)",
+                    requestID: requestID
+                )
+                throw NetworkError.message(message)
+
+            case .timedOut:
+                try markVideoTerminal(
+                    store: store,
+                    messageID: assistantID,
+                    content: "视频生成超时，可稍后重试",
+                    requestID: requestID
+                )
+                throw NetworkError.message("视频生成超时，请稍后重试")
+
+            case .pending, .processing:
+                // Defensive: poll is expected to only return terminal statuses.
+                try markVideoTerminal(
+                    store: store,
+                    messageID: assistantID,
+                    content: "视频生成超时，可稍后重试",
+                    requestID: requestID
+                )
+                throw NetworkError.message("视频生成超时，请稍后重试")
             }
-            let cached = try await service.materializeToCache(asset, preferredExtension: "mp4")
-            try store.updateMessageMedia(
+        } catch is CancellationError {
+            try markVideoTerminal(
+                store: store,
                 messageID: assistantID,
-                content: caption,
-                mediaType: MediaKind.video.rawValue,
-                videoPath: cached.relativePath,
-                mediaRemoteURL: cached.remoteURL ?? url,
-                mediaRequestID: requestID
+                content: "视频已取消",
+                requestID: requestID
             )
-        case .failed(let message):
-            try store.updateMessageMedia(
-                messageID: assistantID,
-                content: "视频失败：\(message)",
-                mediaType: MediaKind.video.rawValue,
-                mediaRequestID: requestID
-            )
-            throw NetworkError.message(message)
-        case .pending, .processing:
-            try store.updateMessageMedia(
-                messageID: assistantID,
-                content: "视频生成超时，可稍后重试",
-                mediaType: MediaKind.video.rawValue,
-                mediaRequestID: requestID
-            )
-            throw NetworkError.message("视频生成超时，请稍后重试")
+            throw CancellationError()
+        } catch {
+            // Transport / parse errors mid-poll: ensure row is not left pending.
+            if isVideoMessageStillPending(store: store, messageID: assistantID) {
+                try? markVideoTerminal(
+                    store: store,
+                    messageID: assistantID,
+                    content: "视频失败：\(ChatViewModel.chineseError(error))",
+                    requestID: requestID
+                )
+            }
+            throw error
         }
+    }
+
+    /// Persist a terminal video caption while retaining `mediaRequestID` for retry.
+    private func markVideoTerminal(
+        store: ConversationStore,
+        messageID: UUID,
+        content: String,
+        requestID: String
+    ) throws {
+        try store.updateMessageMedia(
+            messageID: messageID,
+            content: content,
+            mediaType: MediaKind.video.rawValue,
+            mediaRequestID: requestID
+        )
+    }
+
+    /// True when the assistant row still looks in-progress (needs a terminal caption).
+    private func isVideoMessageStillPending(store: ConversationStore, messageID: UUID) -> Bool {
+        guard let message = try? store.message(id: messageID) else { return false }
+        if !(message.videoPath ?? "").isEmpty { return false }
+        if !(message.mediaRemoteURL ?? "").isEmpty { return false }
+        if ChatMessage.isTerminalFailureContent(message.content) { return false }
+        return ChatMessage.isVideoInProgressContent(message.content)
     }
 }

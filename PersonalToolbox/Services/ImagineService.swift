@@ -23,10 +23,12 @@ enum VideoJobStatus: Sendable, Equatable {
     case processing
     case completed(url: String?, data: Data?)
     case failed(message: String)
+    /// Wall-clock poll deadline exceeded (terminal; keeps request_id for retry).
+    case timedOut
 
     var isTerminal: Bool {
         switch self {
-        case .completed, .failed: return true
+        case .completed, .failed, .timedOut: return true
         case .pending, .processing: return false
         }
     }
@@ -177,7 +179,8 @@ actor ImagineService {
         return Self.parseVideoStatus(from: data)
     }
 
-    /// Poll until completed / failed / timeout / cancelled.
+    /// Poll until completed / failed / timedOut. Throws only on cancellation or non-recoverable poll errors.
+    /// Wall-clock timeout returns `.timedOut` (does **not** throw) so callers can update the message store.
     func pollVideoUntilDone(
         baseURL: String,
         apiKey: String,
@@ -194,7 +197,9 @@ actor ImagineService {
             if last.isTerminal { return last }
             try await Task.sleep(nanoseconds: Self.videoPollIntervalNanoseconds)
         }
-        throw NetworkError.message("视频生成超时，请稍后重试")
+        let timedOut: VideoJobStatus = .timedOut
+        await onProgress?(timedOut)
+        return timedOut
     }
 
     // MARK: Download remote media

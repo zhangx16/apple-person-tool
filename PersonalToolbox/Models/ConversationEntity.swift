@@ -109,10 +109,16 @@ extension MessageEntity {
 
     func toChatMessage() -> ChatMessage {
         let kind: MediaKind? = mediaKindRaw.flatMap { MediaKind(rawValue: $0) }
+        let hasDeliverable =
+            !(videoPath ?? "").isEmpty
+            || !(imagePath ?? "").isEmpty
+            || !(mediaRemoteURL ?? "").isEmpty
+        // Pending only while content is still an in-progress caption.
+        // Failed / timeout / cancel keep `mediaRequestID` for retry but are NOT pending (Issue 1).
         let pending = kind == .video
-            && mediaRequestID != nil
-            && videoPath == nil
-            && (mediaRemoteURL == nil || mediaRemoteURL?.isEmpty == true)
+            && !hasDeliverable
+            && !ChatMessage.isTerminalFailureContent(content)
+            && ChatMessage.isVideoInProgressContent(content)
         return ChatMessage(
             id: id,
             role: role,

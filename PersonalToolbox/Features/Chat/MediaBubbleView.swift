@@ -64,13 +64,18 @@ struct MediaBubbleView: View {
 
     @ViewBuilder
     private var mediaBody: some View {
-        if message.isMediaPending {
+        // Failure / timeout / cancel before pending: request_id is retained for retry
+        // but must not trap the bubble in a ProgressView (Issue 1).
+        if message.isMediaFailed {
+            failedCard
+        } else if message.isMediaPending {
             pendingCard
-        } else if message.mediaKind == .video || message.videoPath != nil {
+        } else if !(message.videoPath ?? "").isEmpty || (message.mediaKind == .video && !(message.mediaRemoteURL ?? "").isEmpty) {
             videoCard
-        } else if message.mediaKind == .image || message.imagePath != nil {
+        } else if message.mediaKind == .image || !(message.imagePath ?? "").isEmpty {
             imageCard
-        } else if message.content.hasPrefix("视频失败") || message.content.contains("超时") {
+        } else if message.mediaKind == .video {
+            // Video row without file and not in-progress → show caption as failed-style card.
             failedCard
         } else {
             EmptyView()

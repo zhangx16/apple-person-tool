@@ -69,6 +69,32 @@ struct ChatMessage: Identifiable, Hashable, Codable {
             || mediaRemoteURL != nil
             || mediaRequestID != nil
     }
+
+    /// Terminal non-success media caption (failure / timeout / cancel).
+    /// Keeps `mediaRequestID` for retry while UI must **not** show a spinner.
+    var isMediaFailed: Bool {
+        Self.isTerminalFailureContent(content)
+    }
+
+    /// Captions written while a video job is still running.
+    static func isVideoInProgressContent(_ content: String) -> Bool {
+        let c = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        if c.isEmpty { return true }
+        if c.hasPrefix("视频生成中") { return true }
+        if c.hasPrefix("视频排队中") { return true }
+        if c.hasPrefix("媒体生成中") { return true }
+        return false
+    }
+
+    /// Failure / timeout / cancel captions (request_id may still be present for retry).
+    static func isTerminalFailureContent(_ content: String) -> Bool {
+        let c = content.trimmingCharacters(in: .whitespacesAndNewlines)
+        if c.hasPrefix("视频失败") { return true }
+        if c.hasPrefix("视频生成超时") { return true }
+        if c.contains("生成超时") { return true }
+        if c.hasPrefix("视频已取消") { return true }
+        return false
+    }
 }
 
 struct ChatConversation: Identifiable, Codable, Hashable {

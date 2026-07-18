@@ -52,7 +52,11 @@ xcodebuild -project PersonalToolbox.xcodeproj -scheme PersonalToolbox \
 9. **服务 → 财联社电报** — RSS 电报列表、下拉刷新、本地缓存、复制；图标 `IconCLS`  
 10. **服务 → 监控** — Sub2 管理、Komari、**Cloudflare**（域名/DNS/今日用量/清缓存）、**IP 检测**（出口 IP / 分流启发式）  
 11. **监控 Tab（Sub2 管理）** — 对齐 [sub2api-mobile](https://github.com/ckken/sub2api-mobile)：仪表盘 + 上游账号调度/测试/刷新 + 用户启停/余额/API Keys + 分组浏览  
-12. **设置** — 各服务凭证（含 Cloudflare Token）、连通性探测、外观与隐私（Face ID 默认关）
+12. **设置** — 各服务凭证（含 Cloudflare Token）、连通性探测、外观 / 隐私 / 通知
+13. **效率** — 快捷动作中心、剪贴板工具箱（CAIS 类）、密码生成器
+14. **习惯与待办 / RSS / 行情 / 快递** — 本地打卡待办、多源 RSS、汇率油价金价参考、快递单号本机管理
+15. **服务健康总览** — 一键探测 Sub2 / yt-dlp / Sublink / Komari / Cloudflare
+16. **对话→动作** — 助手输入识别下载/翻译/快递/行情等意图并一键执行
 ## 仓库说明
 
 - 集成产物在 `main`（`PLAN_ID=dbf5d164` 执行计划完成态）  

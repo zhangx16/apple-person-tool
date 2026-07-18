@@ -11,11 +11,16 @@ struct ChatThreadView: View {
 
     @StateObject private var imagineVM = ImagineViewModel()
     @State private var showImagine = false
+    @State private var actionPayload: AppActionPayload?
+    @State private var showActionRunner = false
 
     var body: some View {
         VStack(spacing: 0) {
             if let banner = viewModel.errorMessage, viewModel.active?.id == conversationID {
                 errorBanner(banner)
+            }
+            if let payload = actionPayload {
+                chatActionBanner(payload)
             }
             messageList
             Divider()
@@ -49,6 +54,23 @@ struct ChatThreadView: View {
             .environmentObject(settings)
             .presentationDetents([.large, .medium])
         }
+        .sheet(isPresented: $showActionRunner) {
+            if let payload = actionPayload {
+                NavigationStack {
+                    QuickActionRunnerView(payload: payload)
+                        .environmentObject(settings)
+                        .toolbar {
+                            ToolbarItem(placement: .cancellationAction) {
+                                Button("关闭") { showActionRunner = false }
+                            }
+                        }
+                }
+                .presentationDetents([.medium, .large])
+            }
+        }
+        .onChange(of: viewModel.input) { _, newValue in
+            actionPayload = ActionRouter.parseChatCommand(newValue)
+        }
         .onAppear {
             viewModel.loadConversation(id: conversationID)
             imagineVM.attach(modelContext: modelContext, settings: settings)
@@ -61,6 +83,42 @@ struct ChatThreadView: View {
         .onDisappear {
             // Keep streaming if user pops — stop only via explicit 停止.
         }
+    }
+
+    // MARK: - Chat → action
+
+    private func chatActionBanner(_ payload: AppActionPayload) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: payload.action.systemImage)
+                .foregroundStyle(Color.accentColor)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("检测到可执行动作")
+                    .font(.caption.weight(.semibold))
+                Text(payload.action.title)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+            Button("执行") {
+                showActionRunner = true
+                Haptics.light()
+            }
+            .font(.caption.weight(.semibold))
+            .buttonStyle(.borderedProminent)
+            .controlSize(.small)
+            Button {
+                actionPayload = nil
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.secondary)
+                    .frame(minWidth: 32, minHeight: 32)
+            }
+            .buttonStyle(.borderless)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Color.accentColor.opacity(0.1))
     }
 
     // MARK: - Model chip

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Hub for self-hosted services + local tools (纪念日).
+/// Hub for self-hosted services + local tools.
 struct ServicesHubView: View {
     @Binding var selectedTab: AppTab
     @EnvironmentObject private var settings: AppSettings
@@ -8,6 +8,38 @@ struct ServicesHubView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section("效率") {
+                    NavigationLink {
+                        QuickActionsHomeView()
+                    } label: {
+                        sfHubLabel(
+                            title: "快捷动作中心",
+                            subtitle: "剪贴板 / 链接 / 单号智能分流",
+                            systemImage: "bolt.horizontal.circle.fill"
+                        )
+                    }
+
+                    NavigationLink {
+                        ClipboardHomeView()
+                    } label: {
+                        sfHubLabel(
+                            title: "剪贴板工具箱",
+                            subtitle: "历史 · 验证码 · 动作推荐",
+                            systemImage: "doc.on.clipboard.fill"
+                        )
+                    }
+
+                    NavigationLink {
+                        PasswordGeneratorHomeView()
+                    } label: {
+                        sfHubLabel(
+                            title: "密码生成器",
+                            subtitle: "本地随机 · 强度提示",
+                            systemImage: "key.fill"
+                        )
+                    }
+                }
+
                 Section("生活") {
                     NavigationLink {
                         AnniversaryHomeView()
@@ -18,7 +50,16 @@ struct ServicesHubView: View {
                             brand: .anniversary
                         )
                     }
-                    .accessibilityLabel("纪念日")
+
+                    NavigationLink {
+                        HabitsTodosHomeView()
+                    } label: {
+                        sfHubLabel(
+                            title: "习惯与待办",
+                            subtitle: "打卡连续天数 · 待办清单",
+                            systemImage: "checklist"
+                        )
+                    }
 
                     NavigationLink {
                         QRAssistantHomeView()
@@ -29,7 +70,6 @@ struct ServicesHubView: View {
                             brand: .qrAssistant
                         )
                     }
-                    .accessibilityLabel("二维码助手")
 
                     NavigationLink {
                         TranslatorHomeView()
@@ -40,7 +80,38 @@ struct ServicesHubView: View {
                             brand: .translator
                         )
                     }
-                    .accessibilityLabel("翻译器")
+
+                    NavigationLink {
+                        ExpressHomeView()
+                    } label: {
+                        sfHubLabel(
+                            title: "快递查询",
+                            subtitle: "单号本机管理 · 跳转查询",
+                            systemImage: "shippingbox.fill"
+                        )
+                    }
+
+                    NavigationLink {
+                        MarketQuotesHomeView()
+                    } label: {
+                        sfHubLabel(
+                            title: "油价 / 汇率 / 金价",
+                            subtitle: "国际参考行情",
+                            systemImage: "chart.line.uptrend.xyaxis"
+                        )
+                    }
+                }
+
+                Section("资讯") {
+                    NavigationLink {
+                        RSSHomeView()
+                    } label: {
+                        sfHubLabel(
+                            title: "RSS 阅读器",
+                            subtitle: "多源订阅 · 下拉刷新",
+                            systemImage: "dot.radiowaves.up.forward"
+                        )
+                    }
 
                     NavigationLink {
                         CLSNewsHomeView()
@@ -51,10 +122,19 @@ struct ServicesHubView: View {
                             brand: .clsNews
                         )
                     }
-                    .accessibilityLabel("财联社电报")
                 }
 
-                Section("监控") {
+                Section("运维") {
+                    NavigationLink {
+                        ServiceHealthHomeView()
+                    } label: {
+                        sfHubLabel(
+                            title: "服务健康总览",
+                            subtitle: "一键探测全部已配置服务",
+                            systemImage: "heart.text.square.fill"
+                        )
+                    }
+
                     Button {
                         settings.monitorProjectRaw = MonitorProject.sub2.rawValue
                         selectedTab = .monitor
@@ -65,7 +145,6 @@ struct ServicesHubView: View {
                             brand: .sub2
                         )
                     }
-                    .accessibilityLabel("打开 Sub2API 管理")
 
                     Button {
                         settings.monitorProjectRaw = MonitorProject.cloudflare.rawValue
@@ -81,7 +160,6 @@ struct ServicesHubView: View {
                             brand: .cloudflare
                         )
                     }
-                    .accessibilityLabel("打开 Cloudflare 监控")
 
                     NavigationLink {
                         KomariHomeView()
@@ -92,7 +170,6 @@ struct ServicesHubView: View {
                             brand: .komari
                         )
                     }
-                    .accessibilityLabel("Komari 服务器监控")
 
                     NavigationLink {
                         IPCheckHomeView()
@@ -103,7 +180,6 @@ struct ServicesHubView: View {
                             brand: .ipCheck
                         )
                     }
-                    .accessibilityLabel("IP 检测")
                 }
 
                 Section("订阅与节点") {
@@ -116,7 +192,6 @@ struct ServicesHubView: View {
                             brand: .sublink
                         )
                     }
-                    .accessibilityLabel("SublinkX 订阅管理")
                 }
 
                 Section("媒体") {
@@ -130,7 +205,6 @@ struct ServicesHubView: View {
                             brand: .youtube
                         )
                     }
-                    .accessibilityLabel("打开 YouTube 下载")
 
                     Button {
                         settings.downloadProjectRaw = DownloadProject.douyin.rawValue
@@ -142,7 +216,6 @@ struct ServicesHubView: View {
                             brand: .douyin
                         )
                     }
-                    .accessibilityLabel("打开抖音下载")
                 }
             }
             .scrollContentBackground(.hidden)
@@ -154,6 +227,30 @@ struct ServicesHubView: View {
     private func hubLabel(title: String, subtitle: String, brand: ServiceBrand) -> some View {
         HStack(spacing: 14) {
             ServiceBrandIcon(brand: brand, size: 40)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.primary)
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func sfHubLabel(title: String, subtitle: String, systemImage: String) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: systemImage)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 40, height: 40)
+                .background(
+                    Color(.secondarySystemBackground),
+                    in: RoundedRectangle(cornerRadius: 9, style: .continuous)
+                )
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.body.weight(.semibold))

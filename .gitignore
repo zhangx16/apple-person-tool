@@ -6,3 +6,5 @@ DerivedData/
 *.swp
 .env
 *.credentials*
+PersonalToolbox.ipa
+*.ipa

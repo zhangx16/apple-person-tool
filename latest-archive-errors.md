@@ -1,7 +1,7 @@
-# Archive failed on `063b9f4`
+# Archive failed on `2bff6d3`
 
-Run: https://github.com/zhangx16/apple-person-tool/actions/runs/29656353616
-Commit: `063b9f484a9df39356c10a5e11fe33ad638d8abf`
+Run: https://github.com/zhangx16/apple-person-tool/actions/runs/29656480906
+Commit: `2bff6d3031ce82115fb4a3b06ebce211d884dcfa`
 
 ## Grep errors
 ```
@@ -17,10 +17,6 @@ Commit: `063b9f484a9df39356c10a5e11fe33ad638d8abf`
 
 ## Tail
 ```
-
-CpResource /Users/runner/Library/Developer/Xcode/DerivedData/PersonalToolbox-bqxlemsqdtmulzhccnuyxysunhwo/Build/Intermediates.noindex/ArchiveIntermediates/PersonalToolbox/InstallationBuildProductsLocation/Applications/PersonalToolbox.app/abogus.js /Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Resources/LiveJS/abogus.js (in target 'PersonalToolbox' from project 'PersonalToolbox')
-    cd /Users/runner/work/apple-person-tool/apple-person-tool
-    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -strip-unsigned-binaries -strip-deterministic -strip-tool /Applications/Xcode_15.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/strip -resolve-src-symlinks /Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Resources/LiveJS/abogus.js /Users/runner/Library/Developer/Xcode/DerivedData/PersonalToolbox-bqxlemsqdtmulzhccnuyxysunhwo/Build/Intermediates.noindex/ArchiveIntermediates/PersonalToolbox/InstallationBuildProductsLocation/Applications/PersonalToolbox.app
 
 CompileAssetCatalog /Users/runner/Library/Developer/Xcode/DerivedData/PersonalToolbox-bqxlemsqdtmulzhccnuyxysunhwo/Build/Intermediates.noindex/ArchiveIntermediates/PersonalToolbox/InstallationBuildProductsLocation/Applications/PersonalToolbox.app /Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Resources/Assets.xcassets (in target 'PersonalToolbox' from project 'PersonalToolbox')
     cd /Users/runner/work/apple-person-tool/apple-person-tool
@@ -59,6 +55,10 @@ CompileSwift normal arm64 (in target 'PersonalToolbox' from project 'PersonalToo
 /Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Services/DouyinLiveService.swift:305:13: note: 'headers' previously declared here
         var headers = await requestHeaders()
             ^
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Services/KuaishouLiveService.swift:316:13: warning: variable 'text' was never mutated; consider changing to 'let' constant
+        var text = String(html[r]).replacingOccurrences(of: "undefined", with: "null")
+        ~~~ ^
+        let
 /Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Services/LiveTarsCodec.swift:279:21: warning: initialization of immutable value 'begin' was never used; consider replacing with assignment to '_' or removing it
                 let begin = pos
                 ~~~~^~~~~

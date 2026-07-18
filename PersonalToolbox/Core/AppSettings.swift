@@ -31,6 +31,10 @@ final class AppSettings: ObservableObject {
     @Published var mailUseExternalAPI: Bool {
         didSet { UserDefaults.standard.set(mailUseExternalAPI, forKey: Keys.mailUseExternalAPI) }
     }
+    /// Required when `mailUseExternalAPI` is true (external mode targets a mailbox).
+    @Published var mailDefaultEmail: String {
+        didSet { UserDefaults.standard.set(mailDefaultEmail, forKey: Keys.mailDefaultEmail) }
+    }
 
     @Published var ytBaseURL: String {
         didSet { UserDefaults.standard.set(ytBaseURL, forKey: Keys.ytBaseURL) }
@@ -42,6 +46,26 @@ final class AppSettings: ObservableObject {
         didSet { KeychainStore.set(ytPassword, for: Keys.ytPassword) }
     }
 
+    /// `system` / `light` / `dark` — applied by app shell (PR-4 Settings UI).
+    @Published var appearance: String {
+        didSet { UserDefaults.standard.set(appearance, forKey: Keys.appearance) }
+    }
+    /// Hide sensitive UI when app enters switcher / background.
+    @Published var hideSensitiveInAppSwitcher: Bool {
+        didSet { UserDefaults.standard.set(hideSensitiveInAppSwitcher, forKey: Keys.hideSensitiveInAppSwitcher) }
+    }
+    /// Optional Face ID / Touch ID gate. Default OFF (K12).
+    @Published var requireBiometricUnlock: Bool {
+        didSet { UserDefaults.standard.set(requireBiometricUnlock, forKey: Keys.requireBiometricUnlock) }
+    }
+
+    enum Appearance: String, CaseIterable, Identifiable {
+        case system
+        case light
+        case dark
+        var id: String { rawValue }
+    }
+
     enum Keys {
         static let sub2apiBaseURL = "sub2apiBaseURL"
         static let sub2apiAPIKey = "sub2apiAPIKey"
@@ -51,33 +75,42 @@ final class AppSettings: ObservableObject {
         static let mailPassword = "mailPassword"
         static let mailExternalAPIKey = "mailExternalAPIKey"
         static let mailUseExternalAPI = "mailUseExternalAPI"
+        static let mailDefaultEmail = "mailDefaultEmail"
         static let ytBaseURL = "ytBaseURL"
         static let ytUsername = "ytUsername"
         static let ytPassword = "ytPassword"
+        static let appearance = "appearance"
+        static let hideSensitiveInAppSwitcher = "hideSensitiveInAppSwitcher"
+        static let requireBiometricUnlock = "requireBiometricUnlock"
     }
 
     /// Pure data table; nonisolated so actors (e.g. Sub2APIService) can read without hopping to MainActor.
+    /// Real xAI text model IDs (sub2api `models.go`); imagine models live on separate pickers later.
     nonisolated static let defaultModels = [
-        "grok-4.5",
         "grok-4.3",
+        "grok-build-0.1",
         "grok-4.20-0309-reasoning",
         "grok-4.20-0309-non-reasoning",
-        "grok-build-0.1"
+        "grok-4.20-multi-agent-0309"
     ]
 
     private init() {
         let defaults = UserDefaults.standard
         sub2apiBaseURL = defaults.string(forKey: Keys.sub2apiBaseURL) ?? "https://sub2api.996616.xyz"
         sub2apiAPIKey = KeychainStore.get(Keys.sub2apiAPIKey) ?? ""
-        preferredModel = defaults.string(forKey: Keys.preferredModel) ?? "grok-4.5"
+        preferredModel = defaults.string(forKey: Keys.preferredModel) ?? "grok-4.3"
         systemPrompt = defaults.string(forKey: Keys.systemPrompt) ?? "You are a helpful assistant."
         mailBaseURL = defaults.string(forKey: Keys.mailBaseURL) ?? "https://mail.996616.xyz"
         mailPassword = KeychainStore.get(Keys.mailPassword) ?? ""
         mailExternalAPIKey = KeychainStore.get(Keys.mailExternalAPIKey) ?? ""
         mailUseExternalAPI = defaults.object(forKey: Keys.mailUseExternalAPI) as? Bool ?? false
+        mailDefaultEmail = defaults.string(forKey: Keys.mailDefaultEmail) ?? ""
         ytBaseURL = defaults.string(forKey: Keys.ytBaseURL) ?? "https://yt.996616.xyz"
         ytUsername = defaults.string(forKey: Keys.ytUsername) ?? "admin"
         ytPassword = KeychainStore.get(Keys.ytPassword) ?? ""
+        appearance = defaults.string(forKey: Keys.appearance) ?? Appearance.system.rawValue
+        hideSensitiveInAppSwitcher = defaults.object(forKey: Keys.hideSensitiveInAppSwitcher) as? Bool ?? false
+        requireBiometricUnlock = defaults.object(forKey: Keys.requireBiometricUnlock) as? Bool ?? false
     }
 
     var isAIConfigured: Bool {
@@ -88,6 +121,7 @@ final class AppSettings: ObservableObject {
     var isMailConfigured: Bool {
         if mailUseExternalAPI {
             return !mailExternalAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                && !mailDefaultEmail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         }
         return !mailPassword.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }

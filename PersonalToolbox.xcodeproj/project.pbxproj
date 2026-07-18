@@ -13,6 +13,7 @@
 		AA0000010000000000000004 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000004 /* KeychainStore.swift */; };
 		AA0000010000000000000005 /* NetworkClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000005 /* NetworkClient.swift */; };
 		AA0000010000000000000006 /* SSEParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000006 /* SSEParser.swift */; };
+		AA0000010000000000000014 /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000014 /* Haptics.swift */; };
 		AA0000010000000000000007 /* AppleTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000007 /* AppleTheme.swift */; };
 		AA0000010000000000000008 /* ChatModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000008 /* ChatModels.swift */; };
 		AA0000010000000000000009 /* MailModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000009 /* MailModels.swift */; };
@@ -34,6 +35,7 @@
 		BB0000010000000000000004 /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		BB0000010000000000000005 /* NetworkClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkClient.swift; sourceTree = "<group>"; };
 		BB0000010000000000000006 /* SSEParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSEParser.swift; sourceTree = "<group>"; };
+		BB0000010000000000000014 /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
 		BB0000010000000000000007 /* AppleTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleTheme.swift; sourceTree = "<group>"; };
 		BB0000010000000000000008 /* ChatModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatModels.swift; sourceTree = "<group>"; };
 		BB0000010000000000000009 /* MailModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailModels.swift; sourceTree = "<group>"; };
@@ -107,6 +109,7 @@
 				BB0000010000000000000004 /* KeychainStore.swift */,
 				BB0000010000000000000005 /* NetworkClient.swift */,
 				BB0000010000000000000006 /* SSEParser.swift */,
+				BB0000010000000000000014 /* Haptics.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -267,6 +270,7 @@
 				AA0000010000000000000004 /* KeychainStore.swift in Sources */,
 				AA0000010000000000000005 /* NetworkClient.swift in Sources */,
 				AA0000010000000000000006 /* SSEParser.swift in Sources */,
+				AA0000010000000000000014 /* Haptics.swift in Sources */,
 				AA0000010000000000000007 /* AppleTheme.swift in Sources */,
 				AA0000010000000000000008 /* ChatModels.swift in Sources */,
 				AA0000010000000000000009 /* MailModels.swift in Sources */,

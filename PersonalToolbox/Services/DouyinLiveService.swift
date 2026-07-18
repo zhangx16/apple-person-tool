@@ -10,6 +10,23 @@ actor DouyinLiveService {
         "ttwid=1%7CB1qls3GdnZhUov9o2NxOMxxYS2ff6OSvEWbv0ytbES4%7C1680522049%7C280d802d6d478e3e78d0c807f7c487e7ffec0ae4e5fdd6a0fe74c3c6af149511"
     private var cookie: String = ""
 
+    /// Pull Cookie from Settings → 抖音直播 (user-supplied preferred over default).
+    private func syncUserCookie() async {
+        let user = await MainActor.run {
+            AppSettings.shared.douyinLiveCookie.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        if !user.isEmpty {
+            cookie = user
+        } else if cookie.isEmpty {
+            cookie = defaultCookie
+        }
+    }
+
+    private var effectiveCookie: String {
+        let c = cookie.trimmingCharacters(in: .whitespacesAndNewlines)
+        return c.isEmpty ? defaultCookie : c
+    }
+
     // MARK: - Public
 
     func getCategories() async throws -> [LiveCategory] {
@@ -143,7 +160,8 @@ actor DouyinLiveService {
             URLQueryItem(name: "webid", value: "7382872326016435738")
         ]
         guard let url = comps.url?.absoluteString else { throw NetworkError.invalidURL }
-        var dyCookie = cookie.isEmpty ? defaultCookie : cookie
+        await syncUserCookie()
+        var dyCookie = effectiveCookie
         if !dyCookie.hasSuffix(";") { dyCookie += ";" }
         // Refresh ttwid if possible
         if let refreshed = try? await headCookies(url: "https://live.douyin.com") {
@@ -271,10 +289,11 @@ actor DouyinLiveService {
 
     func getPlayURLs(detail: LiveRoomDetail, quality: LivePlayQuality) async throws -> LivePlayResult {
         guard !quality.readyURLs.isEmpty else { throw NetworkError.message("抖音无播放地址") }
+        await syncUserCookie()
         return LivePlayResult(urls: quality.readyURLs, headers: [
             "User-Agent": ua,
             "Referer": "https://live.douyin.com/",
-            "Cookie": cookie.isEmpty ? defaultCookie : cookie
+            "Cookie": effectiveCookie
         ])
     }
 
@@ -460,16 +479,18 @@ actor DouyinLiveService {
     }
 
     private func requestHeaders() async -> [String: String] {
-        [
+        await syncUserCookie()
+        return [
             "Authority": "live.douyin.com",
             "Referer": "https://live.douyin.com",
             "User-Agent": ua,
-            "cookie": cookie.isEmpty ? defaultCookie : cookie
+            "cookie": effectiveCookie
         ]
     }
 
     private func webCookie(webRid: String) async throws -> String {
-        var base = cookie.isEmpty ? defaultCookie : cookie
+        await syncUserCookie()
+        var base = effectiveCookie
         if let extra = try? await headCookies(url: "https://live.douyin.com/\(webRid)") {
             base = mergeCookie(base, extra)
         }
@@ -478,12 +499,13 @@ actor DouyinLiveService {
     }
 
     private func headCookies(url: String) async throws -> String {
+        await syncUserCookie()
         guard let u = URL(string: url) else { return "" }
         var req = URLRequest(url: u)
         req.httpMethod = "HEAD"
         req.timeoutInterval = 10
         req.setValue(ua, forHTTPHeaderField: "User-Agent")
-        req.setValue(cookie.isEmpty ? defaultCookie : cookie, forHTTPHeaderField: "Cookie")
+        req.setValue(effectiveCookie, forHTTPHeaderField: "Cookie")
         let (_, resp) = try await URLSession.shared.data(for: req)
         guard let http = resp as? HTTPURLResponse else { return "" }
         var parts: [String] = []

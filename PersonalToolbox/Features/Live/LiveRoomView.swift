@@ -639,8 +639,9 @@ struct LiveRoomView: View {
                 Text(displayName)
                     .font(.headline)
                     .lineLimit(1)
-                HStack(spacing: 8) {
-                    Label(platform.title, systemImage: platform.systemImage)
+                HStack(spacing: 6) {
+                    LivePlatformMark(platform: platform, size: 14)
+                    Text(platform.title)
                     Text("·")
                     Text("房间 \(vm.detail?.roomId ?? room.roomId)")
                     if let online = displayOnline {
@@ -946,14 +947,40 @@ enum LiveUI {
 
     static func platformChip(_ p: LivePlatform) -> some View {
         HStack(spacing: 4) {
-            Image(systemName: p.systemImage)
+            LivePlatformMark(platform: p, size: 14)
             Text(p.title)
         }
         .font(.caption2.weight(.semibold))
         .foregroundStyle(.white)
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
-        .background(brand(p).opacity(0.9), in: Capsule())
+        .background(Color.black.opacity(0.35), in: Capsule())
+    }
+}
+
+/// Official app-style brand mark (asset catalog) with SF Symbol fallback.
+struct LivePlatformMark: View {
+    let platform: LivePlatform
+    var size: CGFloat = 20
+
+    var body: some View {
+        Group {
+            if UIImage(named: platform.brandAssetName) != nil {
+                Image(platform.brandAssetName)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                ZStack {
+                    RoundedRectangle(cornerRadius: size * 0.22, style: .continuous)
+                        .fill(LiveUI.brand(platform))
+                    Image(systemName: platform.systemImage)
+                        .font(.system(size: size * 0.5, weight: .bold))
+                        .foregroundStyle(.white)
+                }
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous))
     }
 }
 

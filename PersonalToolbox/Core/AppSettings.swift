@@ -138,6 +138,13 @@ final class AppSettings: ObservableObject {
         didSet { UserDefaults.standard.set(kuaishouKww, forKey: Keys.kuaishouKww) }
     }
 
+    // MARK: - 抖音直播（Cookie，搜索/部分房间需要）
+
+    /// 浏览器登录 live.douyin.com 后复制的 Cookie（含 ttwid 等）。
+    @Published var douyinLiveCookie: String {
+        didSet { UserDefaults.standard.set(douyinLiveCookie, forKey: Keys.douyinLiveCookie) }
+    }
+
     enum Appearance: String, CaseIterable, Identifiable {
         case system, light, dark
         var id: String { rawValue }
@@ -174,6 +181,7 @@ final class AppSettings: ObservableObject {
         static let kuaidi100Key = "kuaidi100Key"
         static let kuaishouCookie = "kuaishouCookie"
         static let kuaishouKww = "kuaishouKww"
+        static let douyinLiveCookie = "douyinLiveCookie"
     }
 
     nonisolated static let defaultTextModel = "grok-4.3"
@@ -235,6 +243,7 @@ final class AppSettings: ObservableObject {
         kuaidi100Key = KeychainStore.get(Keys.kuaidi100Key) ?? ""
         kuaishouCookie = d.string(forKey: Keys.kuaishouCookie) ?? ""
         kuaishouKww = d.string(forKey: Keys.kuaishouKww) ?? ""
+        douyinLiveCookie = d.string(forKey: Keys.douyinLiveCookie) ?? ""
     }
 
     var isAIConfigured: Bool {

@@ -88,6 +88,17 @@ struct SettingsView: View {
                     }
 
                     NavigationLink {
+                        DouyinLiveSettingsPage()
+                    } label: {
+                        projectRow(
+                            systemImage: "music.note",
+                            title: "抖音直播",
+                            subtitle: settings.douyinLiveCookie.isEmpty ? "建议配置 Cookie · 搜索/风控" : "Cookie 已配置",
+                            tint: Color(hex: 0x111111)
+                        )
+                    }
+
+                    NavigationLink {
                         KuaishouLiveSettingsPage()
                     } label: {
                         projectRow(
@@ -577,6 +588,42 @@ struct Kuaidi100SettingsPage: View {
             }
         }
         .navigationTitle("快递100")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+struct DouyinLiveSettingsPage: View {
+    @EnvironmentObject private var settings: AppSettings
+
+    var body: some View {
+        Form {
+            Section {
+                TextField("Cookie", text: $settings.douyinLiveCookie, axis: .vertical)
+                    .lineLimit(4...12)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+            } header: {
+                Text("登录 Cookie")
+            } footer: {
+                Text("在电脑浏览器打开 live.douyin.com 并登录后，F12 → Network 任选请求，复制 Request Headers 里的 Cookie（建议含 ttwid、sessionid、__ac_nonce 等）。用于搜索与部分房间拉流，降低风控。")
+            }
+            Section("获取步骤") {
+                Text("1. 浏览器登录 live.douyin.com\n2. 打开开发者工具 → Network\n3. 刷新页面，点任意 live.douyin.com 请求\n4. 复制 Cookie 字段全文粘贴到上方")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Section("说明") {
+                Text("不配置时使用内置匿名 Cookie，搜索/进房可能失败或触发验证。配置后即时生效，无需重启。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if !settings.douyinLiveCookie.isEmpty {
+                    Button("清除 Cookie", role: .destructive) {
+                        settings.douyinLiveCookie = ""
+                    }
+                }
+            }
+        }
+        .navigationTitle("抖音直播")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

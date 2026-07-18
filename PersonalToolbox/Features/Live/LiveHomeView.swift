@@ -87,15 +87,14 @@ struct LiveHomeView: View {
                         }
                     } label: {
                         HStack(spacing: 6) {
-                            Image(systemName: p.systemImage)
-                                .font(.system(size: 12, weight: .semibold))
+                            LivePlatformMark(platform: p, size: 18)
                             Text(p.title)
                                 .font(.subheadline.weight(.semibold))
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
                         .foregroundStyle(on ? Color.white : Color.primary)
-                        .background(on ? Color.accentColor : Color(.tertiarySystemFill), in: Capsule())
+                        .background(on ? LiveUI.brand(p) : Color(.tertiarySystemFill), in: Capsule())
                     }
                     .buttonStyle(.plain)
                 }

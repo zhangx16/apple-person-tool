@@ -89,8 +89,10 @@ actor MailService {
             return try await work()
         } catch NetworkError.unauthorized {
             sessionLoggedIn = false
-            // Force a single re-login (does not recurse through withSessionRetry).
-            try await login(baseURL: baseURL, password: password)
+            // Re-enter ensureSession so concurrent 401 recoveries single-flight login
+            // (same loginTask path as initial auth). Second work() is not wrapped in
+            // another withSessionRetry — at most one re-login per call chain.
+            try await ensureSession(baseURL: baseURL, password: password)
             return try await work()
         }
     }

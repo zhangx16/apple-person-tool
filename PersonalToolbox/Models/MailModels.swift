@@ -39,11 +39,13 @@ struct MailMessage: Identifiable, Hashable, Codable, Sendable {
         MailJSONHelper.parseDate(receivedAt)
     }
 
-    /// Heuristic 4–8 digit verification code from subject/body/preview.
+    /// Heuristic 4–8 digit verification code from subject/body/preview/HTML-stripped body.
     var extractedVerificationCode: String? {
-        MailJSONHelper.extractVerificationCode(
-            from: [subject, body, preview].compactMap { $0 }.joined(separator: "\n")
-        )
+        var parts = [subject, body, preview].compactMap { $0 }
+        if let html = htmlBody, !html.isEmpty {
+            parts.append(MailJSONHelper.stripTags(html))
+        }
+        return MailJSONHelper.extractVerificationCode(from: parts.joined(separator: "\n"))
     }
 }
 
@@ -320,7 +322,7 @@ enum MailJSONHelper {
     }
 
     /// Very small tag strip for HTML→plain fallback (not a full HTML parser).
-    private static func stripTags(_ html: String) -> String {
+    static func stripTags(_ html: String) -> String {
         guard !html.isEmpty else { return "" }
         var result = html
         if let regex = try? NSRegularExpression(pattern: "<[^>]+>", options: .caseInsensitive) {

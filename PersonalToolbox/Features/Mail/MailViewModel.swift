@@ -4,6 +4,9 @@ import Combine
 /// Drives mail tab: accounts → inbox → detail.
 /// Uses session single-flight via `MailService.ensureSession` / `withSessionRetry`.
 /// 429 rate limits are not retried (service throws message).
+///
+/// Load coalescing: each list/detail surface has a generation token. Newer requests
+/// supersede in-flight ones; stale completions and `CancellationError` never clobber UI.
 @MainActor
 final class MailViewModel: ObservableObject {
     // MARK: - Accounts
@@ -36,6 +39,11 @@ final class MailViewModel: ObservableObject {
     private let messageTop = 30
     private(set) var activeEmail: String?
 
+    /// Generation tokens: only the latest request may mutate published state.
+    private var accountsLoadID = 0
+    private var messagesLoadID = 0
+    private var detailLoadID = 0
+
     enum MailFolder: String, CaseIterable, Identifiable {
         case inbox
         case junkemail
@@ -58,8 +66,11 @@ final class MailViewModel: ObservableObject {
     // MARK: - Accounts
 
     func loadAccounts(force: Bool = false) async {
-        guard !isLoadingAccounts else { return }
-        if !force, !accounts.isEmpty, accountsError == nil { return }
+        // Non-force: skip if already happy or a load is in flight.
+        if !force {
+            if isLoadingAccounts { return }
+            if !accounts.isEmpty, accountsError == nil { return }
+        }
 
         let base = settings.mailBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !base.isEmpty else {
@@ -81,6 +92,9 @@ final class MailViewModel: ObservableObject {
             return
         }
 
+        accountsLoadID += 1
+        let loadID = accountsLoadID
+
         isUnconfigured = false
         isLoadingAccounts = true
         accountsError = nil
@@ -93,20 +107,23 @@ final class MailViewModel: ObservableObject {
                 page: 1,
                 pageSize: accountPageSize
             )
+            guard loadID == accountsLoadID else { return }
             accounts = page.accounts
             accountsHasMore = page.hasMore
             accountPage = page.page
-            if accounts.isEmpty {
-                // Empty pool is not an error — view shows empty state.
-                accountsError = nil
-            }
+            accountsError = nil
+        } catch is CancellationError {
+            return
         } catch {
+            guard loadID == accountsLoadID else { return }
             accounts = []
             accountsHasMore = false
             accountsError = Self.chineseError(error)
             Haptics.error()
         }
-        isLoadingAccounts = false
+        if loadID == accountsLoadID {
+            isLoadingAccounts = false
+        }
     }
 
     func refreshAccounts() async {
@@ -120,8 +137,9 @@ final class MailViewModel: ObservableObject {
         let password = settings.mailPassword
         guard !base.isEmpty, !password.isEmpty else { return }
 
-        isLoadingMoreAccounts = true
+        let loadID = accountsLoadID
         let next = accountPage + 1
+        isLoadingMoreAccounts = true
         do {
             let page = try await mail.listAccounts(
                 baseURL: base,
@@ -129,24 +147,35 @@ final class MailViewModel: ObservableObject {
                 page: next,
                 pageSize: accountPageSize
             )
-            // Append unique by id
+            guard loadID == accountsLoadID else { return }
             let existing = Set(accounts.map(\.id))
             let fresh = page.accounts.filter { !existing.contains($0.id) }
             accounts.append(contentsOf: fresh)
             accountsHasMore = page.hasMore
             accountPage = page.page
+        } catch is CancellationError {
+            return
         } catch {
+            guard loadID == accountsLoadID else { return }
             accountsError = Self.chineseError(error)
             Haptics.error()
         }
-        isLoadingMoreAccounts = false
+        if loadID == accountsLoadID {
+            isLoadingMoreAccounts = false
+        }
     }
 
     private func loadExternalAccountStub() async {
+        accountsLoadID += 1
+        let loadID = accountsLoadID
         isUnconfigured = false
         isLoadingAccounts = true
         accountsError = nil
-        defer { isLoadingAccounts = false }
+        defer {
+            if loadID == accountsLoadID {
+                isLoadingAccounts = false
+            }
+        }
 
         let email = settings.mailDefaultEmail.trimmingCharacters(in: .whitespacesAndNewlines)
         let key = settings.mailExternalAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -168,19 +197,27 @@ final class MailViewModel: ObservableObject {
     // MARK: - Messages
 
     func selectAccount(_ account: MailAccount) {
+        // Invalidate any in-flight message/detail loads for the previous mailbox.
+        messagesLoadID += 1
+        detailLoadID += 1
         activeEmail = account.email
         messages = []
         messagesError = nil
         messageSkip = 0
         messagesHasMore = false
+        isLoadingMessages = false
+        isLoadingMoreMessages = false
         detail = nil
         detailError = nil
+        isLoadingDetail = false
         selectedFolder = .inbox
     }
 
+    /// Loads the first page for the current `activeEmail` + `selectedFolder`.
+    /// Always starts a new generation (does **not** drop when already loading) so folder
+    /// switches and pull-to-refresh supersede stale in-flight requests.
     func loadMessages(force: Bool = true) async {
         guard let email = activeEmail else { return }
-        guard !isLoadingMessages else { return }
 
         let base = settings.mailBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !base.isEmpty else {
@@ -188,46 +225,59 @@ final class MailViewModel: ObservableObject {
             return
         }
 
+        let folder = selectedFolder
+        messagesLoadID += 1
+        let loadID = messagesLoadID
+
         isLoadingMessages = true
+        isLoadingMoreMessages = false
         messagesError = nil
         if force {
             messageSkip = 0
         }
 
+        // Capture request identity at start; apply only if still current.
+        let folderRaw = folder.rawValue
+
         do {
             let page: MailMessagesPage
             if settings.mailUseExternalAPI {
-                let key = settings.mailExternalAPIKey
                 page = try await mail.externalMessages(
                     baseURL: base,
-                    apiKey: key,
+                    apiKey: settings.mailExternalAPIKey,
                     email: email,
-                    folder: selectedFolder.rawValue,
+                    folder: folderRaw,
                     skip: 0,
                     top: messageTop
                 )
             } else {
-                let password = settings.mailPassword
                 page = try await mail.listMessages(
                     baseURL: base,
-                    password: password,
+                    password: settings.mailPassword,
                     email: email,
-                    folder: selectedFolder.rawValue,
+                    folder: folderRaw,
                     skip: 0,
                     top: messageTop
                 )
             }
+            guard isMessagesRequestCurrent(loadID: loadID, email: email, folder: folder) else { return }
             messages = page.messages
             messagesHasMore = page.hasMore
             messageSkip = page.messages.count
+            messagesError = nil
+        } catch is CancellationError {
+            return
         } catch {
+            guard isMessagesRequestCurrent(loadID: loadID, email: email, folder: folder) else { return }
             messages = []
             messagesHasMore = false
             messageSkip = 0
             messagesError = Self.chineseError(error)
             Haptics.error()
         }
-        isLoadingMessages = false
+        if loadID == messagesLoadID {
+            isLoadingMessages = false
+        }
     }
 
     func refreshMessages() async {
@@ -237,6 +287,7 @@ final class MailViewModel: ObservableObject {
     func changeFolder(_ folder: MailFolder) async {
         guard selectedFolder != folder else { return }
         selectedFolder = folder
+        // loadMessages always starts a new generation even if a load is in flight.
         await loadMessages(force: true)
     }
 
@@ -247,6 +298,12 @@ final class MailViewModel: ObservableObject {
         let base = settings.mailBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !base.isEmpty else { return }
 
+        // Tie load-more to the current list generation; folder/account change invalidates.
+        let loadID = messagesLoadID
+        let folder = selectedFolder
+        let skip = messageSkip
+        let folderRaw = folder.rawValue
+
         isLoadingMoreMessages = true
         do {
             let page: MailMessagesPage
@@ -255,8 +312,8 @@ final class MailViewModel: ObservableObject {
                     baseURL: base,
                     apiKey: settings.mailExternalAPIKey,
                     email: email,
-                    folder: selectedFolder.rawValue,
-                    skip: messageSkip,
+                    folder: folderRaw,
+                    skip: skip,
                     top: messageTop
                 )
             } else {
@@ -264,21 +321,33 @@ final class MailViewModel: ObservableObject {
                     baseURL: base,
                     password: settings.mailPassword,
                     email: email,
-                    folder: selectedFolder.rawValue,
-                    skip: messageSkip,
+                    folder: folderRaw,
+                    skip: skip,
                     top: messageTop
                 )
             }
+            guard isMessagesRequestCurrent(loadID: loadID, email: email, folder: folder) else { return }
             let existing = Set(messages.map(\.id))
             let fresh = page.messages.filter { !existing.contains($0.id) }
             messages.append(contentsOf: fresh)
             messagesHasMore = page.hasMore
-            messageSkip += page.messages.count
+            messageSkip = skip + page.messages.count
+        } catch is CancellationError {
+            return
         } catch {
+            guard isMessagesRequestCurrent(loadID: loadID, email: email, folder: folder) else { return }
             messagesError = Self.chineseError(error)
             Haptics.error()
         }
-        isLoadingMoreMessages = false
+        if loadID == messagesLoadID {
+            isLoadingMoreMessages = false
+        }
+    }
+
+    private func isMessagesRequestCurrent(loadID: Int, email: String, folder: MailFolder) -> Bool {
+        loadID == messagesLoadID
+            && activeEmail == email
+            && selectedFolder == folder
     }
 
     // MARK: - Detail
@@ -290,6 +359,10 @@ final class MailViewModel: ObservableObject {
             detailError = "请先在设置中配置邮件服务地址"
             return
         }
+
+        detailLoadID += 1
+        let loadID = detailLoadID
+        let folder = selectedFolder
 
         isLoadingDetail = true
         detailError = nil
@@ -306,7 +379,7 @@ final class MailViewModel: ObservableObject {
                     apiKey: settings.mailExternalAPIKey,
                     email: email,
                     messageID: messageID,
-                    folder: selectedFolder.rawValue
+                    folder: folder.rawValue
                 )
             } else {
                 full = try await mail.messageDetail(
@@ -316,15 +389,23 @@ final class MailViewModel: ObservableObject {
                     messageID: messageID
                 )
             }
+            guard loadID == detailLoadID, activeEmail == email else { return }
             detail = full
+            detailError = nil
+        } catch is CancellationError {
+            return
         } catch {
+            guard loadID == detailLoadID, activeEmail == email else { return }
             detailError = Self.chineseError(error)
             Haptics.error()
         }
-        isLoadingDetail = false
+        if loadID == detailLoadID {
+            isLoadingDetail = false
+        }
     }
 
     func clearDetail() {
+        detailLoadID += 1
         detail = nil
         detailError = nil
         isLoadingDetail = false
@@ -333,12 +414,17 @@ final class MailViewModel: ObservableObject {
     // MARK: - Errors
 
     static func chineseError(_ error: Error) -> String {
+        if error is CancellationError {
+            return ""
+        }
         if let net = error as? NetworkError {
             return net.errorDescription ?? "网络错误"
         }
         let ns = error as NSError
         if ns.domain == NSURLErrorDomain {
             switch ns.code {
+            case NSURLErrorCancelled:
+                return ""
             case NSURLErrorNotConnectedToInternet: return "无网络连接"
             case NSURLErrorTimedOut: return "请求超时"
             case NSURLErrorCannotFindHost, NSURLErrorCannotConnectToHost: return "无法连接服务器"

@@ -221,8 +221,17 @@ struct VerificationCodeBanner: View {
 // MARK: - HTML (JS disabled)
 
 /// Renders HTML with JavaScript disabled for safety (K17).
+/// Reloads only when `html` changes (avoids scroll jump on SwiftUI redraws).
 struct HTMLWebView: UIViewRepresentable {
     let html: String
+
+    final class Coordinator {
+        var lastHTML: String?
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
 
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
@@ -236,6 +245,8 @@ struct HTMLWebView: UIViewRepresentable {
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {
+        guard context.coordinator.lastHTML != html else { return }
+        context.coordinator.lastHTML = html
         let wrapped = """
         <!DOCTYPE html>
         <html>

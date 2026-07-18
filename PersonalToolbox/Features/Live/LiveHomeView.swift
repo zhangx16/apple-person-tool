@@ -559,14 +559,3 @@ private extension View {
         self
     }
 }
-
-// Brand gradient helper
-private extension Color {
-    var gradient: LinearGradient {
-        LinearGradient(
-            colors: [self, self.opacity(0.82)],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-}

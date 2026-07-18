@@ -66,7 +66,8 @@ final class LiveFollowStore: ObservableObject {
             var updated = items[idx]
             updated.title = room.title.isEmpty ? updated.title : room.title
             updated.userName = room.userName.isEmpty ? updated.userName : room.userName
-            updated.cover = room.cover.isEmpty ? updated.cover : room.cover
+            let avatar = room.displayAvatar
+            if !avatar.isEmpty { updated.cover = avatar }
             items[idx] = updated
         } else {
             items.insert(
@@ -75,7 +76,7 @@ final class LiveFollowStore: ObservableObject {
                     roomId: rid,
                     title: room.title,
                     userName: room.userName,
-                    cover: room.cover,
+                    cover: room.displayAvatar.isEmpty ? room.cover : room.displayAvatar,
                     addedAt: Date()
                 ),
                 at: 0

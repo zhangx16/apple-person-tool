@@ -131,7 +131,7 @@ struct LiveHomeView: View {
                     roomRow(
                         title: item.title.isEmpty ? item.userName : item.title,
                         subtitle: item.userName.isEmpty ? "房间 \(item.roomId)" : "\(item.userName) · \(item.roomId)",
-                        cover: item.cover,
+                        avatarURL: item.cover,
                         showPlay: true
                     )
                     .contentShape(Rectangle())
@@ -224,7 +224,7 @@ struct LiveHomeView: View {
                                     let online = room.online > 0 ? " · \(Self.formatOnline(room.online)) 人气" : ""
                                     return "\(name)\(online)"
                                 }(),
-                                cover: room.cover,
+                                avatarURL: room.displayAvatar,
                                 showPlay: true
                             )
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -265,11 +265,11 @@ struct LiveHomeView: View {
     private func roomRow(
         title: String,
         subtitle: String,
-        cover: String,
+        avatarURL: String,
         showPlay: Bool
     ) -> some View {
         HStack(spacing: 12) {
-            coverView(cover)
+            avatarView(avatarURL)
             VStack(alignment: .leading, spacing: 4) {
                 Text(title.isEmpty ? "未命名" : title)
                     .font(.subheadline.weight(.semibold))
@@ -291,11 +291,12 @@ struct LiveHomeView: View {
         .padding(.vertical, 4)
     }
 
+    /// Circular streamer avatar (homepage face), not room poster.
     @ViewBuilder
-    private func coverView(_ cover: String) -> some View {
-        let url = URL(string: cover)
+    private func avatarView(_ urlString: String) -> some View {
+        let url = URL(string: urlString)
         ZStack {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
+            Circle()
                 .fill(Color(.tertiarySystemFill))
             if let url, url.scheme == "http" || url.scheme == "https" {
                 AsyncImage(url: url) { phase in
@@ -303,17 +304,18 @@ struct LiveHomeView: View {
                     case .success(let img):
                         img.resizable().scaledToFill()
                     default:
-                        Image(systemName: "person.crop.square")
+                        Image(systemName: "person.fill")
                             .foregroundStyle(.secondary)
                     }
                 }
             } else {
-                Image(systemName: "person.crop.square")
+                Image(systemName: "person.fill")
                     .foregroundStyle(.secondary)
             }
         }
-        .frame(width: 72, height: 72)
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .frame(width: 52, height: 52)
+        .clipShape(Circle())
+        .overlay(Circle().stroke(Color(.separator).opacity(0.35), lineWidth: 0.5))
     }
 
     // MARK: - Actions

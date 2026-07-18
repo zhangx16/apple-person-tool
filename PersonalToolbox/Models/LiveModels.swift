@@ -58,9 +58,19 @@ struct LiveRoomItem: Identifiable, Hashable {
     var platform: LivePlatform
     var roomId: String
     var title: String
+    /// Room cover / screenshot (16:9 poster).
     var cover: String
     var userName: String
     var online: Int
+    /// Streamer profile avatar (prefer for list rows).
+    var userAvatar: String = ""
+
+    /// Prefer homepage avatar; fall back to room cover.
+    var displayAvatar: String {
+        let a = userAvatar.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !a.isEmpty { return a }
+        return cover
+    }
 }
 
 struct LiveRoomDetail: Hashable {

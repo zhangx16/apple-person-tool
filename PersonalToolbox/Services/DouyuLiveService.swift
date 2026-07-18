@@ -81,13 +81,20 @@ actor DouyuLiveService {
         }
         let list = LiveJSON.array(LiveJSON.object(json["data"])?["relateShow"]) ?? []
         return list.map { item in
-            LiveRoomItem(
+            var avatar = LiveJSON.string(item["avatar"])
+            if avatar.isEmpty { avatar = LiveJSON.string(item["avatarMid"]) }
+            if avatar.isEmpty { avatar = LiveJSON.string(item["avator_mid"]) }
+            if avatar.isEmpty { avatar = LiveJSON.string(item["ownerAvatar"]) }
+            if avatar.isEmpty { avatar = LiveJSON.string(item["icon"]) }
+            if avatar.hasPrefix("//") { avatar = "https:" + avatar }
+            return LiveRoomItem(
                 platform: .douyu,
                 roomId: LiveJSON.string(item["rid"]),
                 title: LiveJSON.string(item["roomName"]),
                 cover: LiveJSON.string(item["roomSrc"]),
                 userName: LiveJSON.string(item["nickName"]),
-                online: parseHot(LiveJSON.string(item["hot"]))
+                online: parseHot(LiveJSON.string(item["hot"])),
+                userAvatar: avatar
             )
         }
     }

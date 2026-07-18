@@ -187,6 +187,9 @@ actor DouyinLiveService {
             }
             let owner = LiveJSON.object(itemData["owner"])
             let cover = urlListFirst(LiveJSON.object(itemData["cover"]))
+            let avatar = urlListFirst(LiveJSON.object(owner?["avatar_thumb"]))
+                .ifEmpty(urlListFirst(LiveJSON.object(owner?["avatar_medium"])))
+                .ifEmpty(urlListFirst(LiveJSON.object(owner?["avatar_larger"])))
             let stats = LiveJSON.object(itemData["stats"])
             let webRid = LiveJSON.string(owner?["web_rid"])
             guard !webRid.isEmpty else { return nil }
@@ -196,7 +199,8 @@ actor DouyinLiveService {
                 title: LiveJSON.string(itemData["title"]),
                 cover: cover,
                 userName: LiveJSON.string(owner?["nickname"]),
-                online: LiveJSON.int(stats?["total_user"])
+                online: LiveJSON.int(stats?["total_user"]),
+                userAvatar: avatar
             )
         }
     }

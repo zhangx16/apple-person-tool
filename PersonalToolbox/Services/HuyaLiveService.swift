@@ -111,6 +111,11 @@ actor HuyaLiveService {
             if !cover.isEmpty, !cover.contains("?") {
                 cover += "?x-oss-process=style/w338_h190&"
             }
+            // Homepage avatar (game_imgUrl), not room screenshot.
+            var avatar = LiveJSON.string(item["game_imgUrl"])
+            if avatar.isEmpty { avatar = LiveJSON.string(item["game_avatarUrl180"]) }
+            if avatar.isEmpty { avatar = LiveJSON.string(item["game_avatarUrl"]) }
+            if avatar.hasPrefix("//") { avatar = "https:" + avatar }
             var title = LiveJSON.string(item["game_introduction"])
             if title.isEmpty { title = LiveJSON.string(item["game_roomName"]) }
             let roomId = LiveJSON.string(item["room_id"])
@@ -121,7 +126,8 @@ actor HuyaLiveService {
                 title: title,
                 cover: cover,
                 userName: LiveJSON.string(item["game_nick"]),
-                online: LiveJSON.int(item["game_total_count"])
+                online: LiveJSON.int(item["game_total_count"]),
+                userAvatar: avatar
             )
         }
     }

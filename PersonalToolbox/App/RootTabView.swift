@@ -2,9 +2,8 @@ import SwiftUI
 
 enum AppTab: Hashable {
     case chat
-    case monitor
+    case live
     case services
-    case download
     case settings
 }
 
@@ -25,20 +24,15 @@ struct RootTabView: View {
                     .tag(AppTab.chat)
                     .accessibilityLabel("助手")
 
-                MonitorShellView()
-                    .tabItem { Label("监控", systemImage: "chart.bar.fill") }
-                    .tag(AppTab.monitor)
-                    .accessibilityLabel("监控")
+                LiveHomeView()
+                    .tabItem { Label("直播", systemImage: "play.tv.fill") }
+                    .tag(AppTab.live)
+                    .accessibilityLabel("直播")
 
                 ServicesHubView(selectedTab: $selectedTab)
                     .tabItem { Label("服务", systemImage: "square.grid.2x2.fill") }
                     .tag(AppTab.services)
                     .accessibilityLabel("服务")
-
-                DownloadHomeView(isTabSelected: selectedTab == .download)
-                    .tabItem { Label("下载", systemImage: "arrow.down.circle") }
-                    .tag(AppTab.download)
-                    .accessibilityLabel("下载")
 
                 SettingsView()
                     .tabItem { Label("设置", systemImage: "gearshape") }
@@ -75,7 +69,6 @@ struct RootTabView: View {
                             }
                         }
                         .onAppear {
-                            // Prefill via pasteboard for action center
                             if !payload.combinedText.isEmpty {
                                 ClipboardStore.shared.copyToPasteboard(payload.combinedText)
                             }

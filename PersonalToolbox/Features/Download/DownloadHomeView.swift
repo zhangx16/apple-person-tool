@@ -11,89 +11,86 @@ struct DownloadHomeView: View {
     @StateObject private var viewModel = DownloadViewModel()
 
     var body: some View {
-        NavigationStack {
-            List {
-                if let banner = viewModel.errorBanner {
-                    Section {
-                        bannerRow(text: banner, color: .red) {
-                            viewModel.errorBanner = nil
-                        }
+        List {
+            if let banner = viewModel.errorBanner {
+                Section {
+                    bannerRow(text: banner, color: .red) {
+                        viewModel.errorBanner = nil
                     }
                 }
-                if let info = viewModel.infoBanner {
-                    Section {
-                        bannerRow(text: info, color: .green) {
-                            viewModel.infoBanner = nil
-                        }
+            }
+            if let info = viewModel.infoBanner {
+                Section {
+                    bannerRow(text: info, color: .green) {
+                        viewModel.infoBanner = nil
                     }
                 }
+            }
 
-                composeSection
-                if let meta = viewModel.metadata {
-                    metadataSection(meta)
-                }
-                if viewModel.isDouyinMode, !viewModel.douyinLogs.isEmpty || !viewModel.douyinStage.isEmpty {
-                    douyinLogSection
-                }
-                tasksSection
-                filesSection
+            composeSection
+            if let meta = viewModel.metadata {
+                metadataSection(meta)
             }
-            .listStyle(.insetGrouped)
-            .background(AppleTheme.canvas)
-            .navigationTitle("")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    DownloadNavTitle(selection: Binding(
-                        get: { viewModel.project },
-                        set: { viewModel.setProject($0) }
-                    ))
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        Task { await viewModel.refreshNow() }
-                    } label: {
-                        if viewModel.isRefreshing {
-                            ProgressView().controlSize(.small)
-                        } else {
-                            Image(systemName: "arrow.clockwise")
-                        }
+            if viewModel.isDouyinMode, !viewModel.douyinLogs.isEmpty || !viewModel.douyinStage.isEmpty {
+                douyinLogSection
+            }
+            tasksSection
+            filesSection
+        }
+        .listStyle(.insetGrouped)
+        .background(AppleTheme.canvas)
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                DownloadNavTitle(selection: Binding(
+                    get: { viewModel.project },
+                    set: { viewModel.setProject($0) }
+                ))
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    Task { await viewModel.refreshNow() }
+                } label: {
+                    if viewModel.isRefreshing {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Image(systemName: "arrow.clockwise")
                     }
-                    .accessibilityLabel("刷新")
-                    .disabled(viewModel.isRefreshing)
                 }
+                .accessibilityLabel("刷新")
+                .disabled(viewModel.isRefreshing)
             }
-            .refreshable {
-                await viewModel.refreshNow()
-            }
-            .onAppear {
-                viewModel.syncProjectFromSettings()
-                viewModel.setTabVisible(isTabSelected)
-                viewModel.onScenePhase(scenePhase)
-            }
-            .onChange(of: isTabSelected) { _, selected in
-                if selected {
-                    viewModel.syncProjectFromSettings()
-                }
-                viewModel.setTabVisible(selected)
-            }
-            .onChange(of: settings.downloadProjectRaw) { _, _ in
+        }
+        .refreshable {
+            await viewModel.refreshNow()
+        }
+        .onAppear {
+            viewModel.syncProjectFromSettings()
+            viewModel.setTabVisible(isTabSelected)
+            viewModel.onScenePhase(scenePhase)
+        }
+        .onChange(of: isTabSelected) { _, selected in
+            if selected {
                 viewModel.syncProjectFromSettings()
             }
-            .onChange(of: scenePhase) { _, phase in
-                viewModel.onScenePhase(phase)
-            }
-            .sheet(item: $viewModel.shareItem, onDismiss: {
-                // Cleanup uses shareCleanupDirectory (not shareItem, which is already nil here).
-                viewModel.dismissShare()
-            }) { item in
-                ActivityShareSheet(items: [item.url])
-            }
-            .fullScreenCover(item: $viewModel.playItem, onDismiss: {
-                viewModel.dismissPlay()
-            }) { item in
-                VideoPlayerSheet(url: item.url, title: item.name)
-            }
+            viewModel.setTabVisible(selected)
+        }
+        .onChange(of: settings.downloadProjectRaw) { _, _ in
+            viewModel.syncProjectFromSettings()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            viewModel.onScenePhase(phase)
+        }
+        .sheet(item: $viewModel.shareItem, onDismiss: {
+            viewModel.dismissShare()
+        }) { item in
+            ActivityShareSheet(items: [item.url])
+        }
+        .fullScreenCover(item: $viewModel.playItem, onDismiss: {
+            viewModel.dismissPlay()
+        }) { item in
+            VideoPlayerSheet(url: item.url, title: item.name)
         }
     }
 

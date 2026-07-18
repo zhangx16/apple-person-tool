@@ -247,7 +247,7 @@ struct DownloadJumpView: View {
     var body: some View {
         List {
             Section {
-                Text(mode == .douyin ? "将切换到抖音本机下载" : "将切换到 YouTube / yt-dlp 下载")
+                Text(mode == .douyin ? "抖音本机下载" : "YouTube / yt-dlp 下载")
                 if let prefill, !prefill.isEmpty {
                     Text(prefill).font(.footnote).textSelection(.enabled)
                     Button("复制链接到剪贴板") {
@@ -255,11 +255,13 @@ struct DownloadJumpView: View {
                         Haptics.success()
                     }
                 }
-                Text("请打开底部「下载」Tab，顶部切换到「\(mode.title)」后粘贴下载。")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                NavigationLink {
+                    DownloadHomeView(isTabSelected: true)
+                } label: {
+                    Label("打开下载页（\(mode.title)）", systemImage: "arrow.down.circle")
+                }
             } footer: {
-                Text("下载 Tab 为独立根页面；此处负责识别与预填。")
+                Text("下载已并入「服务」；链接已复制，进入后粘贴即可。")
             }
         }
         .navigationTitle(mode.title)

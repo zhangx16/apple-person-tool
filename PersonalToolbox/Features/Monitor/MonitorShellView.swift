@@ -6,38 +6,36 @@ struct MonitorShellView: View {
     @State private var project: MonitorProject = .sub2
 
     var body: some View {
-        NavigationStack {
-            Group {
-                switch project {
-                case .sub2:
-                    MonitorHomeView(hidesChromeTitle: true)
-                case .cloudflare:
-                    CloudflareHomeView(hidesChromeTitle: true)
-                }
+        Group {
+            switch project {
+            case .sub2:
+                MonitorHomeView(hidesChromeTitle: true)
+            case .cloudflare:
+                CloudflareHomeView(hidesChromeTitle: true)
             }
-            // Reset navigation stack (e.g. CF zone detail) when switching projects.
-            .id(project)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    SelectableNavTitle(
-                        options: Array(MonitorProject.allCases),
-                        selection: $project,
-                        title: { $0.title },
-                        brand: { $0.brand },
-                        accessibilityHint: "点按切换监控项目"
-                    )
-                }
+        }
+        // Reset navigation path (e.g. CF zone detail) when switching projects.
+        .id(project)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                SelectableNavTitle(
+                    options: Array(MonitorProject.allCases),
+                    selection: $project,
+                    title: { $0.title },
+                    brand: { $0.brand },
+                    accessibilityHint: "点按切换监控项目"
+                )
             }
-            .onAppear {
-                syncFromSettings()
-            }
-            .onChange(of: settings.monitorProjectRaw) { _, _ in
-                syncFromSettings()
-            }
-            .onChange(of: project) { _, newValue in
-                settings.monitorProjectRaw = newValue.rawValue
-            }
+        }
+        .onAppear {
+            syncFromSettings()
+        }
+        .onChange(of: settings.monitorProjectRaw) { _, _ in
+            syncFromSettings()
+        }
+        .onChange(of: project) { _, newValue in
+            settings.monitorProjectRaw = newValue.rawValue
         }
     }
 

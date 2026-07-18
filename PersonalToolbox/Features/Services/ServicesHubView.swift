@@ -124,7 +124,18 @@ struct ServicesHubView: View {
                     }
                 }
 
-                Section("运维") {
+                Section("监控") {
+                    NavigationLink {
+                        MonitorShellView()
+                    } label: {
+                        hubLabel(
+                            title: "监控中心",
+                            subtitle: "Sub2 管理 · Cloudflare（点标题切换）",
+                            brand: .sub2
+                        )
+                    }
+                    .accessibilityLabel("监控中心")
+
                     NavigationLink {
                         ServiceHealthHomeView()
                     } label: {
@@ -132,32 +143,6 @@ struct ServicesHubView: View {
                             title: "服务健康总览",
                             subtitle: "一键探测全部已配置服务",
                             systemImage: "heart.text.square.fill"
-                        )
-                    }
-
-                    Button {
-                        settings.monitorProjectRaw = MonitorProject.sub2.rawValue
-                        selectedTab = .monitor
-                    } label: {
-                        hubLabel(
-                            title: "Sub2 管理",
-                            subtitle: "账号调度 · 用户余额 · 分组",
-                            brand: .sub2
-                        )
-                    }
-
-                    Button {
-                        settings.monitorProjectRaw = MonitorProject.cloudflare.rawValue
-                        selectedTab = .monitor
-                    } label: {
-                        hubLabel(
-                            title: "Cloudflare",
-                            subtitle: settings.isCloudflareConfigured
-                                ? (settings.cloudflareAccountName.isEmpty
-                                    ? "域名 · DNS · 用量"
-                                    : settings.cloudflareAccountName)
-                                : "未配置 API Token",
-                            brand: .cloudflare
                         )
                     }
 
@@ -194,28 +179,23 @@ struct ServicesHubView: View {
                     }
                 }
 
-                Section("媒体") {
-                    Button {
-                        settings.downloadProjectRaw = DownloadProject.youtube.rawValue
-                        selectedTab = .download
+                Section("下载") {
+                    NavigationLink {
+                        DownloadHomeView(isTabSelected: true)
                     } label: {
                         hubLabel(
-                            title: "YouTube 下载",
-                            subtitle: settings.ytBaseURL,
+                            title: "视频下载",
+                            subtitle: "YouTube · 抖音（页内切换）",
                             brand: .youtube
                         )
                     }
+                    .accessibilityLabel("视频下载")
+                }
 
-                    Button {
-                        settings.downloadProjectRaw = DownloadProject.douyin.rawValue
-                        selectedTab = .download
-                    } label: {
-                        hubLabel(
-                            title: "抖音下载",
-                            subtitle: "本机解析 · 无水印优先",
-                            brand: .douyin
-                        )
-                    }
+                Section("直播") {
+                    Text("底部「直播」Tab：多平台入口（B站可播，其余逐步移植 SimpleLive）。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
             .scrollContentBackground(.hidden)

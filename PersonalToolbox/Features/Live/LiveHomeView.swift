@@ -1,11 +1,11 @@
 import SwiftUI
+import UIKit
 
-/// Live tab — **关注 + 搜索 + 原生播放**（无推荐流）。
+/// Live tab — 关注 + 搜索 + 原生播放（无推荐）。
 ///
-/// Crash-safe rules (learned from 2.3/2.4):
-/// - No network on tab appear
-/// - No NavigationStack under TabView
-/// - Room opens in fullScreenCover only after user tap
+/// Presentation notes:
+/// - Do **not** nest `Button` as List row content (often eats taps / no-ops on device).
+/// - Use a unique `Identifiable` wrapper each open so sheet always presents.
 struct LiveHomeView: View {
     private enum MainMode: String, CaseIterable, Identifiable {
         case follow = "关注"
@@ -13,7 +13,13 @@ struct LiveHomeView: View {
         var id: String { rawValue }
     }
 
-    @StateObject private var follows = LiveFollowStore.shared
+    /// Fresh id every open — avoids fullScreenCover/sheet ignoring same-item reselect.
+    private struct RoomPresentation: Identifiable {
+        let id = UUID()
+        let room: LiveRoomItem
+    }
+
+    @ObservedObject private var follows = LiveFollowStore.shared
     @State private var mode: MainMode = .follow
     @State private var platform: LivePlatform = .bilibili
     @State private var keyword = ""
@@ -21,7 +27,7 @@ struct LiveHomeView: View {
     @State private var searchResults: [LiveRoomItem] = []
     @State private var isSearching = false
     @State private var searchError: String?
-    @State private var selectedRoom: LiveRoomItem?
+    @State private var presentation: RoomPresentation?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -36,16 +42,29 @@ struct LiveHomeView: View {
             }
         }
         .background(Color(.systemGroupedBackground))
-        .fullScreenCover(item: $selectedRoom) { room in
+        // sheet is more reliable than fullScreenCover under TabView on recent iOS.
+        .sheet(item: $presentation) { item in
             NavigationStack {
-                LiveRoomView(room: room)
+                LiveRoomView(room: item.room)
                     .toolbar {
                         ToolbarItem(placement: .topBarLeading) {
-                            Button("关闭") { selectedRoom = nil }
+                            Button("关闭") { presentation = nil }
                         }
                     }
             }
+            // Large detent so player is usable.
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
         }
+    }
+
+    private func openRoom(_ room: LiveRoomItem) {
+        // Dismiss keyboard first so sheet is not blocked.
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil, from: nil, for: nil
+        )
+        presentation = RoomPresentation(room: room)
     }
 
     // MARK: - Chrome
@@ -55,7 +74,7 @@ struct LiveHomeView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("直播")
                     .font(.title2.bold())
-                Text("关注 · 搜索 · 原生播放")
+                Text("关注 · 搜索 · 点条目进入播放")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -120,7 +139,7 @@ struct LiveHomeView: View {
                     .foregroundStyle(.secondary)
                 Text("还没有关注的\(platform.title)主播")
                     .font(.headline)
-                Text("切换到「搜索」找到常看的几个主播，点星标加入关注。\n也可直接输入房间号打开。")
+                Text("到「搜索」找主播点星标，或输入房间号打开。")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -132,18 +151,16 @@ struct LiveHomeView: View {
         } else {
             List {
                 ForEach(filtered) { item in
-                    Button {
-                        selectedRoom = follows.asRoomItem(item)
-                    } label: {
-                        roomRow(
-                            title: item.title.isEmpty ? item.userName : item.title,
-                            subtitle: item.userName.isEmpty ? "房间 \(item.roomId)" : "\(item.userName) · \(item.roomId)",
-                            cover: item.cover,
-                            trailing: Image(systemName: "play.circle.fill")
-                                .foregroundStyle(Color.accentColor)
-                        )
+                    roomRow(
+                        title: item.title.isEmpty ? item.userName : item.title,
+                        subtitle: item.userName.isEmpty ? "房间 \(item.roomId)" : "\(item.userName) · \(item.roomId)",
+                        cover: item.cover,
+                        showPlay: true
+                    )
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        openRoom(follows.asRoomItem(item))
                     }
-                    .buttonStyle(.plain)
                     .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                         Button(role: .destructive) {
                             follows.unfollow(item)
@@ -188,6 +205,7 @@ struct LiveHomeView: View {
                     Button("打开") {
                         openRoomIdDirect()
                     }
+                    .buttonStyle(.borderedProminent)
                     .font(.subheadline.weight(.semibold))
                 }
                 .padding(.horizontal, 12)
@@ -213,7 +231,7 @@ struct LiveHomeView: View {
                     Image(systemName: "person.2")
                         .font(.system(size: 36))
                         .foregroundStyle(.secondary)
-                    Text("输入关键词搜索，或用房间号打开")
+                    Text("搜索后点左侧进入播放，点星标关注")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -221,39 +239,44 @@ struct LiveHomeView: View {
             } else {
                 List {
                     ForEach(searchResults) { room in
-                        HStack(spacing: 0) {
-                            Button {
-                                selectedRoom = room
-                            } label: {
-                                roomRow(
-                                    title: room.title.isEmpty ? room.userName : room.title,
-                                    subtitle: {
-                                        let name = room.userName.isEmpty ? "主播" : room.userName
-                                        let online = room.online > 0 ? " · \(Self.formatOnline(room.online)) 人气" : ""
-                                        return "\(name)\(online)"
-                                    }(),
-                                    cover: room.cover,
-                                    trailing: EmptyView()
-                                )
-                            }
-                            .buttonStyle(.plain)
+                        HStack(spacing: 8) {
+                            roomRow(
+                                title: room.title.isEmpty ? room.userName : room.title,
+                                subtitle: {
+                                    let name = room.userName.isEmpty ? "主播" : room.userName
+                                    let online = room.online > 0 ? " · \(Self.formatOnline(room.online)) 人气" : ""
+                                    return "\(name)\(online)"
+                                }(),
+                                cover: room.cover,
+                                showPlay: true
+                            )
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
+                            .onTapGesture { openRoom(room) }
 
                             Button {
                                 toggleFollow(room)
                             } label: {
                                 Image(systemName: follows.isFollowing(platform: room.platform, roomId: room.roomId)
                                       ? "star.fill" : "star")
+                                    .font(.title3)
                                     .foregroundStyle(
                                         follows.isFollowing(platform: room.platform, roomId: room.roomId)
                                         ? Color.yellow : Color.secondary
                                     )
-                                    .frame(width: 44, height: 44)
+                                    .frame(width: 44, height: 56)
+                                    .contentShape(Rectangle())
                             }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel(
-                                follows.isFollowing(platform: room.platform, roomId: room.roomId)
-                                ? "取消关注" : "关注"
-                            )
+                            .buttonStyle(.borderless)
+                        }
+                        // Explicit secondary action for devices that ignore row taps.
+                        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                            Button {
+                                openRoom(room)
+                            } label: {
+                                Label("播放", systemImage: "play.fill")
+                            }
+                            .tint(.accentColor)
                         }
                     }
                 }
@@ -262,11 +285,11 @@ struct LiveHomeView: View {
         }
     }
 
-    private func roomRow<Trailing: View>(
+    private func roomRow(
         title: String,
         subtitle: String,
         cover: String,
-        trailing: Trailing
+        showPlay: Bool
     ) -> some View {
         HStack(spacing: 12) {
             coverView(cover)
@@ -282,7 +305,11 @@ struct LiveHomeView: View {
                     .lineLimit(1)
             }
             Spacer(minLength: 0)
-            trailing
+            if showPlay {
+                Image(systemName: "play.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(Color.accentColor)
+            }
         }
         .padding(.vertical, 4)
     }
@@ -343,13 +370,15 @@ struct LiveHomeView: View {
             return
         }
         searchError = nil
-        selectedRoom = LiveRoomItem(
-            platform: platform,
-            roomId: rid,
-            title: "",
-            cover: "",
-            userName: "",
-            online: 0
+        openRoom(
+            LiveRoomItem(
+                platform: platform,
+                roomId: rid,
+                title: "",
+                cover: "",
+                userName: "",
+                online: 0
+            )
         )
     }
 

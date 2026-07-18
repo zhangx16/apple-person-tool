@@ -1,8 +1,9 @@
 import SwiftUI
 import AVFoundation
+import AVKit
 import UIKit
 
-// MARK: - Room ViewModel (play only — no danmaku)
+// MARK: - Room ViewModel
 
 @MainActor
 final class LiveRoomViewModel: ObservableObject {
@@ -12,8 +13,10 @@ final class LiveRoomViewModel: ObservableObject {
     @Published var qualities: [LivePlayQuality] = []
     @Published var selectedId: String?
     @Published var isLoading = true
+    @Published var statusText: String = "正在连接…"
     @Published var errorMessage: String?
     @Published private(set) var player: AVPlayer?
+    @Published var lastPlayURL: String?
 
     private var loadTask: Task<Void, Never>?
 
@@ -34,24 +37,30 @@ final class LiveRoomViewModel: ObservableObject {
         player = nil
     }
 
+    func retry() {
+        start()
+    }
+
     private func load() async {
         isLoading = true
         errorMessage = nil
+        statusText = "获取房间信息…"
         defer { isLoading = false }
 
         do {
             let d = try await LiveSiteRouter.roomDetail(platform: room.platform, roomId: room.roomId)
             guard !Task.isCancelled else { return }
             detail = d
+            statusText = d.isLive ? "解析播放地址…" : "主播未开播"
             guard d.isLive else {
-                errorMessage = "当前未开播"
+                errorMessage = "当前未开播，可点下方网页打开"
                 return
             }
             let qs = try await LiveSiteRouter.playQualities(detail: d)
             guard !Task.isCancelled else { return }
             qualities = qs
             guard let first = qs.first else {
-                errorMessage = "无可用清晰度"
+                errorMessage = "无可用清晰度，可点下方网页打开"
                 return
             }
             selectedId = first.id
@@ -61,6 +70,7 @@ final class LiveRoomViewModel: ObservableObject {
         } catch {
             guard !Task.isCancelled else { return }
             errorMessage = error.localizedDescription
+            statusText = "加载失败"
         }
     }
 
@@ -71,35 +81,78 @@ final class LiveRoomViewModel: ObservableObject {
 
     private func play(quality: LivePlayQuality) async {
         guard let detail else { return }
+        statusText = "拉取线路 \(quality.name)…"
         do {
             let result = try await LiveSiteRouter.playURLs(detail: detail, quality: quality)
             guard !Task.isCancelled else { return }
-            let ordered = result.urls.filter { URL(string: $0) != nil }.sorted { a, b in
+
+            // Prefer HLS for AVPlayer stability; keep others as fallback.
+            var candidates = result.urls.filter { URL(string: $0) != nil }
+            candidates.sort { a, b in
                 let am = a.contains(".m3u8")
                 let bm = b.contains(".m3u8")
                 if am != bm { return am && !bm }
+                // Prefer non-mcdn
+                let amd = a.contains("mcdn")
+                let bmd = b.contains("mcdn")
+                if amd != bmd { return !amd && bmd }
                 return false
             }
-            guard let first = ordered.first, let url = URL(string: first) else {
-                errorMessage = "无可用播放地址"
+            guard !candidates.isEmpty else {
+                errorMessage = "无可用播放地址，可点下方网页打开"
+                statusText = "无地址"
                 return
             }
-            let asset = AVURLAsset(url: url, options: [
-                "AVURLAssetHTTPHeaderFieldsKey": result.headers
-            ])
-            let item = AVPlayerItem(asset: asset)
-            let p = AVPlayer(playerItem: item)
-            player?.pause()
-            player?.replaceCurrentItem(with: nil)
-            player = p
-            p.play()
-            errorMessage = nil
+
+            var lastError: String?
+            for urlString in candidates.prefix(4) {
+                guard let url = URL(string: urlString) else { continue }
+                statusText = "尝试播放…"
+                let ok = await startPlayer(url: url, headers: result.headers)
+                if ok {
+                    lastPlayURL = urlString
+                    errorMessage = nil
+                    statusText = "播放中 · \(quality.name)"
+                    return
+                }
+                lastError = "线路失败"
+            }
+            errorMessage = lastError ?? "播放失败，可点下方网页打开"
+            statusText = "播放失败"
+            player = nil
         } catch is CancellationError {
             return
         } catch {
             guard !Task.isCancelled else { return }
             errorMessage = error.localizedDescription
+            statusText = "拉流失败"
         }
+    }
+
+    /// Returns true if item seems ready (or at least was created without immediate fail).
+    private func startPlayer(url: URL, headers: [String: String]) async -> Bool {
+        let asset = AVURLAsset(url: url, options: [
+            "AVURLAssetHTTPHeaderFieldsKey": headers
+        ])
+        // Soft check load — don't block forever.
+        let playable: Bool = await withCheckedContinuation { cont in
+            asset.loadValuesAsynchronously(forKeys: ["playable", "tracks"]) {
+                var err: NSError?
+                let status = asset.statusOfValue(forKey: "playable", error: &err)
+                cont.resume(returning: status == .loaded || status == .unknown)
+            }
+        }
+        if !playable {
+            return false
+        }
+        let item = AVPlayerItem(asset: asset)
+        let p = AVPlayer(playerItem: item)
+        p.automaticallyWaitsToMinimizeStalling = true
+        player?.pause()
+        player?.replaceCurrentItem(with: nil)
+        player = p
+        p.play()
+        return true
     }
 
     var webFallback: String {
@@ -129,22 +182,34 @@ struct LiveRoomView: View {
     var body: some View {
         VStack(spacing: 0) {
             playerArea
-                .frame(height: 240)
+                .frame(minHeight: 220, maxHeight: 280)
                 .background(Color.black)
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 14) {
                     infoArea
                     qualityPicker
+
+                    Text(vm.statusText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
                     if let errorMessage = vm.errorMessage {
                         Text(errorMessage)
                             .font(.footnote)
                             .foregroundStyle(.red)
+                        Button("重试原生播放") { vm.retry() }
+                            .buttonStyle(.bordered)
                     }
+
                     if let url = URL(string: vm.webFallback),
                        url.scheme == "http" || url.scheme == "https" {
-                        Link("网页打开（备用）", destination: url)
-                            .font(.footnote)
+                        Link(destination: url) {
+                            Label("网页打开（备用）", systemImage: "safari")
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                        }
+                        .buttonStyle(.borderedProminent)
                     }
                 }
                 .padding()
@@ -164,14 +229,19 @@ struct LiveRoomView: View {
                 .accessibilityLabel(isFollowed ? "取消关注" : "关注")
             }
         }
-        .onAppear { vm.start() }
-        .onDisappear { vm.stop() }
+        .task {
+            // Prefer .task over onAppear — tied to view lifetime, more reliable in sheets.
+            vm.start()
+        }
+        .onDisappear {
+            vm.stop()
+        }
     }
 
     private var navTitle: String {
         if let name = vm.detail?.userName, !name.isEmpty { return name }
         if !room.userName.isEmpty { return room.userName }
-        return "直播间"
+        return "直播间 \(room.roomId)"
     }
 
     private var isFollowed: Bool {
@@ -201,18 +271,25 @@ struct LiveRoomView: View {
         ZStack {
             Color.black
             if let player = vm.player {
-                LivePlayerLayerView(player: player)
+                // VideoPlayer is more reliable than raw layer for HLS on device.
+                VideoPlayer(player: player)
             } else if vm.isLoading {
-                ProgressView().tint(.white)
+                VStack(spacing: 10) {
+                    ProgressView().tint(.white)
+                    Text(vm.statusText)
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.85))
+                }
             } else {
                 VStack(spacing: 8) {
                     Image(systemName: "play.slash")
+                        .font(.title)
                         .foregroundStyle(.white.opacity(0.7))
-                    if vm.errorMessage != nil {
-                        Text("无法播放")
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.7))
-                    }
+                    Text(vm.errorMessage ?? "暂无画面")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.75))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
                 }
             }
         }
@@ -266,42 +343,6 @@ struct LiveRoomView: View {
                     }
                 }
             }
-        }
-    }
-}
-
-// MARK: - AVPlayerLayer host
-
-struct LivePlayerLayerView: UIViewRepresentable {
-    let player: AVPlayer
-
-    func makeUIView(context: Context) -> PlayerContainerView {
-        let v = PlayerContainerView()
-        v.backgroundColor = .black
-        v.playerLayer.player = player
-        v.playerLayer.videoGravity = .resizeAspect
-        return v
-    }
-
-    func updateUIView(_ uiView: PlayerContainerView, context: Context) {
-        if uiView.playerLayer.player !== player {
-            uiView.playerLayer.player = player
-        }
-    }
-
-    static func dismantleUIView(_ uiView: PlayerContainerView, coordinator: ()) {
-        uiView.playerLayer.player = nil
-    }
-
-    final class PlayerContainerView: UIView {
-        override class var layerClass: AnyClass { AVPlayerLayer.self }
-        var playerLayer: AVPlayerLayer {
-            (layer as? AVPlayerLayer) ?? AVPlayerLayer()
-        }
-
-        override func layoutSubviews() {
-            super.layoutSubviews()
-            playerLayer.frame = bounds
         }
     }
 }

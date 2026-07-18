@@ -47,6 +47,10 @@ final class AppSettings: ObservableObject {
     @Published var mailDefaultEmail: String {
         didSet { UserDefaults.standard.set(mailDefaultEmail, forKey: Keys.mailDefaultEmail) }
     }
+    /// Optional extra mailboxes for external mode (default email is always first).
+    @Published var mailFavoriteEmails: [String] {
+        didSet { UserDefaults.standard.set(mailFavoriteEmails, forKey: Keys.mailFavoriteEmails) }
+    }
 
     @Published var ytBaseURL: String {
         didSet { UserDefaults.standard.set(ytBaseURL, forKey: Keys.ytBaseURL) }
@@ -91,6 +95,7 @@ final class AppSettings: ObservableObject {
         static let mailExternalAPIKey = "mailExternalAPIKey"
         static let mailUseExternalAPI = "mailUseExternalAPI"
         static let mailDefaultEmail = "mailDefaultEmail"
+        static let mailFavoriteEmails = "mailFavoriteEmails"
         static let ytBaseURL = "ytBaseURL"
         static let ytUsername = "ytUsername"
         static let ytPassword = "ytPassword"
@@ -144,6 +149,7 @@ final class AppSettings: ObservableObject {
         mailExternalAPIKey = KeychainStore.get(Keys.mailExternalAPIKey) ?? ""
         mailUseExternalAPI = defaults.object(forKey: Keys.mailUseExternalAPI) as? Bool ?? false
         mailDefaultEmail = defaults.string(forKey: Keys.mailDefaultEmail) ?? ""
+        mailFavoriteEmails = defaults.stringArray(forKey: Keys.mailFavoriteEmails) ?? []
         ytBaseURL = defaults.string(forKey: Keys.ytBaseURL) ?? "https://yt.996616.xyz"
         ytUsername = defaults.string(forKey: Keys.ytUsername) ?? "admin"
         ytPassword = KeychainStore.get(Keys.ytPassword) ?? ""
@@ -159,6 +165,7 @@ final class AppSettings: ObservableObject {
 
     var isMailConfigured: Bool {
         if mailUseExternalAPI {
+            // External path needs X-API-Key **and** a mailbox (list/detail require `email` query).
             return !mailExternalAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 && !mailDefaultEmail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         }
@@ -167,5 +174,74 @@ final class AppSettings: ObservableObject {
 
     var isYTConfigured: Bool {
         !ytUsername.isEmpty && !ytPassword.isEmpty
+    }
+
+    // MARK: - External mailbox helpers
+
+    /// Normalized default email (trimmed); empty if unset.
+    var normalizedMailDefaultEmail: String {
+        mailDefaultEmail.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Favorite emails, trimmed, non-empty, de-duplicated (case-insensitive), excluding default.
+    var normalizedMailFavoriteEmails: [String] {
+        let defaultLower = normalizedMailDefaultEmail.lowercased()
+        var seen = Set<String>()
+        if !defaultLower.isEmpty { seen.insert(defaultLower) }
+        var result: [String] = []
+        for raw in mailFavoriteEmails {
+            let email = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !email.isEmpty else { continue }
+            let key = email.lowercased()
+            guard !seen.contains(key) else { continue }
+            seen.insert(key)
+            result.append(email)
+        }
+        return result
+    }
+
+    /// Virtual accounts for external mode: default first, then favorites.
+    var externalMailboxAccounts: [MailAccount] {
+        var accounts: [MailAccount] = []
+        let defaultEmail = normalizedMailDefaultEmail
+        if !defaultEmail.isEmpty {
+            accounts.append(MailAccount(
+                email: defaultEmail,
+                status: "external",
+                provider: "external",
+                remark: "默认邮箱"
+            ))
+        }
+        for email in normalizedMailFavoriteEmails {
+            accounts.append(MailAccount(
+                email: email,
+                status: "external",
+                provider: "external",
+                remark: "收藏"
+            ))
+        }
+        return accounts
+    }
+
+    /// Append a favorite if valid and not already present / equal to default.
+    @discardableResult
+    func addMailFavoriteEmail(_ raw: String) -> Bool {
+        let email = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !email.isEmpty else { return false }
+        let key = email.lowercased()
+        if key == normalizedMailDefaultEmail.lowercased() { return false }
+        let existing = mailFavoriteEmails.map {
+            $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        }
+        if existing.contains(key) { return false }
+        mailFavoriteEmails = mailFavoriteEmails + [email]
+        return true
+    }
+
+    func removeMailFavoriteEmail(_ email: String) {
+        let key = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        mailFavoriteEmails = mailFavoriteEmails.filter {
+            $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() != key
+        }
     }
 }

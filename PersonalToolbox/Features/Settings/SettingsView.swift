@@ -5,6 +5,7 @@ struct SettingsView: View {
     @EnvironmentObject private var settings: AppSettings
     @StateObject private var viewModel = SettingsViewModel()
     @State private var confirmLogout = false
+    @State private var favoriteDraft = ""
 
     var body: some View {
         NavigationStack {
@@ -127,6 +128,44 @@ struct SettingsView: View {
                     .autocorrectionDisabled()
                     .keyboardType(.emailAddress)
                     .textContentType(.emailAddress)
+
+                // Favorite mailboxes (optional; shown as virtual accounts on Mail tab).
+                HStack {
+                    TextField("添加收藏邮箱", text: $favoriteDraft)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .keyboardType(.emailAddress)
+                        .textContentType(.emailAddress)
+                        .submitLabel(.done)
+                        .onSubmit { addFavoriteEmail() }
+                    Button {
+                        addFavoriteEmail()
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                    }
+                    .disabled(favoriteDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .accessibilityLabel("添加收藏邮箱")
+                }
+
+                ForEach(settings.normalizedMailFavoriteEmails, id: \.self) { email in
+                    HStack {
+                        Image(systemName: "star.fill")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(email)
+                            .lineLimit(1)
+                        Spacer(minLength: 8)
+                        Button(role: .destructive) {
+                            settings.removeMailFavoriteEmail(email)
+                            Haptics.light()
+                        } label: {
+                            Image(systemName: "minus.circle.fill")
+                                .foregroundStyle(.red.opacity(0.85))
+                        }
+                        .buttonStyle(.borderless)
+                        .accessibilityLabel("移除 \(email)")
+                    }
+                }
             } else {
                 SecureField("管理密码", text: $settings.mailPassword)
                     .textInputAutocapitalization(.never)
@@ -149,10 +188,20 @@ struct SettingsView: View {
         } footer: {
             Text(
                 settings.mailUseExternalAPI
-                    ? "外部模式走 X-API-Key，探测 /api/external/health；默认邮箱为必填。"
+                    ? "外部模式走 X-API-Key，列表/详情均带 email；默认邮箱必填，收藏邮箱可选。探测 /api/external/health。"
                     : "会话登录：探测 ensureSession 并列出账号。Cookie 存于 App 隔离存储。"
             )
         }
+    }
+
+    private func addFavoriteEmail() {
+        let draft = favoriteDraft
+        guard settings.addMailFavoriteEmail(draft) else {
+            Haptics.error()
+            return
+        }
+        favoriteDraft = ""
+        Haptics.light()
     }
 
     // MARK: - yt-dlp

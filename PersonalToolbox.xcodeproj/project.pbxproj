@@ -6,6 +6,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		000000000000000000000551 /* LiveDanmakuService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000552 /* LiveDanmakuService.swift */; };
 		000000000000000000000541 /* HuyaLiveService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000540 /* HuyaLiveService.swift */; };
 		000000000000000000000543 /* DouyuLiveService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000542 /* DouyuLiveService.swift */; };
 		000000000000000000000545 /* DouyinLiveService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000544 /* DouyinLiveService.swift */; };
@@ -110,6 +111,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		000000000000000000000552 /* LiveDanmakuService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveDanmakuService.swift; sourceTree = "<group>"; };
 		000000000000000000000540 /* HuyaLiveService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HuyaLiveService.swift; sourceTree = "<group>"; };
 		000000000000000000000542 /* DouyuLiveService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DouyuLiveService.swift; sourceTree = "<group>"; };
 		000000000000000000000544 /* DouyinLiveService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DouyinLiveService.swift; sourceTree = "<group>"; };
@@ -302,6 +304,7 @@
 				000000000000000000000546 /* KuaishouLiveService.swift */,
 				000000000000000000000548 /* LiveJSEngine.swift */,
 				00000000000000000000054A /* LiveCryptoMD5.swift */,
+				000000000000000000000552 /* LiveDanmakuService.swift */,
 				000000000000000000000508 /* PasswordGenerator.swift */,
 				00000000000000000000050A /* ClipboardStore.swift */,
 				00000000000000000000050C /* ServiceHealthService.swift */,
@@ -637,6 +640,7 @@
 				000000000000000000000547 /* KuaishouLiveService.swift in Sources */,
 				000000000000000000000549 /* LiveJSEngine.swift in Sources */,
 				00000000000000000000054B /* LiveCryptoMD5.swift in Sources */,
+				000000000000000000000551 /* LiveDanmakuService.swift in Sources */,
 				000000000000000000000533 /* LiveHomeView.swift in Sources */,
 				00000000000000000000052C /* ShareHandoff.swift in Sources */,
 				000000000000000000000505 /* LocalJSONStore.swift in Sources */,
@@ -790,7 +794,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				CODE_SIGN_ENTITLEMENTS = PersonalToolbox/PersonalToolbox.entitlements;
@@ -798,7 +802,7 @@
 				INFOPLIST_FILE = PersonalToolbox/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = ( "$(inherited)", "@executable_path/Frameworks", );
-				MARKETING_VERSION = 1.5;
+				MARKETING_VERSION = 1.6;
 				PRODUCT_BUNDLE_IDENTIFIER = app.parsnip6345.lake8262;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "00008150-001A088E148B401C6F01CD";
@@ -816,7 +820,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				CODE_SIGN_ENTITLEMENTS = PersonalToolbox/PersonalToolbox.entitlements;
@@ -824,7 +828,7 @@
 				INFOPLIST_FILE = PersonalToolbox/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = ( "$(inherited)", "@executable_path/Frameworks", );
-				MARKETING_VERSION = 1.5;
+				MARKETING_VERSION = 1.6;
 				PRODUCT_BUNDLE_IDENTIFIER = app.parsnip6345.lake8262;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "00008150-001A088E148B401C6F01CD";
@@ -842,7 +846,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
@@ -852,7 +856,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.5;
+				MARKETING_VERSION = 1.6;
 				PRODUCT_BUNDLE_IDENTIFIER = app.parsnip6345.lake8262.share;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -867,7 +871,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
@@ -877,7 +881,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.5;
+				MARKETING_VERSION = 1.6;
 				PRODUCT_BUNDLE_IDENTIFIER = app.parsnip6345.lake8262.share;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;

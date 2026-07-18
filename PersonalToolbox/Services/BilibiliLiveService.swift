@@ -22,6 +22,45 @@ actor BilibiliLiveService {
 
     // MARK: - Public
 
+    func getCategories() async throws -> [LiveCategory] {
+        let json = try await getJSON(
+            "https://api.live.bilibili.com/room/v1/Area/getList",
+            query: ["need_entrance": "1", "parent_id": "0"],
+            signed: false
+        )
+        let data = json["data"] as? [[String: Any]] ?? []
+        return data.map { item in
+            let parentId = "\(item["id"] ?? "")"
+            let subs = (item["list"] as? [[String: Any]] ?? []).map { sub in
+                var pic = "\(sub["pic"] ?? "")"
+                if !pic.isEmpty, !pic.contains("@") { pic += "@100w.png" }
+                return LiveSubCategory(
+                    id: "\(sub["id"] ?? "")",
+                    name: "\(sub["name"] ?? "")",
+                    parentId: "\(sub["parent_id"] ?? parentId)",
+                    pic: pic
+                )
+            }
+            return LiveCategory(id: parentId, name: "\(item["name"] ?? "")", children: subs)
+        }
+    }
+
+    func getCategoryRooms(category: LiveSubCategory, page: Int = 1) async throws -> [LiveRoomItem] {
+        let json = try await getJSON(
+            "https://api.live.bilibili.com/room/v1/Area/getRoomList",
+            query: [
+                "platform": "web",
+                "parent_area_id": category.parentId,
+                "area_id": category.id,
+                "page": "\(page)",
+                "page_size": "30"
+            ],
+            signed: false
+        )
+        let data = json["data"] as? [[String: Any]] ?? []
+        return data.compactMap { mapRoom($0) }
+    }
+
     func getRecommendRooms(page: Int = 1) async throws -> [LiveRoomItem] {
         let base = "https://api.live.bilibili.com/xlive/web-interface/v1/second/getListByArea"
         var params = [
@@ -80,6 +119,10 @@ actor BilibiliLiveService {
         let anchor = (data["anchor_info"] as? [String: Any])?["base_info"] as? [String: Any]
         var face = "\(anchor?["face"] ?? "")"
         if !face.isEmpty, !face.contains("@") { face += "@100w.jpg" }
+        var danmakuJSON = "{}"
+        if let dm = try? await getDanmuInfo(roomId: realId) {
+            danmakuJSON = LiveJSON.encode(dm)
+        }
         return LiveRoomDetail(
             platform: .bilibili,
             roomId: realId,
@@ -90,8 +133,32 @@ actor BilibiliLiveService {
             online: Int("\(room["online"] ?? 0)") ?? 0,
             isLive: (Int("\(room["live_status"] ?? 0)") ?? 0) == 1,
             webURL: "https://live.bilibili.com/\(roomId)",
-            introduction: "\(room["description"] ?? "")"
+            introduction: "\(room["description"] ?? "")",
+            danmakuJSON: danmakuJSON
         )
+    }
+
+    /// Token + host for live chat WebSocket.
+    func getDanmuInfo(roomId: String) async throws -> [String: Any] {
+        var params = ["id": roomId]
+        params = try await wbiSign(params)
+        let json = try await getJSON(
+            "https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuInfo",
+            query: params
+        )
+        guard let data = json["data"] as? [String: Any] else {
+            throw NetworkError.message("弹幕服务器信息不可用")
+        }
+        let hosts = (data["host_list"] as? [[String: Any]] ?? []).compactMap { $0["host"] as? String }
+        if buvid3.isEmpty { await refreshBuvid() }
+        return [
+            "roomId": Int(roomId) ?? 0,
+            "token": "\(data["token"] ?? "")",
+            "serverHost": hosts.first ?? "broadcastlv.chat.bilibili.com",
+            "buvid": buvid3,
+            "uid": 0,
+            "cookie": "buvid3=\(buvid3);buvid4=\(buvid4);"
+        ]
     }
 
     func getPlayQualities(roomId: String) async throws -> [LivePlayQuality] {

@@ -10,6 +10,45 @@ actor DouyuLiveService {
 
     // MARK: - Public
 
+    func getCategories() async throws -> [LiveCategory] {
+        let json = try await getJSON("https://m.douyu.com/api/cate/list")
+        guard let data = LiveJSON.object(json["data"]) else { return [] }
+        let cate1 = LiveJSON.array(data["cate1Info"]) ?? []
+        let cate2 = LiveJSON.array(data["cate2Info"]) ?? []
+        return cate1.compactMap { item -> LiveCategory? in
+            let id = LiveJSON.string(item["cate1Id"])
+            guard !id.isEmpty else { return nil }
+            let subs = cate2.compactMap { sub -> LiveSubCategory? in
+                guard LiveJSON.string(sub["cate1Id"]) == id else { return nil }
+                return LiveSubCategory(
+                    id: LiveJSON.string(sub["cate2Id"]),
+                    name: LiveJSON.string(sub["cate2Name"]),
+                    parentId: id,
+                    pic: LiveJSON.string(sub["icon"])
+                )
+            }
+            return LiveCategory(id: id, name: LiveJSON.string(item["cate1Name"]), children: subs)
+        }.sorted { (Int($0.id) ?? 0) < (Int($1.id) ?? 0) }
+    }
+
+    func getCategoryRooms(category: LiveSubCategory, page: Int = 1) async throws -> [LiveRoomItem] {
+        let json = try await getJSON(
+            "https://www.douyu.com/gapi/rkc/directory/mixList/2_\(category.id)/\(page)"
+        )
+        let rl = LiveJSON.array(LiveJSON.object(json["data"])?["rl"]) ?? []
+        return rl.compactMap { item in
+            guard LiveJSON.int(item["type"]) == 1 else { return nil }
+            return LiveRoomItem(
+                platform: .douyu,
+                roomId: LiveJSON.string(item["rid"]),
+                title: LiveJSON.string(item["rn"]),
+                cover: LiveJSON.string(item["rs16"]),
+                userName: LiveJSON.string(item["nn"]),
+                online: LiveJSON.int(item["ol"])
+            )
+        }
+    }
+
     func getRecommendRooms(page: Int = 1) async throws -> [LiveRoomItem] {
         let json = try await getJSON("https://www.douyu.com/japi/weblist/apinc/allpage/6/\(page)")
         let rl = LiveJSON.array(LiveJSON.object(json["data"])?["rl"]) ?? []
@@ -82,7 +121,8 @@ actor DouyuLiveService {
             isLive: isLive,
             webURL: "https://www.douyu.com/\(rid)",
             introduction: LiveJSON.string(room["show_details"]),
-            playContextJSON: LiveJSON.encode(["sign": sign, "roomId": rid])
+            playContextJSON: LiveJSON.encode(["sign": sign, "roomId": rid]),
+            danmakuJSON: LiveJSON.encode(["roomId": rid])
         )
     }
 

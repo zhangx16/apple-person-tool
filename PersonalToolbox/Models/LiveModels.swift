@@ -66,6 +66,28 @@ struct LiveRoomDetail: Hashable {
     var introduction: String
     /// Opaque JSON for play resolution (signed args / lines / stream_url).
     var playContextJSON: String = "{}"
+    /// Opaque JSON for danmaku connection (token / host / sid).
+    var danmakuJSON: String = "{}"
+}
+
+struct LiveCategory: Identifiable, Hashable {
+    var id: String
+    var name: String
+    var children: [LiveSubCategory]
+}
+
+struct LiveSubCategory: Identifiable, Hashable {
+    var id: String
+    var name: String
+    var parentId: String
+    var pic: String = ""
+}
+
+struct LiveChatMessage: Identifiable, Hashable {
+    var id: String = UUID().uuidString
+    var userName: String
+    var text: String
+    var colorHex: UInt32 = 0xFFFFFF
 }
 
 struct LivePlayQuality: Identifiable, Hashable {
@@ -81,6 +103,24 @@ struct LivePlayQuality: Identifiable, Hashable {
     var cdns: [String] = []
     /// Douyu signed form body (without cdn/rate).
     var formBody: String? = nil
+
+    init(
+        id: String? = nil,
+        name: String,
+        qn: Int,
+        readyURLs: [String] = [],
+        bitRate: Int? = nil,
+        cdns: [String] = [],
+        formBody: String? = nil
+    ) {
+        self.id = id ?? "\(qn)-\(name)"
+        self.name = name
+        self.qn = qn
+        self.readyURLs = readyURLs
+        self.bitRate = bitRate
+        self.cdns = cdns
+        self.formBody = formBody
+    }
 }
 
 struct LivePlayResult: Hashable {
@@ -142,6 +182,30 @@ enum LiveSiteRouter {
             return try await DouyinLiveService.shared.getPlayURLs(detail: detail, quality: quality)
         case .kuaishou:
             return try await KuaishouLiveService.shared.getPlayURLs(detail: detail, quality: quality)
+        }
+    }
+
+    static func categories(platform: LivePlatform) async throws -> [LiveCategory] {
+        switch platform {
+        case .bilibili: return try await BilibiliLiveService.shared.getCategories()
+        case .huya: return try await HuyaLiveService.shared.getCategories()
+        case .douyu: return try await DouyuLiveService.shared.getCategories()
+        case .douyin: return try await DouyinLiveService.shared.getCategories()
+        case .kuaishou: return try await KuaishouLiveService.shared.getCategories()
+        }
+    }
+
+    static func categoryRooms(
+        platform: LivePlatform,
+        category: LiveSubCategory,
+        page: Int = 1
+    ) async throws -> [LiveRoomItem] {
+        switch platform {
+        case .bilibili: return try await BilibiliLiveService.shared.getCategoryRooms(category: category, page: page)
+        case .huya: return try await HuyaLiveService.shared.getCategoryRooms(category: category, page: page)
+        case .douyu: return try await DouyuLiveService.shared.getCategoryRooms(category: category, page: page)
+        case .douyin: return try await DouyinLiveService.shared.getCategoryRooms(category: category, page: page)
+        case .kuaishou: return try await KuaishouLiveService.shared.getCategoryRooms(category: category, page: page)
         }
     }
 }

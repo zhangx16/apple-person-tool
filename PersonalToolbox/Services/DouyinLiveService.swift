@@ -12,7 +12,43 @@ actor DouyinLiveService {
 
     // MARK: - Public
 
+    func getCategories() async throws -> [LiveCategory] {
+        // Static popular partitions (HTML scrape is brittle); IDs from SimpleLive homepage.
+        let presets: [(String, String, String)] = [
+            ("720,1", "推荐", "1"),
+            ("2,1", "游戏", "1"),
+            ("4,1", "娱乐", "1"),
+            ("1,1", "聊天", "1"),
+            ("9,1", "语音", "1"),
+            ("6,1", "购物", "1")
+        ]
+        // Try scrape homepage for richer list
+        if let scraped = try? await scrapeCategories(), !scraped.isEmpty {
+            return scraped
+        }
+        return [
+            LiveCategory(
+                id: "root",
+                name: "分区",
+                children: presets.map {
+                    LiveSubCategory(id: $0.0, name: $0.1, parentId: $0.2)
+                }
+            )
+        ]
+    }
+
+    func getCategoryRooms(category: LiveSubCategory, page: Int = 1) async throws -> [LiveRoomItem] {
+        let parts = category.id.split(separator: ",").map(String.init)
+        let partition = parts.first ?? "720"
+        let partitionType = parts.count > 1 ? parts[1] : "1"
+        return try await roomsByPartition(partition: partition, type: partitionType, page: page)
+    }
+
     func getRecommendRooms(page: Int = 1) async throws -> [LiveRoomItem] {
+        try await roomsByPartition(partition: "720", type: "1", page: page)
+    }
+
+    private func roomsByPartition(partition: String, type: String, page: Int) async throws -> [LiveRoomItem] {
         let offset = (page - 1) * 15
         var comps = URLComponents(string: "https://live.douyin.com/webcast/web/partition/detail/room/v2/")!
         comps.queryItems = [
@@ -32,8 +68,8 @@ actor DouyinLiveService {
             URLQueryItem(name: "browser_online", value: "true"),
             URLQueryItem(name: "count", value: "15"),
             URLQueryItem(name: "offset", value: "\(offset)"),
-            URLQueryItem(name: "partition", value: "720"),
-            URLQueryItem(name: "partition_type", value: "1"),
+            URLQueryItem(name: "partition", value: partition),
+            URLQueryItem(name: "partition_type", value: type),
             URLQueryItem(name: "req_from", value: "2")
         ]
         guard let base = comps.url?.absoluteString else { throw NetworkError.invalidURL }
@@ -55,6 +91,18 @@ actor DouyinLiveService {
                 online: LiveJSON.int(stats?["display_value"])
             )
         }
+    }
+
+    private func scrapeCategories() async throws -> [LiveCategory] {
+        let html = try await getText(
+            "https://live.douyin.com/",
+            headers: await requestHeaders()
+        )
+        // Best-effort: look for categoryData JSON fragment
+        guard let range = html.range(of: "categoryData") else { return [] }
+        // Too fragile for full parse; return empty to use presets
+        _ = range
+        return []
     }
 
     func searchRooms(keyword: String, page: Int = 1) async throws -> [LiveRoomItem] {

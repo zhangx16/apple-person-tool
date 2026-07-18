@@ -2,7 +2,7 @@ import SwiftUI
 import AVKit
 import AVFoundation
 
-/// Live tab — multi-site shell ported from SimpleLive v1.12.6 (+ Kuaishou mobile).
+/// Live tab — multi-site shell from SimpleLive v1.12.6 (+ Kuaishou live_api).
 struct LiveHomeView: View {
     @State private var platform: LivePlatform = .bilibili
     @State private var rooms: [LiveRoomItem] = []
@@ -12,10 +12,24 @@ struct LiveHomeView: View {
     @State private var path = NavigationPath()
     @State private var emptyHint: String?
 
+    @State private var categories: [LiveCategory] = []
+    @State private var selectedParentId: String?
+    @State private var selectedSub: LiveSubCategory?
+    @State private var browseMode: BrowseMode = .recommend
+
+    enum BrowseMode: String, CaseIterable {
+        case recommend = "推荐"
+        case category = "分区"
+    }
+
     var body: some View {
         NavigationStack(path: $path) {
             VStack(spacing: 0) {
                 platformPicker
+                modePicker
+                if browseMode == .category {
+                    categoryBars
+                }
                 content
             }
             .background(AppleTheme.canvas)
@@ -41,17 +55,29 @@ struct LiveHomeView: View {
             .task { await reload() }
             .onChange(of: platform) { _, _ in
                 rooms = []
+                categories = []
+                selectedParentId = nil
+                selectedSub = nil
                 errorMessage = nil
                 emptyHint = nil
                 searchText = ""
+                browseMode = .recommend
                 Task { await reload() }
+            }
+            .onChange(of: browseMode) { _, mode in
+                Task {
+                    if mode == .category {
+                        await loadCategoriesIfNeeded()
+                    }
+                    await reload()
+                }
             }
         }
     }
 
     private var searchPrompt: String {
         switch platform {
-        case .kuaishou: return "输入快手主播 ID / 房间号"
+        case .kuaishou: return "搜索主播 / 标题 / 房间号"
         default: return "搜索直播间 / 主播"
         }
     }
@@ -82,6 +108,75 @@ struct LiveHomeView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
+        }
+    }
+
+    private var modePicker: some View {
+        Picker("模式", selection: $browseMode) {
+            ForEach(BrowseMode.allCases, id: \.self) { m in
+                Text(m.rawValue).tag(m)
+            }
+        }
+        .pickerStyle(.segmented)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
+    }
+
+    @ViewBuilder
+    private var categoryBars: some View {
+        if categories.isEmpty {
+            if isLoading {
+                ProgressView().padding(.bottom, 8)
+            }
+        } else {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(categories) { cat in
+                        Button {
+                            selectedParentId = cat.id
+                            selectedSub = cat.children.first
+                            Task { await reload() }
+                        } label: {
+                            Text(cat.name)
+                                .font(.caption.weight(.semibold))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .foregroundStyle(selectedParentId == cat.id ? Color.white : Color.primary)
+                                .background(
+                                    selectedParentId == cat.id ? Color.accentColor : Color(.tertiarySystemFill),
+                                    in: Capsule()
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 16)
+            }
+            if let parent = categories.first(where: { $0.id == selectedParentId }) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(parent.children) { sub in
+                            Button {
+                                selectedSub = sub
+                                Task { await reload() }
+                            } label: {
+                                Text(sub.name)
+                                    .font(.caption2.weight(.semibold))
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 5)
+                                    .foregroundStyle(selectedSub?.id == sub.id ? Color.white : Color.primary)
+                                    .background(
+                                        selectedSub?.id == sub.id ? Color.orange : Color(.secondarySystemFill),
+                                        in: Capsule()
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                }
+            }
         }
     }
 
@@ -125,9 +220,9 @@ struct LiveHomeView: View {
     private var defaultEmptyHint: String {
         switch platform {
         case .kuaishou:
-            return "快手推荐列表受限，请在上方搜索框输入主播 ID（如 KPL704668133）后回车。"
+            return "暂无数据。试试「分区」或搜索主播 ID。"
         case .douyin:
-            return "暂无数据。可搜索主播，或稍后下拉刷新（可能触发风控）。"
+            return "暂无数据。可切换分区或搜索（可能触发风控）。"
         default:
             return "暂无直播间"
         }
@@ -163,6 +258,20 @@ struct LiveHomeView: View {
         .padding(.vertical, 4)
     }
 
+    private func loadCategoriesIfNeeded() async {
+        guard categories.isEmpty else { return }
+        do {
+            let cats = try await LiveSiteRouter.categories(platform: platform)
+            categories = cats
+            if selectedParentId == nil {
+                selectedParentId = cats.first?.id
+                selectedSub = cats.first?.children.first
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     private func reload() async {
         isLoading = true
         errorMessage = nil
@@ -170,13 +279,21 @@ struct LiveHomeView: View {
         defer { isLoading = false }
         do {
             let kw = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-            if kw.isEmpty {
-                rooms = try await LiveSiteRouter.recommend(platform: platform, page: 1)
-                if rooms.isEmpty {
-                    emptyHint = defaultEmptyHint
+            if !kw.isEmpty {
+                rooms = try await LiveSiteRouter.search(platform: platform, keyword: kw, page: 1)
+            } else if browseMode == .category {
+                await loadCategoriesIfNeeded()
+                if let sub = selectedSub {
+                    rooms = try await LiveSiteRouter.categoryRooms(platform: platform, category: sub, page: 1)
+                } else {
+                    rooms = []
+                    emptyHint = "请选择分区"
                 }
             } else {
-                rooms = try await LiveSiteRouter.search(platform: platform, keyword: kw, page: 1)
+                rooms = try await LiveSiteRouter.recommend(platform: platform, page: 1)
+            }
+            if rooms.isEmpty, errorMessage == nil {
+                emptyHint = defaultEmptyHint
             }
         } catch {
             errorMessage = error.localizedDescription
@@ -201,11 +318,16 @@ struct LiveRoomView: View {
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var player: AVPlayer?
+    @StateObject private var danmaku = LiveDanmakuService()
+    @State private var showDanmaku = true
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 playerArea
+                if showDanmaku {
+                    danmakuPanel
+                }
                 infoArea
                 qualityPicker
                 if let errorMessage {
@@ -221,9 +343,22 @@ struct LiveRoomView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                if let url = URL(string: detail?.webURL ?? webFallback) {
-                    Link(destination: url) {
-                        Image(systemName: "safari")
+                HStack(spacing: 12) {
+                    Button {
+                        showDanmaku.toggle()
+                        danmaku.isEnabled = showDanmaku
+                        if showDanmaku, let d = detail {
+                            danmaku.start(platform: room.platform, danmakuJSON: d.danmakuJSON, roomId: d.roomId)
+                        } else {
+                            danmaku.stop()
+                        }
+                    } label: {
+                        Image(systemName: showDanmaku ? "text.bubble.fill" : "text.bubble")
+                    }
+                    if let url = URL(string: detail?.webURL ?? webFallback) {
+                        Link(destination: url) {
+                            Image(systemName: "safari")
+                        }
                     }
                 }
             }
@@ -232,6 +367,7 @@ struct LiveRoomView: View {
         .onDisappear {
             player?.pause()
             player = nil
+            danmaku.stop()
         }
     }
 
@@ -260,6 +396,46 @@ struct LiveRoomView: View {
             } else {
                 Image(systemName: "play.slash")
                     .foregroundStyle(.white.opacity(0.7))
+            }
+        }
+    }
+
+    private var danmakuPanel: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text("弹幕")
+                    .font(.caption.weight(.semibold))
+                Spacer()
+                Text(danmaku.statusText)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 4) {
+                        ForEach(danmaku.messages) { msg in
+                            HStack(alignment: .top, spacing: 4) {
+                                Text(msg.userName)
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(Color(hex: msg.colorHex))
+                                Text(msg.text)
+                                    .font(.caption2)
+                                    .foregroundStyle(.primary)
+                            }
+                            .id(msg.id)
+                        }
+                    }
+                }
+                .frame(maxHeight: 140)
+                .padding(8)
+                .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .onChange(of: danmaku.messages.count) { _, _ in
+                    if let last = danmaku.messages.last {
+                        withAnimation {
+                            proxy.scrollTo(last.id, anchor: .bottom)
+                        }
+                    }
+                }
             }
         }
     }
@@ -334,6 +510,9 @@ struct LiveRoomView: View {
             }
             selectedId = first.id
             await play(quality: first)
+            if showDanmaku {
+                danmaku.start(platform: room.platform, danmakuJSON: d.danmakuJSON, roomId: d.roomId)
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -343,7 +522,6 @@ struct LiveRoomView: View {
         guard let detail else { return }
         do {
             let result = try await LiveSiteRouter.playURLs(detail: detail, quality: quality)
-            // Prefer m3u8 for AVPlayer when available
             let ordered = result.urls.sorted { a, b in
                 let am = a.contains(".m3u8")
                 let bm = b.contains(".m3u8")
@@ -385,3 +563,4 @@ struct LiveAVPlayerView: UIViewControllerRepresentable {
         }
     }
 }
+

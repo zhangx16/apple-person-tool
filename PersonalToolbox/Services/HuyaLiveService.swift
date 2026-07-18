@@ -12,6 +12,64 @@ actor HuyaLiveService {
 
     // MARK: - Public
 
+    private var cachedCategories: [LiveCategory] = []
+    private var cachedCategoriesAt: Date?
+
+    func getCategories() async throws -> [LiveCategory] {
+        if let at = cachedCategoriesAt, Date().timeIntervalSince(at) < 900, !cachedCategories.isEmpty {
+            return cachedCategories
+        }
+        let parents: [(String, String)] = [
+            ("1", "网游"), ("2", "单机"), ("8", "娱乐"), ("3", "手游")
+        ]
+        var result: [LiveCategory] = []
+        for (id, name) in parents {
+            let subs = try await getSubCategories(bussType: id)
+            result.append(LiveCategory(id: id, name: name, children: subs))
+        }
+        cachedCategories = result
+        cachedCategoriesAt = Date()
+        return result
+    }
+
+    func getCategoryRooms(category: LiveSubCategory, page: Int = 1) async throws -> [LiveRoomItem] {
+        let json = try await getJSON(
+            "https://www.huya.com/cache.php",
+            query: [
+                "m": "LiveList",
+                "do": "getLiveListByPage",
+                "tagAll": "0",
+                "gameId": category.id,
+                "page": "\(page)"
+            ]
+        )
+        let datas = LiveJSON.array(LiveJSON.object(json["data"])?["datas"]) ?? []
+        return datas.compactMap { mapListItem($0) }
+    }
+
+    private func getSubCategories(bussType: String) async throws -> [LiveSubCategory] {
+        let json = try await getJSON(
+            "https://live.cdn.huya.com/liveconfig/game/bussLive",
+            query: ["bussType": bussType]
+        )
+        let data = LiveJSON.array(json["data"]) ?? []
+        return data.compactMap { item in
+            let gid: String
+            if let map = item["gid"] as? [String: Any] {
+                gid = LiveJSON.string(map["value"]).split(separator: ",").first.map(String.init) ?? ""
+            } else {
+                gid = LiveJSON.string(item["gid"])
+            }
+            guard !gid.isEmpty else { return nil }
+            return LiveSubCategory(
+                id: gid,
+                name: LiveJSON.string(item["gameFullName"]),
+                parentId: bussType,
+                pic: "https://huyaimg.msstatic.com/cdnimage/game/\(gid)-MS.jpg"
+            )
+        }
+    }
+
     func getRecommendRooms(page: Int = 1) async throws -> [LiveRoomItem] {
         let json = try await getJSON(
             "https://www.huya.com/cache.php",

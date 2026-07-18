@@ -81,16 +81,7 @@ jobs:
 
           # Decode provisioning profile (macOS base64 is picky; use Python)
           export PP_PATH
-          python3 - <<'PY'
-import base64, os, pathlib
-raw = os.environ["BUILD_PROVISION_PROFILE_BASE64"].strip().replace("\n", "").replace(" ", "")
-data = base64.b64decode(raw)
-path = pathlib.Path(os.environ["PP_PATH"])
-path.write_bytes(data)
-print(f"Profile decoded bytes={len(data)} path={path}")
-if len(data) < 1000:
-    raise SystemExit("provisioning profile too small / decode failed")
-PY
+          python3 -c 'import base64,os,pathlib; raw=os.environ["BUILD_PROVISION_PROFILE_BASE64"].strip().replace("\n","").replace(" ",""); data=base64.b64decode(raw); p=pathlib.Path(os.environ["PP_PATH"]); p.write_bytes(data); print("Profile decoded bytes=",len(data)); assert len(data)>=1000, "profile too small"'
           echo "Profile size=$(wc -c < "$PP_PATH")"
 
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"

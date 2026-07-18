@@ -1059,37 +1059,12 @@ private struct ClientLinksSheet: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                Section("订阅链接") {
+                Section {
                     ForEach(SublinkClientKind.allCases) { kind in
-                        let url = SublinkURLBuilder.clientURL(
-                            baseURL: baseURL,
-                            subscriptionName: subscriptionName,
-                            client: kind
-                        )
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text(kind.title)
-                                .font(.subheadline.weight(.semibold))
-                            Text(url)
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                                .textSelection(.enabled)
-                            HStack {
-                                Button("复制") {
-                                    onCopy(url, "已复制 \(kind.title) 链接")
-                                }
-                                .buttonStyle(.borderedProminent)
-                                .controlSize(.small)
-                                if let u = URL(string: url) {
-                                    ShareLink(item: u) {
-                                        Label("分享", systemImage: "square.and.arrow.up")
-                                    }
-                                    .buttonStyle(.bordered)
-                                    .controlSize(.small)
-                                }
-                            }
-                        }
-                        .padding(.vertical, 4)
+                        clientLinkRow(kind: kind)
                     }
+                } header: {
+                    Text("订阅链接")
                 } footer: {
                     Text("token 为订阅名的 MD5，与 Web 后台一致。")
                 }
@@ -1102,5 +1077,37 @@ private struct ClientLinksSheet: View {
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private func clientLinkRow(kind: SublinkClientKind) -> some View {
+        let url = SublinkURLBuilder.clientURL(
+            baseURL: baseURL,
+            subscriptionName: subscriptionName,
+            client: kind
+        )
+        VStack(alignment: .leading, spacing: 8) {
+            Text(kind.title)
+                .font(.subheadline.weight(.semibold))
+            Text(url)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .textSelection(.enabled)
+            HStack {
+                Button("复制") {
+                    onCopy(url, "已复制 \(kind.title) 链接")
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                if let shareURL = URL(string: url) {
+                    ShareLink(item: shareURL) {
+                        Label("分享", systemImage: "square.and.arrow.up")
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+            }
+        }
+        .padding(.vertical, 4)
     }
 }

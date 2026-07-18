@@ -434,7 +434,7 @@ struct MonitorHomeView: View {
                         .foregroundStyle(.secondary)
                     Text(user.status ?? "—")
                         .font(.caption2)
-                        .foregroundStyle(user.isActive ? .secondary : .red)
+                        .foregroundStyle(user.isActive ? Color.secondary : Color.red)
                 }
             }
             Spacer()

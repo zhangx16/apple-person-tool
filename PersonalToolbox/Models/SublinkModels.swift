@@ -219,15 +219,12 @@ struct SublinkSub: Decodable, Identifiable, Hashable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case name, config
+        case name, config, id
         case subId = "ID"
-        case Name, Config, id
+        case Name, Config
         case nodeOrder = "NodeOrder"
-        case NodeOrder
         case nodes = "Nodes"
-        case Nodes
         case subLogs = "SubLogs"
-        case SubLogs
     }
 
     init(from decoder: Decoder) throws {
@@ -238,12 +235,9 @@ struct SublinkSub: Decodable, Identifiable, Hashable {
             ?? (try? c.decodeIfPresent(String.self, forKey: .name))
         config = (try? c.decodeIfPresent(String.self, forKey: .Config))
             ?? (try? c.decodeIfPresent(String.self, forKey: .config))
-        nodeOrder = (try? c.decodeIfPresent(String.self, forKey: .NodeOrder))
-            ?? (try? c.decodeIfPresent(String.self, forKey: .nodeOrder))
-        nodes = (try? c.decodeIfPresent([SublinkNode].self, forKey: .Nodes))
-            ?? (try? c.decodeIfPresent([SublinkNode].self, forKey: .nodes))
-        subLogs = (try? c.decodeIfPresent([SublinkSubLog].self, forKey: .SubLogs))
-            ?? (try? c.decodeIfPresent([SublinkSubLog].self, forKey: .subLogs))
+        nodeOrder = try? c.decodeIfPresent(String.self, forKey: .nodeOrder)
+        nodes = try? c.decodeIfPresent([SublinkNode].self, forKey: .nodes)
+        subLogs = try? c.decodeIfPresent([SublinkSubLog].self, forKey: .subLogs)
     }
 }
 

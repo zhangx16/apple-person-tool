@@ -244,7 +244,9 @@ struct MediaBubbleView: View {
         guard !items.isEmpty else { return }
         shareItems = items
         showShare = true
-        Haptics.light()
+        Task { @MainActor in
+            Haptics.light()
+        }
     }
 
     private var accessibilityLabel: String {

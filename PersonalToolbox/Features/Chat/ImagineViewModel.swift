@@ -381,19 +381,22 @@ final class ImagineViewModel: ObservableObject {
                 apiKey: apiKey,
                 requestID: requestID
             ) { [weak self] status in
+                guard let self else { return }
+                let note: String
+                switch status {
+                case .pending:
+                    note = "视频排队中…"
+                case .processing:
+                    note = "视频生成中…"
+                case .completed:
+                    note = "下载视频…"
+                case .failed(let message):
+                    note = message
+                case .timedOut:
+                    note = "视频生成超时…"
+                }
                 await MainActor.run {
-                    switch status {
-                    case .pending:
-                        self?.progressNote = "视频排队中…"
-                    case .processing:
-                        self?.progressNote = "视频生成中…"
-                    case .completed:
-                        self?.progressNote = "下载视频…"
-                    case .failed(let message):
-                        self?.progressNote = message
-                    case .timedOut:
-                        self?.progressNote = "视频生成超时…"
-                    }
+                    self.progressNote = note
                 }
             }
 

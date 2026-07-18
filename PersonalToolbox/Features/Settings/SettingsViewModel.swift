@@ -21,11 +21,39 @@ final class SettingsViewModel: ObservableObject {
         self.settings = settings
     }
 
-    /// Models for the preferred-model picker: discovered ∪ defaults, sorted, preferred first.
+    /// Text models for the preferred-model picker: discovered ∪ defaults, **excluding** Imagine.
     var modelChoices: [String] {
         var set = Set(AppSettings.defaultModels)
-        discoveredModels.forEach { set.insert($0) }
+        discoveredModels.filter { Sub2APIService.isTextModel($0) }.forEach { set.insert($0) }
         let preferred = settings.preferredModel.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !preferred.isEmpty, Sub2APIService.isTextModel(preferred) {
+            set.insert(preferred)
+        }
+        return set.sorted()
+    }
+
+    /// Imagine image models for settings picker.
+    var imagineImageChoices: [String] {
+        var set = Set(AppSettings.defaultImagineImageModels)
+        discoveredModels.filter { Sub2APIService.isImagineImageModel($0) || ($0.lowercased() == "grok-imagine") }
+            .forEach { set.insert($0) }
+        let preferred = settings.preferredImagineImageModel
+        if !preferred.isEmpty { set.insert(preferred) }
+        return set.sorted()
+    }
+
+    var imagineEditChoices: [String] {
+        var set = Set(AppSettings.defaultImagineEditModels)
+        discoveredModels.filter { Sub2APIService.isImagineEditModel($0) }.forEach { set.insert($0) }
+        let preferred = settings.preferredImagineEditModel
+        if !preferred.isEmpty { set.insert(preferred) }
+        return set.sorted()
+    }
+
+    var imagineVideoChoices: [String] {
+        var set = Set(AppSettings.defaultImagineVideoModels)
+        discoveredModels.filter { Sub2APIService.isImagineVideoModel($0) }.forEach { set.insert($0) }
+        let preferred = settings.preferredImagineVideoModel
         if !preferred.isEmpty { set.insert(preferred) }
         return set.sorted()
     }
@@ -60,9 +88,9 @@ final class SettingsViewModel: ObservableObject {
                 detail = "\(models.count) 个模型"
             }
             sub2Probe = .success(latencyMs: ms, detail: detail)
-            // Prefer first remote model only if current preferred is empty.
+            // Prefer first remote **text** model only if current preferred is empty.
             if settings.preferredModel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-               let first = models.first {
+               let first = models.first(where: { Sub2APIService.isTextModel($0) }) {
                 settings.preferredModel = first
             }
             Haptics.success()

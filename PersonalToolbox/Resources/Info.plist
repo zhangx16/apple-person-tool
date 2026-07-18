@@ -42,5 +42,9 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>用于选择图片作为 Grok Imagine 图像编辑的输入图源。</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>如通过系统分享将生成的图片或视频保存到相册，需要相册写入权限。</string>
 </dict>
 </plist>

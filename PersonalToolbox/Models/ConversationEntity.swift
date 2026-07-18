@@ -108,12 +108,23 @@ extension MessageEntity {
     }
 
     func toChatMessage() -> ChatMessage {
-        ChatMessage(
+        let kind: MediaKind? = mediaKindRaw.flatMap { MediaKind(rawValue: $0) }
+        let pending = kind == .video
+            && mediaRequestID != nil
+            && videoPath == nil
+            && (mediaRemoteURL == nil || mediaRemoteURL?.isEmpty == true)
+        return ChatMessage(
             id: id,
             role: role,
             content: content,
             createdAt: createdAt,
-            isStreaming: false
+            isStreaming: false,
+            mediaKind: kind,
+            imagePath: imagePath,
+            videoPath: videoPath,
+            mediaRemoteURL: mediaRemoteURL,
+            mediaRequestID: mediaRequestID,
+            isMediaPending: pending
         )
     }
 }

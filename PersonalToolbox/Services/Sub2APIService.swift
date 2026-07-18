@@ -31,7 +31,31 @@ actor Sub2APIService {
 
     /// Text-only model IDs (exclude Grok Imagine family).
     static func isTextModel(_ id: String) -> Bool {
-        !id.localizedCaseInsensitiveContains("imagine")
+        !isImagineModel(id)
+    }
+
+    /// Grok Imagine family (image / edit / video).
+    static func isImagineModel(_ id: String) -> Bool {
+        id.localizedCaseInsensitiveContains("imagine")
+    }
+
+    /// Imagine models suitable for text-to-image (exclude pure edit/video IDs when possible).
+    static func isImagineImageModel(_ id: String) -> Bool {
+        guard isImagineModel(id) else { return false }
+        let lower = id.lowercased()
+        if lower.contains("video") { return false }
+        if lower.contains("edit") { return false }
+        return true
+    }
+
+    static func isImagineEditModel(_ id: String) -> Bool {
+        guard isImagineModel(id) else { return false }
+        return id.lowercased().contains("edit") || id.lowercased() == "grok-imagine-edit"
+    }
+
+    static func isImagineVideoModel(_ id: String) -> Bool {
+        guard isImagineModel(id) else { return false }
+        return id.lowercased().contains("video")
     }
 
     /// Stream chat completions (OpenAI-compatible). Yields text deltas.

@@ -359,9 +359,12 @@ final class ChatViewModel: ObservableObject {
     // MARK: - History window (契约)
 
     /// Builds API payload: optional system + last N non-streaming user/assistant turns.
+    /// Media-only assistant rows are kept as short captions so the text model has light context.
     static func buildAPIMessages(from conversation: ChatConversation, systemPrompt: String) -> [ChatMessage] {
         var history = conversation.messages.filter { msg in
-            !msg.isStreaming && (msg.role == .user || msg.role == .assistant)
+            !msg.isStreaming
+                && !msg.isMediaPending
+                && (msg.role == .user || msg.role == .assistant)
         }
         if let last = history.last, last.role == .assistant, last.content.isEmpty {
             history.removeLast()

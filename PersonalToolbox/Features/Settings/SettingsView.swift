@@ -59,8 +59,26 @@ struct SettingsView: View {
                 .autocorrectionDisabled()
                 .privacySensitive()
 
-            Picker("首选模型", selection: $settings.preferredModel) {
+            Picker("首选文本模型", selection: $settings.preferredModel) {
                 ForEach(viewModel.modelChoices, id: \.self) { model in
+                    Text(model).tag(model)
+                }
+            }
+
+            Picker("默认生图模型", selection: $settings.preferredImagineImageModel) {
+                ForEach(viewModel.imagineImageChoices, id: \.self) { model in
+                    Text(model).tag(model)
+                }
+            }
+
+            Picker("默认编辑模型", selection: $settings.preferredImagineEditModel) {
+                ForEach(viewModel.imagineEditChoices, id: \.self) { model in
+                    Text(model).tag(model)
+                }
+            }
+
+            Picker("默认视频模型", selection: $settings.preferredImagineVideoModel) {
+                ForEach(viewModel.imagineVideoChoices, id: \.self) { model in
                     Text(model).tag(model)
                 }
             }
@@ -81,7 +99,7 @@ struct SettingsView: View {
         } header: {
             Label("AI（sub2api）", systemImage: "sparkles")
         } footer: {
-            Text("Authorization: Bearer API Key。测试连接会调用 GET /v1/models。")
+            Text("Authorization: Bearer API Key。测试连接会调用 GET /v1/models。文本与 Imagine 模型列表分离。")
         }
     }
 

@@ -15,6 +15,18 @@ final class AppSettings: ObservableObject {
     @Published var preferredModel: String {
         didSet { UserDefaults.standard.set(preferredModel, forKey: Keys.preferredModel) }
     }
+    /// Default Grok Imagine text-to-image model.
+    @Published var preferredImagineImageModel: String {
+        didSet { UserDefaults.standard.set(preferredImagineImageModel, forKey: Keys.preferredImagineImageModel) }
+    }
+    /// Default Grok Imagine image-edit model.
+    @Published var preferredImagineEditModel: String {
+        didSet { UserDefaults.standard.set(preferredImagineEditModel, forKey: Keys.preferredImagineEditModel) }
+    }
+    /// Default Grok Imagine text-to-video model.
+    @Published var preferredImagineVideoModel: String {
+        didSet { UserDefaults.standard.set(preferredImagineVideoModel, forKey: Keys.preferredImagineVideoModel) }
+    }
     @Published var systemPrompt: String {
         didSet { UserDefaults.standard.set(systemPrompt, forKey: Keys.systemPrompt) }
     }
@@ -70,6 +82,9 @@ final class AppSettings: ObservableObject {
         static let sub2apiBaseURL = "sub2apiBaseURL"
         static let sub2apiAPIKey = "sub2apiAPIKey"
         static let preferredModel = "preferredModel"
+        static let preferredImagineImageModel = "preferredImagineImageModel"
+        static let preferredImagineEditModel = "preferredImagineEditModel"
+        static let preferredImagineVideoModel = "preferredImagineVideoModel"
         static let systemPrompt = "systemPrompt"
         static let mailBaseURL = "mailBaseURL"
         static let mailPassword = "mailPassword"
@@ -86,9 +101,12 @@ final class AppSettings: ObservableObject {
 
     /// Single source of truth for default chat model (preferredModel + ChatConversation).
     nonisolated static let defaultTextModel = "grok-4.3"
+    nonisolated static let defaultImagineImageModel = "grok-imagine-image-quality"
+    nonisolated static let defaultImagineEditModel = "grok-imagine-edit"
+    nonisolated static let defaultImagineVideoModel = "grok-imagine-video-1.5"
 
     /// Pure data table; nonisolated so actors (e.g. Sub2APIService) can read without hopping to MainActor.
-    /// Real xAI text model IDs (sub2api `models.go`); imagine models live on separate pickers later.
+    /// Real xAI text model IDs (sub2api `models.go`); imagine models live on separate pickers.
     nonisolated static let defaultModels = [
         defaultTextModel,
         "grok-build-0.1",
@@ -97,11 +115,29 @@ final class AppSettings: ObservableObject {
         "grok-4.20-multi-agent-0309"
     ]
 
+    nonisolated static let defaultImagineImageModels = [
+        defaultImagineImageModel,
+        "grok-imagine-image",
+        "grok-imagine"
+    ]
+
+    nonisolated static let defaultImagineEditModels = [
+        defaultImagineEditModel
+    ]
+
+    nonisolated static let defaultImagineVideoModels = [
+        defaultImagineVideoModel,
+        "grok-imagine-video"
+    ]
+
     private init() {
         let defaults = UserDefaults.standard
         sub2apiBaseURL = defaults.string(forKey: Keys.sub2apiBaseURL) ?? "https://sub2api.996616.xyz"
         sub2apiAPIKey = KeychainStore.get(Keys.sub2apiAPIKey) ?? ""
         preferredModel = defaults.string(forKey: Keys.preferredModel) ?? Self.defaultTextModel
+        preferredImagineImageModel = defaults.string(forKey: Keys.preferredImagineImageModel) ?? Self.defaultImagineImageModel
+        preferredImagineEditModel = defaults.string(forKey: Keys.preferredImagineEditModel) ?? Self.defaultImagineEditModel
+        preferredImagineVideoModel = defaults.string(forKey: Keys.preferredImagineVideoModel) ?? Self.defaultImagineVideoModel
         systemPrompt = defaults.string(forKey: Keys.systemPrompt) ?? "You are a helpful assistant."
         mailBaseURL = defaults.string(forKey: Keys.mailBaseURL) ?? "https://mail.996616.xyz"
         mailPassword = KeychainStore.get(Keys.mailPassword) ?? ""

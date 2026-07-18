@@ -10,7 +10,7 @@ enum ChatLimits {
     static let titlePrefixLength = 24
 }
 
-/// Media attachment kind on messages (PR-3c fills runtime usage).
+/// Media attachment kind on messages.
 enum MediaKind: String, Codable, Hashable {
     case image
     case video
@@ -23,13 +23,51 @@ struct ChatMessage: Identifiable, Hashable, Codable {
     var content: String
     var createdAt: Date
     var isStreaming: Bool
+    /// nil | image | video
+    var mediaKind: MediaKind?
+    /// Relative path under Application Support (`Imagine/...`) for still images.
+    var imagePath: String?
+    /// Relative path under Application Support (`Imagine/...`) for video files.
+    var videoPath: String?
+    /// Upstream media URL when available.
+    var mediaRemoteURL: String?
+    /// Video generation request id while polling / for retry.
+    var mediaRequestID: String?
+    /// Video job still running (runtime; not always persisted separately).
+    var isMediaPending: Bool
 
-    init(id: UUID = UUID(), role: Role, content: String, createdAt: Date = .now, isStreaming: Bool = false) {
+    init(
+        id: UUID = UUID(),
+        role: Role,
+        content: String,
+        createdAt: Date = .now,
+        isStreaming: Bool = false,
+        mediaKind: MediaKind? = nil,
+        imagePath: String? = nil,
+        videoPath: String? = nil,
+        mediaRemoteURL: String? = nil,
+        mediaRequestID: String? = nil,
+        isMediaPending: Bool = false
+    ) {
         self.id = id
         self.role = role
         self.content = content
         self.createdAt = createdAt
         self.isStreaming = isStreaming
+        self.mediaKind = mediaKind
+        self.imagePath = imagePath
+        self.videoPath = videoPath
+        self.mediaRemoteURL = mediaRemoteURL
+        self.mediaRequestID = mediaRequestID
+        self.isMediaPending = isMediaPending
+    }
+
+    var hasMedia: Bool {
+        mediaKind != nil
+            || imagePath != nil
+            || videoPath != nil
+            || mediaRemoteURL != nil
+            || mediaRequestID != nil
     }
 }
 

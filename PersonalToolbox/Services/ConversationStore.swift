@@ -121,6 +121,34 @@ final class ConversationStore {
         try modelContext.save()
     }
 
+    /// Updates media fields on an existing message (Imagine completion / failure caption).
+    func updateMessageMedia(
+        messageID: UUID,
+        content: String? = nil,
+        mediaType: String? = nil,
+        imagePath: String? = nil,
+        videoPath: String? = nil,
+        mediaRemoteURL: String? = nil,
+        mediaRequestID: String? = nil,
+        clearMediaRequestID: Bool = false
+    ) throws {
+        guard let message = try message(id: messageID) else {
+            throw StoreError.messageNotFound(messageID)
+        }
+        if let content { message.content = content }
+        if let mediaType { message.mediaKindRaw = mediaType }
+        if let imagePath { message.imagePath = imagePath }
+        if let videoPath { message.videoPath = videoPath }
+        if let mediaRemoteURL { message.mediaRemoteURL = mediaRemoteURL }
+        if clearMediaRequestID {
+            message.mediaRequestID = nil
+        } else if let mediaRequestID {
+            message.mediaRequestID = mediaRequestID
+        }
+        message.conversation?.updatedAt = .now
+        try modelContext.save()
+    }
+
     /// Messages for a conversation, oldest → newest.
     func loadMessages(conversationID: UUID) throws -> [MessageEntity] {
         guard let conversation = try conversation(id: conversationID) else {
@@ -142,8 +170,11 @@ final class ConversationStore {
         guard let conversation = try conversation(id: conversationID) else {
             throw StoreError.conversationNotFound(conversationID)
         }
-        // Cascade deletes messages via relationship deleteRule.
-        // PR-3c may also purge Imagine local files here.
+        // Purge Imagine sandbox files before cascade-delete.
+        for msg in conversation.messages {
+            ImagineService.deleteCachedMedia(relativePath: msg.imagePath)
+            ImagineService.deleteCachedMedia(relativePath: msg.videoPath)
+        }
         modelContext.delete(conversation)
         try modelContext.save()
     }
@@ -152,6 +183,8 @@ final class ConversationStore {
         guard let message = try message(id: messageID) else {
             throw StoreError.messageNotFound(messageID)
         }
+        ImagineService.deleteCachedMedia(relativePath: message.imagePath)
+        ImagineService.deleteCachedMedia(relativePath: message.videoPath)
         let parent = message.conversation
         modelContext.delete(message)
         parent?.updatedAt = .now

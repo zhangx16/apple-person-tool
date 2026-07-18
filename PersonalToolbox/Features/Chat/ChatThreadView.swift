@@ -1,10 +1,15 @@
 import SwiftUI
+import SwiftData
 
-/// Streaming chat thread: bubbles, composer, model picker, stop / copy.
+/// Streaming chat thread: bubbles, composer, model picker, stop / copy, Imagine entry.
 struct ChatThreadView: View {
     let conversationID: UUID
     @ObservedObject var viewModel: ChatViewModel
     @EnvironmentObject private var settings: AppSettings
+    @Environment(\.modelContext) private var modelContext
+
+    @StateObject private var imagineVM = ImagineViewModel()
+    @State private var showImagine = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -32,8 +37,24 @@ struct ChatThreadView: View {
             }
             .presentationDetents([.medium, .large])
         }
+        .sheet(isPresented: $showImagine) {
+            ImagineComposeView(
+                viewModel: imagineVM,
+                conversationID: conversationID
+            ) {
+                viewModel.loadConversation(id: conversationID)
+                viewModel.reload()
+            }
+            .environmentObject(settings)
+            .presentationDetents([.large, .medium])
+        }
         .onAppear {
             viewModel.loadConversation(id: conversationID)
+            imagineVM.attach(modelContext: modelContext, settings: settings)
+            imagineVM.onConversationUpdated = { [weak viewModel] id in
+                viewModel?.loadConversation(id: id)
+                viewModel?.reload()
+            }
             Task { await viewModel.loadModels() }
         }
         .onDisappear {
@@ -83,10 +104,19 @@ struct ChatThreadView: View {
                         .frame(minHeight: 240)
                     } else {
                         ForEach(messages) { message in
-                            MessageBubbleView(
-                                message: message,
-                                onCopy: { viewModel.copyMessage(message) }
-                            )
+                            Group {
+                                if message.hasMedia {
+                                    MediaBubbleView(
+                                        message: message,
+                                        onCopyCaption: { viewModel.copyMessage(message) }
+                                    )
+                                } else {
+                                    MessageBubbleView(
+                                        message: message,
+                                        onCopy: { viewModel.copyMessage(message) }
+                                    )
+                                }
+                            }
                             .id(message.id)
                         }
                     }
@@ -129,6 +159,20 @@ struct ChatThreadView: View {
             }
 
             HStack(alignment: .bottom, spacing: 10) {
+                Button {
+                    imagineVM.attach(modelContext: modelContext, settings: settings)
+                    showImagine = true
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 28))
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(settings.isAIConfigured && !viewModel.isStreaming ? Color.accentColor : Color.secondary)
+                        .frame(width: 44, height: 44)
+                }
+                .buttonStyle(PressableButtonStyle())
+                .disabled(!settings.isAIConfigured || viewModel.isStreaming)
+                .accessibilityLabel("创作")
+
                 TextField("发送消息…", text: $viewModel.input, axis: .vertical)
                     .lineLimit(1...6)
                     .padding(.horizontal, 14)
@@ -287,7 +331,7 @@ struct ModelPickerSheet: View {
                 } header: {
                     Text("文本模型")
                 } footer: {
-                    Text("Imagine 媒体模型请从创作入口选择（后续版本）。")
+                    Text("Imagine 媒体模型请从创作入口「+」选择，不混入文本列表。")
                 }
             }
             .navigationTitle("选择模型")

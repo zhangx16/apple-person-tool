@@ -1,7 +1,7 @@
-# Archive failed on `2bff6d3`
+# Archive failed on `902d9df`
 
-Run: https://github.com/zhangx16/apple-person-tool/actions/runs/29656480906
-Commit: `2bff6d3031ce82115fb4a3b06ebce211d884dcfa`
+Run: https://github.com/zhangx16/apple-person-tool/actions/runs/29656592076
+Commit: `902d9dfac30de413a0a38fd41cc49373eac23d6d`
 
 ## Grep errors
 ```
@@ -55,7 +55,7 @@ CompileSwift normal arm64 (in target 'PersonalToolbox' from project 'PersonalToo
 /Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Services/DouyinLiveService.swift:305:13: note: 'headers' previously declared here
         var headers = await requestHeaders()
             ^
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Services/KuaishouLiveService.swift:316:13: warning: variable 'text' was never mutated; consider changing to 'let' constant
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Services/KuaishouLiveService.swift:424:13: warning: variable 'text' was never mutated; consider changing to 'let' constant
         var text = String(html[r]).replacingOccurrences(of: "undefined", with: "null")
         ~~~ ^
         let

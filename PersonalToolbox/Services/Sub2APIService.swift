@@ -20,7 +20,7 @@ actor Sub2APIService {
         )
         if http.statusCode == 401 { throw NetworkError.unauthorized }
         guard (200..<300).contains(http.statusCode) else {
-            throw NetworkError.http(http.statusCode, String(data: data, encoding: .utf8) ?? "")
+            throw NetworkClient.httpError(status: http.statusCode, body: data)
         }
         if let decoded = try? JSONDecoder().decode(ModelsListResponse.self, from: data),
            let models = decoded.data {
@@ -83,6 +83,7 @@ actor Sub2APIService {
         temperature: Double = 0.7
     ) async throws -> String {
         let body = ChatCompletionRequest(model: model, messages: messages, stream: false, temperature: temperature)
+        // Long LLM completion — use SSE-class timeouts (120s/600s), not short REST.
         let (data, http) = try await client.data(
             base: baseURL,
             path: "/v1/chat/completions",
@@ -91,11 +92,12 @@ actor Sub2APIService {
                 "Authorization": "Bearer \(apiKey)",
                 "Content-Type": "application/json"
             ],
-            body: try JSONEncoder().encode(body)
+            body: try JSONEncoder().encode(body),
+            profile: .sse
         )
         if http.statusCode == 401 { throw NetworkError.unauthorized }
         guard (200..<300).contains(http.statusCode) else {
-            throw NetworkError.http(http.statusCode, String(data: data, encoding: .utf8) ?? "")
+            throw NetworkClient.httpError(status: http.statusCode, body: data)
         }
         if let decoded = try? JSONDecoder().decode(ChatCompletionResponse.self, from: data) {
             if let msg = decoded.error?.message { throw NetworkError.message(msg) }

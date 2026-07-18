@@ -20,7 +20,7 @@ actor MailService {
         )
         if http.statusCode == 401 { throw NetworkError.unauthorized }
         guard (200..<300).contains(http.statusCode) else {
-            throw NetworkError.http(http.statusCode, String(data: data, encoding: .utf8) ?? "")
+            throw NetworkClient.httpError(status: http.statusCode, body: data)
         }
         if let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
            let success = obj["success"] as? Bool, success == false {
@@ -49,7 +49,7 @@ actor MailService {
             return try await listAccounts(baseURL: baseURL, password: password)
         }
         guard (200..<300).contains(http.statusCode) else {
-            throw NetworkError.http(http.statusCode, String(data: data, encoding: .utf8) ?? "")
+            throw NetworkClient.httpError(status: http.statusCode, body: data)
         }
         let root = try JSONSerialization.jsonObject(with: data)
         return MailJSONHelper.parseAccounts(root)
@@ -82,7 +82,7 @@ actor MailService {
             return try await listMessages(baseURL: baseURL, password: password, email: email, folder: folder, skip: skip, top: top)
         }
         guard (200..<300).contains(http.statusCode) else {
-            throw NetworkError.http(http.statusCode, String(data: data, encoding: .utf8) ?? "")
+            throw NetworkClient.httpError(status: http.statusCode, body: data)
         }
         let root = try JSONSerialization.jsonObject(with: data)
         return MailJSONHelper.parseMessages(root)
@@ -109,7 +109,7 @@ actor MailService {
             return try await messageDetail(baseURL: baseURL, password: password, email: email, messageID: messageID)
         }
         guard (200..<300).contains(http.statusCode) else {
-            throw NetworkError.http(http.statusCode, String(data: data, encoding: .utf8) ?? "")
+            throw NetworkClient.httpError(status: http.statusCode, body: data)
         }
         let root = try JSONSerialization.jsonObject(with: data)
         if let detail = MailJSONHelper.parseMessageDetail(root) { return detail }
@@ -139,7 +139,7 @@ actor MailService {
         )
         if http.statusCode == 401 { throw NetworkError.unauthorized }
         guard (200..<300).contains(http.statusCode) else {
-            throw NetworkError.http(http.statusCode, String(data: data, encoding: .utf8) ?? "")
+            throw NetworkClient.httpError(status: http.statusCode, body: data)
         }
         let root = try JSONSerialization.jsonObject(with: data)
         return MailJSONHelper.parseMessages(root)
@@ -161,7 +161,7 @@ actor MailService {
         )
         if http.statusCode == 401 { throw NetworkError.unauthorized }
         guard (200..<300).contains(http.statusCode) else {
-            throw NetworkError.http(http.statusCode, String(data: data, encoding: .utf8) ?? "")
+            throw NetworkClient.httpError(status: http.statusCode, body: data)
         }
         let root = try JSONSerialization.jsonObject(with: data)
         if let detail = MailJSONHelper.parseMessageDetail(root) { return detail }

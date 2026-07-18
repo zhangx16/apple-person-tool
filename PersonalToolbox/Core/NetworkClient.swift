@@ -22,11 +22,14 @@ enum NetworkError: LocalizedError {
     }
 }
 
-/// Request/resource timeout profiles for REST vs long-lived SSE.
+/// Request/resource timeout profiles.
+/// - `.rest` — short CRUD / health / list calls (request 30s, resource 60s).
+/// - `.sse` — streaming chat **and** long-lived non-stream LLM/media waits (request 120s, resource 600s).
+/// Callers that POST to chat/completions (including non-stream fallback) **must** pass `.sse`.
 enum TimeoutProfile {
     /// Typical JSON REST: request 30s, resource 60s.
     case rest
-    /// Streaming chat / long polls: request 120s, resource 600s.
+    /// Streaming chat / long polls / long LLM completions: request 120s, resource 600s.
     case sse
 
     var requestTimeout: TimeInterval {
@@ -54,9 +57,10 @@ final class NetworkClient: @unchecked Sendable {
 
     /// Default REST session (no cookies).
     let session: URLSession
-    /// Long-lived SSE / streaming session.
+    /// Long-lived SSE / long LLM session.
     private let sseSession: URLSession
     /// Mail session with isolated cookie jar (not `HTTPCookieStorage.shared`).
+    /// Always REST timeouts — cookie traffic is short CRUD only.
     private let cookieSession: URLSession
     /// App-owned cookie storage for mail sessions; safe to clear on logout.
     let cookieStorage: HTTPCookieStorage
@@ -85,7 +89,7 @@ final class NetworkClient: @unchecked Sendable {
         cookieSession = URLSession(configuration: cookieConfig)
     }
 
-    /// Truncate error response bodies so toast / logs stay readable.
+    /// Truncate error response bodies so toast / logs stay readable (~400 chars).
     static func truncatedErrorBody(_ data: Data, limit: Int = errorBodyLimit) -> String {
         let text = String(data: data, encoding: .utf8) ?? ""
         return truncatedErrorBody(text, limit: limit)
@@ -94,6 +98,11 @@ final class NetworkClient: @unchecked Sendable {
     static func truncatedErrorBody(_ text: String, limit: Int = errorBodyLimit) -> String {
         if text.count <= limit { return text }
         return String(text.prefix(limit))
+    }
+
+    /// Map non-2xx response to `NetworkError.http` with truncated body.
+    static func httpError(status: Int, body: Data) -> NetworkError {
+        .http(status, truncatedErrorBody(body))
     }
 
     func makeURL(_ base: String, path: String, query: [URLQueryItem] = []) throws -> URL {
@@ -108,6 +117,11 @@ final class NetworkClient: @unchecked Sendable {
         return url
     }
 
+    /// - Parameters:
+    ///   - useCookies: When `true`, uses the isolated mail cookie jar and **always** REST
+    ///     timeouts (`.rest`). `profile` is ignored — cookie sessions are short CRUD only.
+    ///   - profile: Session + request timeouts when `useCookies` is false. Use `.sse` for
+    ///     long LLM/media POSTs (including non-stream chat fallback).
     func data(
         base: String,
         path: String,
@@ -118,11 +132,14 @@ final class NetworkClient: @unchecked Sendable {
         useCookies: Bool = false,
         profile: TimeoutProfile = .rest
     ) async throws -> (Data, HTTPURLResponse) {
+        // Cookie-backed mail traffic is always REST; ignore profile so request/resource match.
+        let effectiveProfile: TimeoutProfile = useCookies ? .rest : profile
+
         let url = try makeURL(base, path: path, query: query)
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.httpBody = body
-        request.timeoutInterval = profile.requestTimeout
+        request.timeoutInterval = effectiveProfile.requestTimeout
         for (key, value) in headers {
             request.setValue(value, forHTTPHeaderField: key)
         }
@@ -133,7 +150,7 @@ final class NetworkClient: @unchecked Sendable {
         if useCookies {
             chosen = cookieSession
         } else {
-            chosen = profile == .sse ? sseSession : session
+            chosen = effectiveProfile == .sse ? sseSession : session
         }
         let (data, response) = try await chosen.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw NetworkError.invalidResponse }
@@ -166,7 +183,7 @@ final class NetworkClient: @unchecked Sendable {
             throw NetworkError.unauthorized
         }
         guard (200..<300).contains(http.statusCode) else {
-            throw NetworkError.http(http.statusCode, Self.truncatedErrorBody(data))
+            throw Self.httpError(status: http.statusCode, body: data)
         }
         do {
             return try decoder.decode(T.self, from: data)
@@ -205,14 +222,14 @@ final class NetworkClient: @unchecked Sendable {
                 // Collect a little past the display limit so truncation is meaningful.
                 if collected.count > Self.errorBodyLimit * 2 { break }
             }
-            throw NetworkError.http(http.statusCode, Self.truncatedErrorBody(collected))
+            throw Self.httpError(status: http.statusCode, body: collected)
         }
         return (bytes, http)
     }
 
     /// Clears cookies in the isolated mail cookie jar (e.g. on logout).
     func clearCookies() {
-        cookieStorage.cookies?.forEach { cookieStorage.deleteCookie($0) }
+        cookieStorage.removeCookies(since: .distantPast)
     }
 }
 

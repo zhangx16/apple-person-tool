@@ -84,10 +84,13 @@ final class AppSettings: ObservableObject {
         static let requireBiometricUnlock = "requireBiometricUnlock"
     }
 
+    /// Single source of truth for default chat model (preferredModel + ChatConversation).
+    nonisolated static let defaultTextModel = "grok-4.3"
+
     /// Pure data table; nonisolated so actors (e.g. Sub2APIService) can read without hopping to MainActor.
     /// Real xAI text model IDs (sub2api `models.go`); imagine models live on separate pickers later.
     nonisolated static let defaultModels = [
-        "grok-4.3",
+        defaultTextModel,
         "grok-build-0.1",
         "grok-4.20-0309-reasoning",
         "grok-4.20-0309-non-reasoning",
@@ -98,7 +101,7 @@ final class AppSettings: ObservableObject {
         let defaults = UserDefaults.standard
         sub2apiBaseURL = defaults.string(forKey: Keys.sub2apiBaseURL) ?? "https://sub2api.996616.xyz"
         sub2apiAPIKey = KeychainStore.get(Keys.sub2apiAPIKey) ?? ""
-        preferredModel = defaults.string(forKey: Keys.preferredModel) ?? "grok-4.3"
+        preferredModel = defaults.string(forKey: Keys.preferredModel) ?? Self.defaultTextModel
         systemPrompt = defaults.string(forKey: Keys.systemPrompt) ?? "You are a helpful assistant."
         mailBaseURL = defaults.string(forKey: Keys.mailBaseURL) ?? "https://mail.996616.xyz"
         mailPassword = KeychainStore.get(Keys.mailPassword) ?? ""

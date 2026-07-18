@@ -24,7 +24,7 @@ struct ChatConversation: Identifiable, Codable, Hashable {
     var updatedAt: Date
     var model: String
 
-    init(id: UUID = UUID(), title: String = "新对话", messages: [ChatMessage] = [], updatedAt: Date = .now, model: String = "grok-4.3") {
+    init(id: UUID = UUID(), title: String = "新对话", messages: [ChatMessage] = [], updatedAt: Date = .now, model: String = AppSettings.defaultTextModel) {
         self.id = id
         self.title = title
         self.messages = messages

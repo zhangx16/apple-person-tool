@@ -19,7 +19,7 @@ actor YTService {
         )
         if http.statusCode == 401 { throw NetworkError.unauthorized }
         guard (200..<300).contains(http.statusCode) else {
-            throw NetworkError.http(http.statusCode, String(data: data, encoding: .utf8) ?? "")
+            throw NetworkClient.httpError(status: http.statusCode, body: data)
         }
         // Response is a raw JSON string token
         if let s = try? JSONDecoder().decode(String.self, from: data) {
@@ -74,7 +74,7 @@ actor YTService {
             )
             if http.statusCode == 401 { throw NetworkError.unauthorized }
             guard (200..<300).contains(http.statusCode) else {
-                throw NetworkError.http(http.statusCode, String(data: data, encoding: .utf8) ?? "")
+                throw NetworkClient.httpError(status: http.statusCode, body: data)
             }
             if let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                 return (obj["ytdlpVersion"] as? String) ?? "ok"
@@ -104,7 +104,7 @@ actor YTService {
         )
         if http.statusCode == 401 { throw NetworkError.unauthorized }
         guard (200..<300).contains(http.statusCode) else {
-            throw NetworkError.http(http.statusCode, String(data: data, encoding: .utf8) ?? "")
+            throw NetworkClient.httpError(status: http.statusCode, body: data)
         }
         let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         if let err = obj?["error"] as? String, !err.isEmpty {
@@ -200,7 +200,7 @@ actor YTService {
             )
             if http.statusCode == 401 { throw NetworkError.unauthorized }
             guard (200..<300).contains(http.statusCode) else {
-                throw NetworkError.http(http.statusCode, String(data: data, encoding: .utf8) ?? "")
+                throw NetworkClient.httpError(status: http.statusCode, body: data)
             }
             let root = try JSONSerialization.jsonObject(with: data)
             let rows: [[String: Any]]
@@ -249,7 +249,7 @@ actor YTService {
             )
             if http.statusCode == 401 { throw NetworkError.unauthorized }
             guard (200..<300).contains(http.statusCode) else {
-                throw NetworkError.http(http.statusCode, String(data: data, encoding: .utf8) ?? "")
+                throw NetworkClient.httpError(status: http.statusCode, body: data)
             }
         }
     }

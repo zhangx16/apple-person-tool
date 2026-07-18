@@ -67,7 +67,7 @@ final class DouyinService: NSObject {
 
     // MARK: - Detection
 
-    static func isDouyinURL(_ raw: String) -> Bool {
+    nonisolated static func isDouyinURL(_ raw: String) -> Bool {
         let s = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard let host = URL(string: s)?.host?.lowercased()
                 ?? URL(string: s.hasPrefix("http") ? s : "https://\(s)")?.host?.lowercased()
@@ -86,7 +86,7 @@ final class DouyinService: NSObject {
     }
 
     /// Pull first http(s) URL from share text / clipboard paste.
-    static func extractURL(from text: String) -> String? {
+    nonisolated static func extractURL(from text: String) -> String? {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.lowercased().hasPrefix("http") {
             return trimmed.components(separatedBy: .whitespacesAndNewlines).first

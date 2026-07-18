@@ -1,501 +1,194 @@
 import SwiftUI
+import WebKit
 
-// MARK: - Home ViewModel
-
-/// Serial cancelable loads (SimpleLive home_list_controller style).
-@MainActor
-final class LiveHomeViewModel: ObservableObject {
-    @Published var platform: LivePlatform = .bilibili
-    @Published var rooms: [LiveRoomItem] = []
-    @Published var isLoading = false
-    @Published var errorMessage: String?
-    @Published var emptyHint: String?
-    @Published var searchText = ""
-    @Published var categories: [LiveCategory] = []
-    @Published var selectedParentId: String?
-    @Published var selectedSub: LiveSubCategory?
-    @Published var browseMode: BrowseMode = .recommend
-
-    enum BrowseMode: String, CaseIterable, Identifiable {
-        case recommend = "推荐"
-        case category = "分区"
-        var id: String { rawValue }
-    }
-
-    private var loadTask: Task<Void, Never>?
-    private var didLoad = false
-
-    func ensureLoaded() {
-        guard !didLoad else { return }
-        didLoad = true
-        reload()
-    }
-
-    func setPlatform(_ p: LivePlatform) {
-        guard p != platform else { return }
-        platform = p
-        rooms = []
-        categories = []
-        selectedParentId = nil
-        selectedSub = nil
-        errorMessage = nil
-        emptyHint = nil
-        searchText = ""
-        browseMode = .recommend
-        reload()
-    }
-
-    func setBrowseMode(_ mode: BrowseMode) {
-        guard mode != browseMode else { return }
-        browseMode = mode
-        reload()
-    }
-
-    func selectParent(_ cat: LiveCategory) {
-        selectedParentId = cat.id
-        selectedSub = cat.children.first
-        reload()
-    }
-
-    func selectSub(_ sub: LiveSubCategory) {
-        selectedSub = sub
-        reload()
-    }
-
-    func reload() {
-        loadTask?.cancel()
-        loadTask = Task { [weak self] in
-            await self?.performReload()
-        }
-    }
-
-    private func performReload() async {
-        isLoading = true
-        errorMessage = nil
-        emptyHint = nil
-        defer { isLoading = false }
-
-        do {
-            let kw = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-            let result: [LiveRoomItem]
-            if !kw.isEmpty {
-                result = try await LiveSiteRouter.search(platform: platform, keyword: kw, page: 1)
-            } else if browseMode == .category {
-                try await loadCategoriesIfNeeded()
-                guard !Task.isCancelled else { return }
-                if let sub = selectedSub {
-                    result = try await LiveSiteRouter.categoryRooms(platform: platform, category: sub, page: 1)
-                } else {
-                    rooms = []
-                    emptyHint = "请选择分区"
-                    return
-                }
-            } else {
-                result = try await LiveSiteRouter.recommend(platform: platform, page: 1)
-            }
-            guard !Task.isCancelled else { return }
-            rooms = result
-            if rooms.isEmpty {
-                emptyHint = defaultEmptyHint
-            }
-        } catch is CancellationError {
-            return
-        } catch {
-            guard !Task.isCancelled else { return }
-            rooms = []
-            errorMessage = error.localizedDescription
-        }
-    }
-
-    private func loadCategoriesIfNeeded() async throws {
-        guard categories.isEmpty else { return }
-        let cats = try await LiveSiteRouter.categories(platform: platform)
-        guard !Task.isCancelled else { return }
-        categories = cats
-        if selectedParentId == nil {
-            selectedParentId = cats.first?.id
-            selectedSub = cats.first?.children.first
-        }
-    }
-
-    var defaultEmptyHint: String {
-        switch platform {
-        case .kuaishou: return "暂无数据。试试「分区」或搜索主播 ID。"
-        case .douyin: return "暂无数据。可切换分区或搜索（可能触发风控）。"
-        default: return "暂无直播间"
-        }
-    }
-}
-
-// MARK: - Live tab root (crash-safe shell for modern iOS TabView)
-
-/// Lightweight tab host: does **not** build the real live UI during the tab-switch
-/// animation. Heavy content is mounted on the next run loop after selection.
+/// Live tab v2.4 — web-only, zero native live stack.
+///
+/// Native SimpleLive port (services / danmaku / AVPlayer / JSCore) is **not compiled**
+/// into this build because it crashed on tab switch on newer iOS. This UI only
+/// embeds mobile live sites in WKWebView after an explicit user tap (never during
+/// the TabView transition).
 struct LiveHomeView: View {
-    var isTabSelected: Bool = true
+    private enum Site: String, CaseIterable, Identifiable {
+        case bilibili, huya, douyu, douyin, kuaishou
+        var id: String { rawValue }
 
-    /// False until the tab has been selected and the transition can finish.
-    @State private var contentMounted = false
-    @StateObject private var vm = LiveHomeViewModel()
-    @State private var selectedRoom: LiveRoomItem?
+        var title: String {
+            switch self {
+            case .bilibili: return "哔哩哔哩"
+            case .huya: return "虎牙"
+            case .douyu: return "斗鱼"
+            case .douyin: return "抖音"
+            case .kuaishou: return "快手"
+            }
+        }
+
+        var systemImage: String {
+            switch self {
+            case .bilibili: return "play.rectangle.fill"
+            case .huya: return "gamecontroller.fill"
+            case .douyu: return "tv.fill"
+            case .douyin: return "music.note"
+            case .kuaishou: return "video.fill"
+            }
+        }
+
+        var homeURL: URL {
+            switch self {
+            case .bilibili: return URL(string: "https://live.bilibili.com")!
+            case .huya: return URL(string: "https://m.huya.com")!
+            case .douyu: return URL(string: "https://m.douyu.com")!
+            case .douyin: return URL(string: "https://live.douyin.com")!
+            case .kuaishou: return URL(string: "https://live.kuaishou.com")!
+            }
+        }
+    }
+
+    @State private var site: Site = .bilibili
+    /// nil = no WKWebView in hierarchy (safest for TabView).
+    @State private var activeURL: URL?
 
     var body: some View {
-        // No NavigationStack here — nested stacks under TabView have crashed on
-        // several iOS releases. Room uses its own stack inside the cover.
-        Group {
-            if contentMounted {
-                liveContent
-            } else {
-                placeholder
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.systemGroupedBackground))
-        .onAppear { scheduleMountIfNeeded() }
-        .onChange(of: isTabSelected) { _, selected in
-            if selected {
-                scheduleMountIfNeeded()
-            }
-        }
-        .fullScreenCover(item: $selectedRoom, onDismiss: {
-            selectedRoom = nil
-        }) { room in
-            LiveRoomContainer(room: room) {
-                selectedRoom = nil
-            }
-        }
-    }
-
-    /// Defer one frame + short delay so TabView layout settles first (iOS 17–27).
-    private func scheduleMountIfNeeded() {
-        guard isTabSelected, !contentMounted else { return }
-        Task { @MainActor in
-            // Yield past the current transaction / tab animation.
-            await Task.yield()
-            try? await Task.sleep(nanoseconds: 120_000_000)
-            guard isTabSelected else { return }
-            contentMounted = true
-            // Network only after UI is on screen.
-            try? await Task.sleep(nanoseconds: 50_000_000)
-            guard isTabSelected else { return }
-            vm.ensureLoaded()
-        }
-    }
-
-    private var placeholder: some View {
-        VStack(spacing: 12) {
-            ProgressView()
-            Text("直播")
-                .font(.headline)
-            Text("正在准备…")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private var liveContent: some View {
         VStack(spacing: 0) {
-            headerBar
-            platformPicker
-            modePicker
-            searchBar
-            if vm.browseMode == .category {
-                categoryBars
-            }
-            roomList
-        }
-    }
-
-    // MARK: Chrome
-
-    private var headerBar: some View {
-        HStack {
-            Text("直播")
-                .font(.largeTitle.bold())
-            Spacer()
-            Button {
-                vm.reload()
-            } label: {
-                if vm.isLoading {
-                    ProgressView()
-                } else {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.body.weight(.semibold))
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("直播")
+                        .font(.title2.bold())
+                    Text("v2.4 网页模式")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
-            }
-            .disabled(vm.isLoading)
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
-        .padding(.bottom, 4)
-    }
-
-    private func platformTint(_ p: LivePlatform) -> Color {
-        // System colors only — avoid custom Color(hex:) / asset lookups on first paint.
-        switch p {
-        case .bilibili: return .blue
-        case .huya: return .orange
-        case .douyu: return .orange
-        case .douyin: return .primary
-        case .kuaishou: return .red
-        }
-    }
-
-    private var platformPicker: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(LivePlatform.allCases) { p in
-                    let selected = vm.platform == p
+                Spacer()
+                if activeURL != nil {
                     Button {
-                        vm.setPlatform(p)
+                        activeURL = nil
                     } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: p.systemImage)
-                                .font(.system(size: 12, weight: .semibold))
-                            Text(p.title)
-                                .font(.subheadline.weight(.semibold))
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .foregroundStyle(selected ? Color.white : Color.primary)
-                        .background(
-                            selected ? platformTint(p) : Color(.tertiarySystemFill),
-                            in: Capsule()
-                        )
+                        Text("关闭页面")
+                            .font(.subheadline.weight(.semibold))
                     }
-                    .buttonStyle(.plain)
                 }
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-        }
-    }
+            .padding(.top, 12)
+            .padding(.bottom, 8)
 
-    private var modePicker: some View {
-        Picker("模式", selection: Binding(
-            get: { vm.browseMode },
-            set: { vm.setBrowseMode($0) }
-        )) {
-            ForEach(LiveHomeViewModel.BrowseMode.allCases) { m in
-                Text(m.rawValue).tag(m)
-            }
-        }
-        .pickerStyle(.segmented)
-        .padding(.horizontal, 16)
-        .padding(.bottom, 8)
-    }
-
-    private var searchBar: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass")
-                .foregroundStyle(.secondary)
-            TextField(
-                vm.platform == .kuaishou ? "搜索主播 / 标题 / 房间号" : "搜索直播间 / 主播",
-                text: $vm.searchText
-            )
-            .textInputAutocapitalization(.never)
-            .autocorrectionDisabled()
-            .submitLabel(.search)
-            .onSubmit { vm.reload() }
-            if !vm.searchText.isEmpty {
-                Button {
-                    vm.searchText = ""
-                    vm.reload()
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-            }
-            Button("搜索") { vm.reload() }
-                .font(.subheadline.weight(.semibold))
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .padding(.horizontal, 16)
-        .padding(.bottom, 8)
-    }
-
-    @ViewBuilder
-    private var categoryBars: some View {
-        if vm.categories.isEmpty {
-            if vm.isLoading {
-                ProgressView().padding(.bottom, 8)
-            }
-        } else {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
-                    ForEach(vm.categories) { cat in
+                    ForEach(Site.allCases) { s in
+                        let on = site == s
                         Button {
-                            vm.selectParent(cat)
+                            site = s
+                            // Do not auto-create WebView on platform switch.
+                            if activeURL != nil {
+                                activeURL = s.homeURL
+                            }
                         } label: {
-                            Text(cat.name)
-                                .font(.caption.weight(.semibold))
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
-                                .foregroundStyle(vm.selectedParentId == cat.id ? Color.white : Color.primary)
-                                .background(
-                                    vm.selectedParentId == cat.id ? platformTint(vm.platform) : Color(.tertiarySystemFill),
-                                    in: Capsule()
-                                )
+                            HStack(spacing: 6) {
+                                Image(systemName: s.systemImage)
+                                    .font(.system(size: 12, weight: .semibold))
+                                Text(s.title)
+                                    .font(.subheadline.weight(.semibold))
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .foregroundStyle(on ? Color.white : Color.primary)
+                            .background(on ? Color.accentColor : Color(.tertiarySystemFill), in: Capsule())
                         }
                         .buttonStyle(.plain)
                     }
                 }
                 .padding(.horizontal, 16)
+                .padding(.bottom, 10)
             }
-            if let parent = vm.categories.first(where: { $0.id == vm.selectedParentId }) {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(parent.children) { sub in
-                            Button {
-                                vm.selectSub(sub)
-                            } label: {
-                                Text(sub.name)
-                                    .font(.caption2.weight(.semibold))
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 5)
-                                    .foregroundStyle(vm.selectedSub?.id == sub.id ? Color.white : Color.primary)
-                                    .background(
-                                        vm.selectedSub?.id == sub.id ? Color.orange : Color(.secondarySystemFill),
-                                        in: Capsule()
-                                    )
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                }
-            }
-        }
-    }
 
-    @ViewBuilder
-    private var roomList: some View {
-        if let err = vm.errorMessage, vm.rooms.isEmpty {
-            VStack(spacing: 12) {
-                Image(systemName: "wifi.exclamationmark")
-                    .font(.largeTitle)
-                    .foregroundStyle(.secondary)
-                Text("加载失败")
-                    .font(.headline)
-                Text(err)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-                Button("重试") { vm.reload() }
-                    .buttonStyle(.borderedProminent)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if !vm.isLoading, vm.rooms.isEmpty {
-            VStack(spacing: 12) {
-                Image(systemName: vm.platform.systemImage)
-                    .font(.system(size: 40))
-                    .foregroundStyle(platformTint(vm.platform))
-                Text(vm.platform.title)
-                    .font(.headline)
-                Text(vm.emptyHint ?? vm.defaultEmptyHint)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 24)
-                Button("重新加载") { vm.reload() }
-                    .buttonStyle(.bordered)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else {
-            List {
-                if vm.isLoading && vm.rooms.isEmpty {
-                    HStack {
-                        Spacer()
-                        ProgressView("加载中…")
-                        Spacer()
-                    }
-                    .listRowBackground(Color.clear)
-                }
-                ForEach(vm.rooms) { room in
+            Divider()
+
+            if let url = activeURL {
+                LiveWKWebView(url: url)
+                    .id(url.absoluteString)
+            } else {
+                VStack(spacing: 16) {
+                    Image(systemName: "tv")
+                        .font(.system(size: 44))
+                        .foregroundStyle(.secondary)
+                    Text(site.title)
+                        .font(.headline)
+                    Text("为避免闪退，直播改为系统网页打开。\n点下方按钮加载（不会在切换 Tab 时自动加载）。")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 28)
                     Button {
-                        selectedRoom = room
+                        activeURL = site.homeURL
                     } label: {
-                        roomRow(room)
+                        Text("打开 \(site.title) 直播")
+                            .font(.body.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
                     }
-                    .buttonStyle(.plain)
-                }
-            }
-            .listStyle(.plain)
-            .refreshable { vm.reload() }
-        }
-    }
+                    .buttonStyle(.borderedProminent)
+                    .padding(.horizontal, 32)
 
-    private func roomRow(_ room: LiveRoomItem) -> some View {
-        HStack(spacing: 12) {
-            coverView(room.cover)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(room.title.isEmpty ? "未命名直播间" : room.title)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-                Text(room.userName.isEmpty ? "主播" : room.userName)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text("\(Self.formatOnline(room.online)) 人气")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer(minLength: 0)
-            Image(systemName: "chevron.right")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.tertiary)
-        }
-        .padding(.vertical, 4)
-    }
-
-    @ViewBuilder
-    private func coverView(_ cover: String) -> some View {
-        let url = URL(string: cover)
-        ZStack {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(Color(.tertiarySystemFill))
-            if let url, url.scheme == "http" || url.scheme == "https" {
-                AsyncImage(url: url) { phase in
-                    switch phase {
-                    case .success(let img):
-                        img.resizable().scaledToFill()
-                    default:
-                        EmptyView()
+                    Link(destination: site.homeURL) {
+                        Text("或用 Safari 打开")
+                            .font(.footnote)
                     }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .frame(width: 120, height: 68)
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-    }
-
-    private static func formatOnline(_ n: Int) -> String {
-        if n >= 10_000 { return String(format: "%.1f万", Double(n) / 10_000) }
-        return "\(n)"
+        .background(Color(.systemBackground))
+        // Intentionally no onAppear network / WebView creation.
     }
 }
 
-// MARK: - Room container (owns NavigationStack outside TabView)
+// MARK: - WKWebView
 
-struct LiveRoomContainer: View {
-    let room: LiveRoomItem
-    var onClose: () -> Void
+struct LiveWKWebView: UIViewRepresentable {
+    let url: URL
 
-    var body: some View {
-        NavigationStack {
-            LiveRoomView(room: room)
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button("关闭", action: onClose)
-                    }
-                }
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeUIView(context: Context) -> WKWebView {
+        let config = WKWebViewConfiguration()
+        config.allowsInlineMediaPlayback = true
+        config.mediaTypesRequiringUserActionForPlayback = []
+        let web = WKWebView(frame: .zero, configuration: config)
+        web.navigationDelegate = context.coordinator
+        web.allowsBackForwardNavigationGestures = true
+        web.scrollView.contentInsetAdjustmentBehavior = .automatic
+        web.customUserAgent =
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+        context.coordinator.loadedURL = url
+        web.load(URLRequest(url: url))
+        return web
+    }
+
+    func updateUIView(_ webView: WKWebView, context: Context) {
+        if context.coordinator.loadedURL != url {
+            context.coordinator.loadedURL = url
+            webView.load(URLRequest(url: url))
+        }
+    }
+
+    static func dismantleUIView(_ uiView: WKWebView, coordinator: Coordinator) {
+        uiView.stopLoading()
+        uiView.navigationDelegate = nil
+    }
+
+    final class Coordinator: NSObject, WKNavigationDelegate {
+        var loadedURL: URL?
+
+        func webView(
+            _ webView: WKWebView,
+            decidePolicyFor navigationAction: WKNavigationAction,
+            decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
+        ) {
+            if let scheme = navigationAction.request.url?.scheme?.lowercased(),
+               scheme != "http", scheme != "https", scheme != "about" {
+                decisionHandler(.cancel)
+                return
+            }
+            decisionHandler(.allow)
         }
     }
 }

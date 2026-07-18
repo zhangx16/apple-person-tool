@@ -25,7 +25,8 @@ struct RootTabView: View {
                     .tag(AppTab.chat)
                     .accessibilityLabel("助手")
 
-                LiveHomeView(isTabSelected: selectedTab == .live)
+                // No dynamic params — changing init args under TabView recreated the tree on newer iOS.
+                LiveHomeView()
                     .tabItem { Label("直播", systemImage: "tv") }
                     .tag(AppTab.live)
                     .accessibilityLabel("直播")

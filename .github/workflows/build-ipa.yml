@@ -132,6 +132,9 @@ jobs:
           set -euo pipefail
           set -o pipefail
           set +e
+          # Do NOT pass PROVISIONING_PROFILE_SPECIFIER on the CLI — it applies to
+          # CocoaPods targets too and breaks archive. Profile is set in pbxproj
+          # for PersonalToolbox / ShareExtension only.
           xcodebuild \
             -workspace PersonalToolbox.xcworkspace \
             -scheme PersonalToolbox \
@@ -142,8 +145,6 @@ jobs:
             CODE_SIGN_STYLE=Manual \
             DEVELOPMENT_TEAM=CTSQLK944L \
             CODE_SIGN_IDENTITY="iPhone Distribution" \
-            PRODUCT_BUNDLE_IDENTIFIER=app.parsnip6345.lake8262 \
-            PROVISIONING_PROFILE_SPECIFIER="00008150-001A088E148B401C6F01CD" \
             2>&1 | tee "$RUNNER_TEMP/xcodebuild-archive.log"
           STATUS=${PIPESTATUS[0]}
           set -e

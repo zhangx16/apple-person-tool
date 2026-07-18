@@ -7,16 +7,29 @@ struct TaskRowView: View {
     var onKill: () -> Void
     var onClear: () -> Void
     var onShare: (() -> Void)? = nil
+    var onPlay: (() -> Void)? = nil
+
+    private var canPlay: Bool {
+        guard task.isCompleted, let path = task.filepath else { return false }
+        return DownloadMediaKind.detect(pathOrName: path).isPlayableVideo
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top, spacing: 12) {
-                Image(systemName: "film")
-                    .font(.title3)
-                    .foregroundStyle(.secondary)
-                    .frame(width: 36, height: 36)
-                    .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    .accessibilityHidden(true)
+                Button {
+                    if canPlay { onPlay?() }
+                } label: {
+                    Image(systemName: canPlay ? "play.circle.fill" : "film")
+                        .font(.title3)
+                        .foregroundStyle(canPlay ? Color.accentColor : Color.secondary)
+                        .frame(width: 36, height: 36)
+                        .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                }
+                .buttonStyle(.borderless)
+                .disabled(!canPlay)
+                .accessibilityLabel(canPlay ? "播放视频" : "视频")
+                .accessibilityHidden(!canPlay)
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(task.title.isEmpty ? task.url : task.title)
@@ -94,6 +107,22 @@ struct TaskRowView: View {
     @ViewBuilder
     private var actions: some View {
         HStack(spacing: 4) {
+            if canPlay, let onPlay {
+                Button {
+                    onPlay()
+                } label: {
+                    if isSharing {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Image(systemName: "play.fill")
+                    }
+                }
+                .buttonStyle(.borderless)
+                .frame(minWidth: 44, minHeight: 44)
+                .accessibilityLabel("播放")
+                .disabled(isSharing)
+            }
+
             if task.isCompleted, task.filepath != nil, let onShare {
                 Button {
                     onShare()
@@ -152,7 +181,7 @@ struct TaskRowView: View {
 
     private var accessibilityHint: String {
         if task.isActive { return "下载进行中" }
-        if task.isCompleted { return "可分享或清除" }
+        if task.isCompleted { return canPlay ? "可播放、分享或清除" : "可分享或清除" }
         if task.isFailed { return "任务失败，可清除" }
         return ""
     }

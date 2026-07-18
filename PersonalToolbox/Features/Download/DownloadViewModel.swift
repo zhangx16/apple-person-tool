@@ -19,7 +19,11 @@ final class DownloadViewModel: ObservableObject {
     @Published var infoBanner: String?
     /// Local file URL ready for Share sheet (token stripped; temp sandbox file).
     @Published var shareItem: ShareableFile?
+    /// Local file ready for system AVPlayer sheet.
+    @Published var playItem: ShareableFile?
     @Published private(set) var downloadingPath: String?
+    /// True when staging a remote file for playback (reuses downloadingPath).
+    @Published private(set) var playingPath: String?
     /// Live log lines for the current Douyin job (newest last).
     @Published private(set) var douyinLogs: [String] = []
     @Published private(set) var douyinStage: String = ""
@@ -519,49 +523,78 @@ final class DownloadViewModel: ObservableObject {
         downloadingPath = path
         defer { downloadingPath = nil }
 
-        // Local absolute path (Douyin sandbox).
-        if FileManager.default.fileExists(atPath: path) {
-            let url = URL(fileURLWithPath: path)
-            let name = suggestedName ?? url.lastPathComponent
-            shareCleanupDirectory = nil
-            shareItem = ShareableFile(url: url, name: name)
-            Haptics.success()
-            return
-        }
-
-        guard isConfigured else {
-            errorBanner = "请先在设置中配置下载服务"
-            return
-        }
         do {
-            try await stageShareFile(path: path, suggestedName: suggestedName)
+            let staged = try await stageLocalFile(path: path, suggestedName: suggestedName, forPlay: false)
+            shareItem = staged
             Haptics.success()
         } catch {
-            if Self.isUnauthorized(error) {
-                // File download sits outside withAuthRetry — re-login and retry once.
-                await service.logout()
-                do {
-                    try await stageShareFile(path: path, suggestedName: suggestedName)
-                    Haptics.success()
-                    return
-                } catch {
-                    errorBanner = Self.chineseError(error)
-                    Haptics.error()
-                    return
-                }
-            }
             errorBanner = Self.chineseError(error)
             Haptics.error()
         }
     }
 
-    private func stageShareFile(path: String, suggestedName: String?) async throws {
+    /// Stage a local/remote file and present the system video player.
+    func preparePlay(path: String, suggestedName: String?) async {
+        let name = suggestedName ?? (path as NSString).lastPathComponent
+        guard DownloadMediaKind.detect(pathOrName: name).isPlayableVideo
+                || DownloadMediaKind.detect(pathOrName: path).isPlayableVideo else {
+            errorBanner = "该文件不是可播放的视频格式"
+            Haptics.error()
+            return
+        }
+
+        playingPath = path
+        downloadingPath = path
+        defer {
+            playingPath = nil
+            downloadingPath = nil
+        }
+
+        do {
+            let staged = try await stageLocalFile(path: path, suggestedName: suggestedName, forPlay: true)
+            playItem = staged
+            Haptics.success()
+        } catch {
+            errorBanner = Self.chineseError(error)
+            Haptics.error()
+        }
+    }
+
+    /// Resolve a sandbox file URL for share/play. Remote paths are downloaded with auth.
+    private func stageLocalFile(path: String, suggestedName: String?, forPlay: Bool) async throws -> ShareableFile {
+        // Local absolute path (Douyin sandbox / already staged).
+        if FileManager.default.fileExists(atPath: path) {
+            let url = URL(fileURLWithPath: path)
+            let name = suggestedName ?? url.lastPathComponent
+            // Playing local files does not use share cleanup dir.
+            if !forPlay {
+                shareCleanupDirectory = nil
+            }
+            return ShareableFile(url: url, name: name)
+        }
+
+        guard isConfigured else {
+            throw NetworkError.message("请先在设置中配置下载服务")
+        }
+
+        do {
+            return try await downloadRemoteToTemp(path: path, suggestedName: suggestedName)
+        } catch {
+            if Self.isUnauthorized(error) {
+                await service.logout()
+                return try await downloadRemoteToTemp(path: path, suggestedName: suggestedName)
+            }
+            throw error
+        }
+    }
+
+    private func downloadRemoteToTemp(path: String, suggestedName: String?) async throws -> ShareableFile {
         // Drop any previous staged share before creating a new temp dir.
         cleanupShareDirectory()
 
         try await service.ensureLogin(baseURL: baseURL, username: username, password: password)
         let remote = try await service.downloadURL(baseURL: baseURL, path: path)
-        // Token stays on the URLSession request only — never handed to Share sheet.
+        // Token stays on the URLSession request only — never handed to Share sheet / player as remote URL.
         let (tempURL, response) = try await URLSession.shared.download(from: remote)
         if let http = response as? HTTPURLResponse {
             if http.statusCode == 401 {
@@ -585,13 +618,23 @@ final class DownloadViewModel: ObservableObject {
         // Remember dir independently of shareItem so sheet onDismiss still cleans up
         // after SwiftUI has already nil'd the item binding.
         shareCleanupDirectory = dir
-        shareItem = ShareableFile(url: dest, name: name)
+        return ShareableFile(url: dest, name: name)
     }
 
-    /// Always safe to call from sheet onDismiss — uses `shareCleanupDirectory`, not `shareItem`.
+    /// Always safe to call from share sheet onDismiss — uses `shareCleanupDirectory`, not `shareItem`.
     func dismissShare() {
         cleanupShareDirectory()
         shareItem = nil
+    }
+
+    /// Dismiss player; clean temp if it was a staged remote download.
+    func dismissPlay() {
+        // Only remove temp staging when play item lives under the cleanup directory.
+        if let play = playItem, let dir = shareCleanupDirectory,
+           play.url.path.hasPrefix(dir.path) {
+            cleanupShareDirectory()
+        }
+        playItem = nil
     }
 
     private func cleanupShareDirectory() {

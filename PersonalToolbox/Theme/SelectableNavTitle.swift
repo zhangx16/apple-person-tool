@@ -82,27 +82,20 @@ enum DownloadProject: String, CaseIterable, Identifiable, Hashable {
     var brand: ServiceBrand {
         switch self {
         case .youtube: return .youtube
-        case .douyin: return .youtube // no dedicated icon; reuse media glyph via system fallback path
+        case .douyin: return .douyin
         }
     }
 
-    /// Prefer SF Symbol when no dedicated brand asset for Douyin.
     var systemImage: String {
-        switch self {
-        case .youtube: return "play.rectangle.fill"
-        case .douyin: return "music.note.tv.fill"
-        }
+        brand.systemImage
     }
 
     var accessibilityLabel: String {
-        switch self {
-        case .youtube: return "YouTube 下载"
-        case .douyin: return "抖音下载"
-        }
+        brand.accessibilityLabel
     }
 }
 
-/// Download principal title with optional custom icon for Douyin.
+/// Download principal title: brand icon + name + switch chevron.
 struct DownloadNavTitle: View {
     @Binding var selection: DownloadProject
 
@@ -116,25 +109,13 @@ struct DownloadNavTitle: View {
                     if option == selection {
                         Label(option.title, systemImage: "checkmark")
                     } else {
-                        Label(option.title, systemImage: option.systemImage)
+                        Text(option.title)
                     }
                 }
             }
         } label: {
             HStack(spacing: 6) {
-                if selection == .youtube {
-                    ServiceBrandTitle(brand: .youtube, title: selection.title, iconSize: 20)
-                } else {
-                    HStack(spacing: 8) {
-                        Image(systemName: selection.systemImage)
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(.secondary)
-                            .frame(width: 22, height: 22)
-                            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 5, style: .continuous))
-                        Text(selection.title)
-                            .font(.headline)
-                    }
-                }
+                ServiceBrandTitle(brand: selection.brand, title: selection.title, iconSize: 20)
                 Image(systemName: "chevron.up.chevron.down")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)

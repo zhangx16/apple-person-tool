@@ -119,7 +119,7 @@ struct SettingsView: View {
                 }
 
                 Section("关于") {
-                    LabeledContent("应用", value: "Xin tools")
+                    LabeledContent("应用", value: "XIN's Tool")
                     LabeledContent("版本", value: appVersion)
                     Text("助手 · 监控 · 下载 · 本地工具")
                         .font(.caption)
@@ -567,7 +567,7 @@ struct NotificationSettingsPage: View {
             } header: {
                 Text("权限")
             } footer: {
-                Text("若已拒绝，请到系统设置 → 通知 → Xin tools 中开启。")
+                Text("若已拒绝，请到系统设置 → 通知 → XIN's Tool 中开启。")
             }
 
             Section {

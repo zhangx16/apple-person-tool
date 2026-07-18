@@ -5,6 +5,7 @@ struct FilesListView: View {
     let files: [YTFileItem]
     var downloadingPath: String?
     var onShare: (YTFileItem) -> Void
+    var onPlay: ((YTFileItem) -> Void)? = nil
     var onDelete: (YTFileItem) -> Void
 
     var body: some View {
@@ -20,6 +21,7 @@ struct FilesListView: View {
                     file: file,
                     isDownloading: downloadingPath == file.path,
                     onShare: { onShare(file) },
+                    onPlay: onPlay.map { handler in { handler(file) } },
                     onDelete: { onDelete(file) }
                 )
             }
@@ -31,14 +33,27 @@ struct FileRowView: View {
     let file: YTFileItem
     var isDownloading: Bool = false
     var onShare: () -> Void
+    var onPlay: (() -> Void)? = nil
     var onDelete: () -> Void
+
+    private var canPlay: Bool {
+        DownloadMediaKind.detect(pathOrName: file.name).isPlayableVideo
+            || DownloadMediaKind.detect(pathOrName: file.path).isPlayableVideo
+    }
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: "doc.fill")
-                .font(.title3)
-                .foregroundStyle(.secondary)
-                .frame(width: 32)
+            Button {
+                if canPlay { onPlay?() }
+            } label: {
+                Image(systemName: canPlay ? "play.circle.fill" : "doc.fill")
+                    .font(.title3)
+                    .foregroundStyle(canPlay ? Color.accentColor : Color.secondary)
+                    .frame(width: 32)
+            }
+            .buttonStyle(.borderless)
+            .disabled(!canPlay || isDownloading)
+            .accessibilityLabel(canPlay ? "播放 \(file.name)" : file.name)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(file.name)
@@ -54,6 +69,22 @@ struct FileRowView: View {
             .accessibilityLabel(file.sizeText.isEmpty ? file.name : "\(file.name)，\(file.sizeText)")
 
             Spacer(minLength: 0)
+
+            if canPlay, let onPlay {
+                Button {
+                    onPlay()
+                } label: {
+                    if isDownloading {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Image(systemName: "play.fill")
+                    }
+                }
+                .buttonStyle(.borderless)
+                .frame(minWidth: 44, minHeight: 44)
+                .disabled(isDownloading)
+                .accessibilityLabel("播放 \(file.name)")
+            }
 
             Button {
                 onShare()

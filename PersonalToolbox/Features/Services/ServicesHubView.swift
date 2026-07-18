@@ -136,30 +136,11 @@ struct ServicesHubView: View {
                         settings.downloadProjectRaw = DownloadProject.douyin.rawValue
                         selectedTab = .download
                     } label: {
-                        HStack(spacing: 14) {
-                            Image(systemName: "music.note.tv.fill")
-                                .font(.system(size: 18, weight: .semibold))
-                                .foregroundStyle(.secondary)
-                                .frame(width: 40, height: 40)
-                                .background(
-                                    Color(.secondarySystemBackground),
-                                    in: RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                )
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("抖音下载")
-                                    .font(.body.weight(.semibold))
-                                    .foregroundStyle(.primary)
-                                Text("本机解析 · 无水印优先")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(1)
-                            }
-                            Spacer(minLength: 0)
-                            Image(systemName: "chevron.right")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.tertiary)
-                        }
-                        .padding(.vertical, 2)
+                        hubLabel(
+                            title: "抖音下载",
+                            subtitle: "本机解析 · 无水印优先",
+                            brand: .douyin
+                        )
                     }
                     .accessibilityLabel("打开抖音下载")
                 }

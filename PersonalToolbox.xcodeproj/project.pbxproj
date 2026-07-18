@@ -12,6 +12,7 @@
 		000000000000000000000108 /* BiometricAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000107 /* BiometricAuth.swift */; };
 		00000000000000000000010A /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000109 /* Haptics.swift */; };
 		0000000000000000000001C9 /* LocalNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000001C8 /* LocalNotifier.swift */; };
+		0000000000000000000001CB /* SystemVideoPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000001CA /* SystemVideoPlayer.swift */; };
 		00000000000000000000010C /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000010B /* KeychainStore.swift */; };
 		00000000000000000000010E /* NetworkClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000010D /* NetworkClient.swift */; };
 		000000000000000000000110 /* SSEParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000010F /* SSEParser.swift */; };
@@ -89,6 +90,7 @@
 		000000000000000000000107 /* BiometricAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricAuth.swift; sourceTree = "<group>"; };
 		000000000000000000000109 /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
 		0000000000000000000001C8 /* LocalNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalNotifier.swift; sourceTree = "<group>"; };
+		0000000000000000000001CA /* SystemVideoPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemVideoPlayer.swift; sourceTree = "<group>"; };
 		00000000000000000000010B /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		00000000000000000000010D /* NetworkClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkClient.swift; sourceTree = "<group>"; };
 		00000000000000000000010F /* SSEParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSEParser.swift; sourceTree = "<group>"; };
@@ -258,6 +260,7 @@
 				00000000000000000000011F /* DownloadViewModel.swift */,
 				000000000000000000000121 /* FilesListView.swift */,
 				000000000000000000000123 /* TaskRowView.swift */,
+				0000000000000000000001CA /* SystemVideoPlayer.swift */,
 			);
 			path = Download;
 			sourceTree = "<group>";
@@ -486,6 +489,7 @@
 				00000000000000000000011C /* MediaBubbleView.swift in Sources */,
 				00000000000000000000011E /* DownloadHomeView.swift in Sources */,
 				000000000000000000000120 /* DownloadViewModel.swift in Sources */,
+				0000000000000000000001CB /* SystemVideoPlayer.swift in Sources */,
 				000000000000000000000122 /* FilesListView.swift in Sources */,
 				000000000000000000000124 /* TaskRowView.swift in Sources */,
 				000000000000000000000126 /* KomariHomeView.swift in Sources */,
@@ -580,7 +584,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -605,7 +609,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;

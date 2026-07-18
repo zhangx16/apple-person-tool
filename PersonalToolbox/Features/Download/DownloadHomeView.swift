@@ -89,6 +89,11 @@ struct DownloadHomeView: View {
             }) { item in
                 ActivityShareSheet(items: [item.url])
             }
+            .fullScreenCover(item: $viewModel.playItem, onDismiss: {
+                viewModel.dismissPlay()
+            }) { item in
+                VideoPlayerSheet(url: item.url, title: item.name)
+            }
         }
     }
 
@@ -266,6 +271,15 @@ struct DownloadHomeView: View {
                                     suggestedName: (path as NSString).lastPathComponent
                                 )
                             }
+                        },
+                        onPlay: {
+                            guard let path = task.filepath else { return }
+                            Task {
+                                await viewModel.preparePlay(
+                                    path: path,
+                                    suggestedName: (path as NSString).lastPathComponent
+                                )
+                            }
                         }
                     )
                 }
@@ -289,6 +303,11 @@ struct DownloadHomeView: View {
                 onShare: { file in
                     Task {
                         await viewModel.prepareShare(path: file.path, suggestedName: file.name)
+                    }
+                },
+                onPlay: { file in
+                    Task {
+                        await viewModel.preparePlay(path: file.path, suggestedName: file.name)
                     }
                 },
                 onDelete: { file in

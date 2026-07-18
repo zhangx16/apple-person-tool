@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Xin tools</string>
+	<string>XIN's Tool</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -19,7 +19,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>1.2</string>
 	<key>CFBundleVersion</key>
-	<string>4</string>
+	<string>5</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>
@@ -49,7 +49,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>用于扫描二维码，识别后可复制内容或按规则跳转到对应 App。</string>
 	<key>NSFaceIDUsageDescription</key>
-	<string>用于在开启「启动时需要面容/触控 ID」时验证身份并解锁 Xin tools。</string>
+	<string>用于在开启「启动时需要面容/触控 ID」时验证身份并解锁 XIN's Tool。</string>
 	<key>NSUserNotificationsUsageDescription</key>
 	<string>用于纪念日提醒，以及在视频/抖音下载完成或失败时通知你。</string>
 	<key>LSApplicationQueriesSchemes</key>

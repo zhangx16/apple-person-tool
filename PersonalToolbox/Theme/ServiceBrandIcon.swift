@@ -6,6 +6,7 @@ enum ServiceBrand: String, CaseIterable, Identifiable {
     case sublink
     case komari
     case youtube
+    case douyin
     case sub2
     case anniversary
     case qrAssistant
@@ -24,6 +25,7 @@ enum ServiceBrand: String, CaseIterable, Identifiable {
         case .sublink: return "IconSublink"
         case .komari: return "IconKomari"
         case .youtube: return "IconYouTube"
+        case .douyin: return "IconDouyin"
         case .sub2: return "IconSub2"
         case .anniversary: return "IconAnniversary"
         case .qrAssistant: return "IconQRAssistant"
@@ -41,6 +43,7 @@ enum ServiceBrand: String, CaseIterable, Identifiable {
         case .sublink: return "link.circle.fill"
         case .komari: return "server.rack"
         case .youtube: return "play.rectangle.fill"
+        case .douyin: return "music.note.tv.fill"
         case .sub2: return "chart.bar.fill"
         case .anniversary: return "heart.text.square.fill"
         case .qrAssistant: return "qrcode.viewfinder"
@@ -57,7 +60,8 @@ enum ServiceBrand: String, CaseIterable, Identifiable {
         switch self {
         case .sublink: return "SublinkX"
         case .komari: return "Komari"
-        case .youtube: return "视频下载"
+        case .youtube: return "YouTube 下载"
+        case .douyin: return "抖音下载"
         case .sub2: return "Sub2API"
         case .anniversary: return "纪念日"
         case .qrAssistant: return "二维码助手"

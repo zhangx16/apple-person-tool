@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
-   LastUpgradeVersion = "1500"
+   LastUpgradeVersion = "1540"
    version = "1.7">
    <BuildAction
       parallelizeBuildables = "YES"
@@ -14,7 +14,7 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "FF0000010000000000000001"
+               BlueprintIdentifier = "000000000000000000000203"
                BuildableName = "PersonalToolbox.app"
                BlueprintName = "PersonalToolbox"
                ReferencedContainer = "container:PersonalToolbox.xcodeproj">
@@ -43,7 +43,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "FF0000010000000000000001"
+            BlueprintIdentifier = "000000000000000000000203"
             BuildableName = "PersonalToolbox.app"
             BlueprintName = "PersonalToolbox"
             ReferencedContainer = "container:PersonalToolbox.xcodeproj">
@@ -60,7 +60,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "FF0000010000000000000001"
+            BlueprintIdentifier = "000000000000000000000203"
             BuildableName = "PersonalToolbox.app"
             BlueprintName = "PersonalToolbox"
             ReferencedContainer = "container:PersonalToolbox.xcodeproj">

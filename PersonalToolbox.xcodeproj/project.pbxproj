@@ -1,93 +1,299 @@
 // !$*UTF8*$!
 {
 	archiveVersion = 1;
-	classes = {
-	};
+	classes = {};
 	objectVersion = 56;
 	objects = {
 
 /* Begin PBXBuildFile section */
-		AA0000010000000000000001 /* PersonalToolboxApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000001 /* PersonalToolboxApp.swift */; };
-		AA0000010000000000000002 /* RootTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000002 /* RootTabView.swift */; };
-		AA0000010000000000000003 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000003 /* AppSettings.swift */; };
-		AA0000010000000000000004 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000004 /* KeychainStore.swift */; };
-		AA0000010000000000000005 /* NetworkClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000005 /* NetworkClient.swift */; };
-		AA0000010000000000000006 /* SSEParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000006 /* SSEParser.swift */; };
-		AA0000010000000000000014 /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000014 /* Haptics.swift */; };
-		AA000001000000000000001F /* BiometricAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000001000000000000001F /* BiometricAuth.swift */; };
-		AA0000010000000000000007 /* AppleTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000007 /* AppleTheme.swift */; };
-		AA0000010000000000000008 /* ChatModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000008 /* ChatModels.swift */; };
-		AA0000010000000000000009 /* MailModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000009 /* MailModels.swift */; };
-		AA000001000000000000000A /* DownloadModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000001000000000000000A /* DownloadModels.swift */; };
-		AA000001000000000000000B /* Sub2APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000001000000000000000B /* Sub2APIService.swift */; };
-		AA000001000000000000000C /* MailService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000001000000000000000C /* MailService.swift */; };
-		AA000001000000000000000D /* YTService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000001000000000000000D /* YTService.swift */; };
-		AA000001000000000000000E /* ChatListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000001000000000000000E /* ChatListView.swift */; };
-		AA0000010000000000000019 /* ChatThreadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000019 /* ChatThreadView.swift */; };
-		AA000001000000000000001A /* ChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000001000000000000001A /* ChatViewModel.swift */; };
-		AA000001000000000000000F /* AccountListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000001000000000000000F /* AccountListView.swift */; };
-		AA0000010000000000000017 /* InboxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000017 /* InboxView.swift */; };
-		AA0000010000000000000018 /* MessageDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000018 /* MessageDetailView.swift */; };
-		AA0000010000000000000019 /* MailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000019 /* MailViewModel.swift */; };
-		AA0000010000000000000010 /* DownloadHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000010 /* DownloadHomeView.swift */; };
-		AA0000010000000000000017 /* DownloadViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000017 /* DownloadViewModel.swift */; };
-		AA0000010000000000000018 /* TaskRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000018 /* TaskRowView.swift */; };
-		AA0000010000000000000019 /* FilesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000019 /* FilesListView.swift */; };
-		AA0000010000000000000011 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000011 /* SettingsView.swift */; };
-		AA0000010000000000000015 /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000015 /* SettingsViewModel.swift */; };
-		AA0000010000000000000016 /* ServiceProbeRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000016 /* ServiceProbeRow.swift */; };
-		AA0000010000000000000012 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000012 /* Assets.xcassets */; };
-		AA0000010000000000000017 /* ConversationEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000017 /* ConversationEntity.swift */; };
-		AA0000010000000000000018 /* ConversationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000018 /* ConversationStore.swift */; };
-		AA000001000000000000001B /* ImagineService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000001000000000000001B /* ImagineService.swift */; };
-		AA000001000000000000001C /* ImagineViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000001000000000000001C /* ImagineViewModel.swift */; };
-		AA000001000000000000001D /* ImagineComposeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000001000000000000001D /* ImagineComposeView.swift */; };
-		AA000001000000000000001E /* MediaBubbleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000001000000000000001E /* MediaBubbleView.swift */; };
+		000000000000000000000102 /* PersonalToolboxApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000101 /* PersonalToolboxApp.swift */; };
+		000000000000000000000104 /* RootTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000103 /* RootTabView.swift */; };
+		000000000000000000000106 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000105 /* AppSettings.swift */; };
+		000000000000000000000108 /* BiometricAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000107 /* BiometricAuth.swift */; };
+		00000000000000000000010A /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000109 /* Haptics.swift */; };
+		00000000000000000000010C /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000010B /* KeychainStore.swift */; };
+		00000000000000000000010E /* NetworkClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000010D /* NetworkClient.swift */; };
+		000000000000000000000110 /* SSEParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000010F /* SSEParser.swift */; };
+		000000000000000000000112 /* ChatListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000111 /* ChatListView.swift */; };
+		000000000000000000000114 /* ChatThreadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000113 /* ChatThreadView.swift */; };
+		000000000000000000000116 /* ChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000115 /* ChatViewModel.swift */; };
+		000000000000000000000118 /* ImagineComposeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000117 /* ImagineComposeView.swift */; };
+		00000000000000000000011A /* ImagineViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000119 /* ImagineViewModel.swift */; };
+		00000000000000000000011C /* MediaBubbleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000011B /* MediaBubbleView.swift */; };
+		00000000000000000000011E /* DownloadHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000011D /* DownloadHomeView.swift */; };
+		000000000000000000000120 /* DownloadViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000011F /* DownloadViewModel.swift */; };
+		000000000000000000000122 /* FilesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000121 /* FilesListView.swift */; };
+		000000000000000000000124 /* TaskRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000123 /* TaskRowView.swift */; };
+		000000000000000000000126 /* AccountListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000125 /* AccountListView.swift */; };
+		000000000000000000000128 /* InboxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000127 /* InboxView.swift */; };
+		00000000000000000000012A /* MailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000129 /* MailViewModel.swift */; };
+		00000000000000000000012C /* MessageDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000012B /* MessageDetailView.swift */; };
+		00000000000000000000012E /* ServiceProbeRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000012D /* ServiceProbeRow.swift */; };
+		000000000000000000000130 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000012F /* SettingsView.swift */; };
+		000000000000000000000132 /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000131 /* SettingsViewModel.swift */; };
+		000000000000000000000134 /* ChatModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000133 /* ChatModels.swift */; };
+		000000000000000000000136 /* ConversationEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000135 /* ConversationEntity.swift */; };
+		000000000000000000000138 /* DownloadModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000137 /* DownloadModels.swift */; };
+		00000000000000000000013A /* MailModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000139 /* MailModels.swift */; };
+		00000000000000000000013C /* ConversationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000013B /* ConversationStore.swift */; };
+		00000000000000000000013E /* ImagineService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000013D /* ImagineService.swift */; };
+		000000000000000000000140 /* MailService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000013F /* MailService.swift */; };
+		000000000000000000000142 /* Sub2APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000141 /* Sub2APIService.swift */; };
+		000000000000000000000144 /* YTService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000143 /* YTService.swift */; };
+		000000000000000000000146 /* AppleTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000145 /* AppleTheme.swift */; };
+		000000000000000000000208 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000200 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		BB0000010000000000000001 /* PersonalToolboxApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalToolboxApp.swift; sourceTree = "<group>"; };
-		BB0000010000000000000002 /* RootTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootTabView.swift; sourceTree = "<group>"; };
-		BB0000010000000000000003 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
-		BB0000010000000000000004 /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
-		BB0000010000000000000005 /* NetworkClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkClient.swift; sourceTree = "<group>"; };
-		BB0000010000000000000006 /* SSEParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSEParser.swift; sourceTree = "<group>"; };
-		BB0000010000000000000014 /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
-		BB000001000000000000001F /* BiometricAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricAuth.swift; sourceTree = "<group>"; };
-		BB0000010000000000000007 /* AppleTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleTheme.swift; sourceTree = "<group>"; };
-		BB0000010000000000000008 /* ChatModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatModels.swift; sourceTree = "<group>"; };
-		BB0000010000000000000009 /* MailModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailModels.swift; sourceTree = "<group>"; };
-		BB000001000000000000000A /* DownloadModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadModels.swift; sourceTree = "<group>"; };
-		BB000001000000000000000B /* Sub2APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sub2APIService.swift; sourceTree = "<group>"; };
-		BB000001000000000000000C /* MailService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailService.swift; sourceTree = "<group>"; };
-		BB000001000000000000000D /* YTService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTService.swift; sourceTree = "<group>"; };
-		BB000001000000000000000E /* ChatListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatListView.swift; sourceTree = "<group>"; };
-		BB0000010000000000000019 /* ChatThreadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatThreadView.swift; sourceTree = "<group>"; };
-		BB000001000000000000001A /* ChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViewModel.swift; sourceTree = "<group>"; };
-		BB000001000000000000000F /* AccountListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountListView.swift; sourceTree = "<group>"; };
-		BB0000010000000000000017 /* InboxView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InboxView.swift; sourceTree = "<group>"; };
-		BB0000010000000000000018 /* MessageDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageDetailView.swift; sourceTree = "<group>"; };
-		BB0000010000000000000019 /* MailViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailViewModel.swift; sourceTree = "<group>"; };
-		BB0000010000000000000010 /* DownloadHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadHomeView.swift; sourceTree = "<group>"; };
-		BB0000010000000000000017 /* DownloadViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadViewModel.swift; sourceTree = "<group>"; };
-		BB0000010000000000000018 /* TaskRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskRowView.swift; sourceTree = "<group>"; };
-		BB0000010000000000000019 /* FilesListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilesListView.swift; sourceTree = "<group>"; };
-		BB0000010000000000000011 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
-		BB0000010000000000000015 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
-		BB0000010000000000000016 /* ServiceProbeRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceProbeRow.swift; sourceTree = "<group>"; };
-		BB0000010000000000000012 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		BB0000010000000000000013 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		BB0000010000000000000017 /* ConversationEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationEntity.swift; sourceTree = "<group>"; };
-		BB0000010000000000000018 /* ConversationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationStore.swift; sourceTree = "<group>"; };
-		BB000001000000000000001B /* ImagineService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagineService.swift; sourceTree = "<group>"; };
-		BB000001000000000000001C /* ImagineViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagineViewModel.swift; sourceTree = "<group>"; };
-		BB000001000000000000001D /* ImagineComposeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagineComposeView.swift; sourceTree = "<group>"; };
-		BB000001000000000000001E /* MediaBubbleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaBubbleView.swift; sourceTree = "<group>"; };
-		CC0000010000000000000001 /* PersonalToolbox.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PersonalToolbox.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		000000000000000000000101 /* PersonalToolboxApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalToolboxApp.swift; sourceTree = "<group>"; };
+		000000000000000000000103 /* RootTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootTabView.swift; sourceTree = "<group>"; };
+		000000000000000000000105 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		000000000000000000000107 /* BiometricAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricAuth.swift; sourceTree = "<group>"; };
+		000000000000000000000109 /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
+		00000000000000000000010B /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
+		00000000000000000000010D /* NetworkClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkClient.swift; sourceTree = "<group>"; };
+		00000000000000000000010F /* SSEParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSEParser.swift; sourceTree = "<group>"; };
+		000000000000000000000111 /* ChatListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatListView.swift; sourceTree = "<group>"; };
+		000000000000000000000113 /* ChatThreadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatThreadView.swift; sourceTree = "<group>"; };
+		000000000000000000000115 /* ChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViewModel.swift; sourceTree = "<group>"; };
+		000000000000000000000117 /* ImagineComposeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagineComposeView.swift; sourceTree = "<group>"; };
+		000000000000000000000119 /* ImagineViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagineViewModel.swift; sourceTree = "<group>"; };
+		00000000000000000000011B /* MediaBubbleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaBubbleView.swift; sourceTree = "<group>"; };
+		00000000000000000000011D /* DownloadHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadHomeView.swift; sourceTree = "<group>"; };
+		00000000000000000000011F /* DownloadViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadViewModel.swift; sourceTree = "<group>"; };
+		000000000000000000000121 /* FilesListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilesListView.swift; sourceTree = "<group>"; };
+		000000000000000000000123 /* TaskRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskRowView.swift; sourceTree = "<group>"; };
+		000000000000000000000125 /* AccountListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountListView.swift; sourceTree = "<group>"; };
+		000000000000000000000127 /* InboxView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InboxView.swift; sourceTree = "<group>"; };
+		000000000000000000000129 /* MailViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailViewModel.swift; sourceTree = "<group>"; };
+		00000000000000000000012B /* MessageDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageDetailView.swift; sourceTree = "<group>"; };
+		00000000000000000000012D /* ServiceProbeRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceProbeRow.swift; sourceTree = "<group>"; };
+		00000000000000000000012F /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		000000000000000000000131 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
+		000000000000000000000133 /* ChatModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatModels.swift; sourceTree = "<group>"; };
+		000000000000000000000135 /* ConversationEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationEntity.swift; sourceTree = "<group>"; };
+		000000000000000000000137 /* DownloadModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadModels.swift; sourceTree = "<group>"; };
+		000000000000000000000139 /* MailModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailModels.swift; sourceTree = "<group>"; };
+		00000000000000000000013B /* ConversationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationStore.swift; sourceTree = "<group>"; };
+		00000000000000000000013D /* ImagineService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagineService.swift; sourceTree = "<group>"; };
+		00000000000000000000013F /* MailService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailService.swift; sourceTree = "<group>"; };
+		000000000000000000000141 /* Sub2APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sub2APIService.swift; sourceTree = "<group>"; };
+		000000000000000000000143 /* YTService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTService.swift; sourceTree = "<group>"; };
+		000000000000000000000145 /* AppleTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleTheme.swift; sourceTree = "<group>"; };
+		000000000000000000000200 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		000000000000000000000201 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		000000000000000000000202 /* PersonalToolbox.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PersonalToolbox.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXGroup section */
+		000000000000000000000301 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000101 /* PersonalToolboxApp.swift */,
+				000000000000000000000103 /* RootTabView.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		000000000000000000000302 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000105 /* AppSettings.swift */,
+				000000000000000000000107 /* BiometricAuth.swift */,
+				000000000000000000000109 /* Haptics.swift */,
+				00000000000000000000010B /* KeychainStore.swift */,
+				00000000000000000000010D /* NetworkClient.swift */,
+				00000000000000000000010F /* SSEParser.swift */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		000000000000000000000303 /* Theme */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000145 /* AppleTheme.swift */,
+			);
+			path = Theme;
+			sourceTree = "<group>";
+		};
+		000000000000000000000304 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000133 /* ChatModels.swift */,
+				000000000000000000000135 /* ConversationEntity.swift */,
+				000000000000000000000137 /* DownloadModels.swift */,
+				000000000000000000000139 /* MailModels.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		000000000000000000000305 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				00000000000000000000013B /* ConversationStore.swift */,
+				00000000000000000000013D /* ImagineService.swift */,
+				00000000000000000000013F /* MailService.swift */,
+				000000000000000000000141 /* Sub2APIService.swift */,
+				000000000000000000000143 /* YTService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		000000000000000000000307 /* Chat */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000111 /* ChatListView.swift */,
+				000000000000000000000113 /* ChatThreadView.swift */,
+				000000000000000000000115 /* ChatViewModel.swift */,
+				000000000000000000000117 /* ImagineComposeView.swift */,
+				000000000000000000000119 /* ImagineViewModel.swift */,
+				00000000000000000000011B /* MediaBubbleView.swift */,
+			);
+			path = Chat;
+			sourceTree = "<group>";
+		};
+		000000000000000000000308 /* Mail */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000125 /* AccountListView.swift */,
+				000000000000000000000127 /* InboxView.swift */,
+				000000000000000000000129 /* MailViewModel.swift */,
+				00000000000000000000012B /* MessageDetailView.swift */,
+			);
+			path = Mail;
+			sourceTree = "<group>";
+		};
+		000000000000000000000309 /* Download */ = {
+			isa = PBXGroup;
+			children = (
+				00000000000000000000011D /* DownloadHomeView.swift */,
+				00000000000000000000011F /* DownloadViewModel.swift */,
+				000000000000000000000121 /* FilesListView.swift */,
+				000000000000000000000123 /* TaskRowView.swift */,
+			);
+			path = Download;
+			sourceTree = "<group>";
+		};
+		00000000000000000000030A /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				00000000000000000000012D /* ServiceProbeRow.swift */,
+				00000000000000000000012F /* SettingsView.swift */,
+				000000000000000000000131 /* SettingsViewModel.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		000000000000000000000306 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000307 /* Chat */,
+				000000000000000000000308 /* Mail */,
+				000000000000000000000309 /* Download */,
+				00000000000000000000030A /* Settings */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		00000000000000000000030B /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000200 /* Assets.xcassets */,
+				000000000000000000000201 /* Info.plist */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		00000000000000000000030D /* PersonalToolbox */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000301 /* App */,
+				000000000000000000000302 /* Core */,
+				000000000000000000000303 /* Theme */,
+				000000000000000000000304 /* Models */,
+				000000000000000000000305 /* Services */,
+				000000000000000000000306 /* Features */,
+				00000000000000000000030B /* Resources */,
+			);
+			path = PersonalToolbox;
+			sourceTree = "<group>";
+		};
+		00000000000000000000030C /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000202 /* PersonalToolbox.app */,
+			);
+			sourceTree = "<group>";
+		};
+		000000000000000000000300 /*  */ = {
+			isa = PBXGroup;
+			children = (
+				00000000000000000000030D /* PersonalToolbox */,
+				00000000000000000000030C /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		000000000000000000000203 /* PersonalToolbox */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 000000000000000000000400 /* Build configuration list for PBXNativeTarget "PersonalToolbox" */;
+			buildPhases = (
+				000000000000000000000205 /* Sources */,
+				000000000000000000000207 /* Frameworks */,
+				000000000000000000000206 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PersonalToolbox;
+			productName = PersonalToolbox;
+			productReference = 000000000000000000000202 /* PersonalToolbox.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		000000000000000000000204 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1540;
+				LastUpgradeCheck = 1540;
+			};
+			buildConfigurationList = 000000000000000000000401 /* Build configuration list for PBXProject "PersonalToolbox" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 000000000000000000000300;
+			productRefGroup = 00000000000000000000030C /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				000000000000000000000203 /* PersonalToolbox */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		000000000000000000000206 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				000000000000000000000208 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXFrameworksBuildPhase section */
-		DD0000010000000000000003 /* Frameworks */ = {
+		000000000000000000000207 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -96,386 +302,84 @@
 		};
 /* End PBXFrameworksBuildPhase section */
 
-/* Begin PBXGroup section */
-		EE0000010000000000000001 = {
-			isa = PBXGroup;
-			children = (
-				EE0000010000000000000002 /* PersonalToolbox */,
-				EE0000010000000000000003 /* Products */,
-			);
-			sourceTree = "<group>";
-		};
-		EE0000010000000000000002 /* PersonalToolbox */ = {
-			isa = PBXGroup;
-			children = (
-				EE0000010000000000000010 /* App */,
-				EE0000010000000000000011 /* Core */,
-				EE0000010000000000000012 /* Theme */,
-				EE0000010000000000000013 /* Models */,
-				EE0000010000000000000014 /* Services */,
-				EE0000010000000000000015 /* Features */,
-				EE0000010000000000000016 /* Resources */,
-			);
-			path = PersonalToolbox;
-			sourceTree = "<group>";
-		};
-		EE0000010000000000000003 /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				CC0000010000000000000001 /* PersonalToolbox.app */,
-			);
-			name = Products;
-			sourceTree = "<group>";
-		};
-		EE0000010000000000000010 /* App */ = {
-			isa = PBXGroup;
-			children = (
-				BB0000010000000000000001 /* PersonalToolboxApp.swift */,
-				BB0000010000000000000002 /* RootTabView.swift */,
-			);
-			path = App;
-			sourceTree = "<group>";
-		};
-		EE0000010000000000000011 /* Core */ = {
-			isa = PBXGroup;
-			children = (
-				BB0000010000000000000003 /* AppSettings.swift */,
-				BB0000010000000000000004 /* KeychainStore.swift */,
-				BB0000010000000000000005 /* NetworkClient.swift */,
-				BB0000010000000000000006 /* SSEParser.swift */,
-				BB0000010000000000000014 /* Haptics.swift */,
-				BB000001000000000000001F /* BiometricAuth.swift */,
-			);
-			path = Core;
-			sourceTree = "<group>";
-		};
-		EE0000010000000000000012 /* Theme */ = {
-			isa = PBXGroup;
-			children = (
-				BB0000010000000000000007 /* AppleTheme.swift */,
-			);
-			path = Theme;
-			sourceTree = "<group>";
-		};
-		EE0000010000000000000013 /* Models */ = {
-			isa = PBXGroup;
-			children = (
-				BB0000010000000000000008 /* ChatModels.swift */,
-				BB0000010000000000000009 /* MailModels.swift */,
-				BB000001000000000000000A /* DownloadModels.swift */,
-				BB0000010000000000000017 /* ConversationEntity.swift */,
-			);
-			path = Models;
-			sourceTree = "<group>";
-		};
-		EE0000010000000000000014 /* Services */ = {
-			isa = PBXGroup;
-			children = (
-				BB000001000000000000000B /* Sub2APIService.swift */,
-				BB000001000000000000001B /* ImagineService.swift */,
-				BB000001000000000000000C /* MailService.swift */,
-				BB000001000000000000000D /* YTService.swift */,
-				BB0000010000000000000018 /* ConversationStore.swift */,
-			);
-			path = Services;
-			sourceTree = "<group>";
-		};
-		EE0000010000000000000015 /* Features */ = {
-			isa = PBXGroup;
-			children = (
-				EE0000010000000000000020 /* Chat */,
-				EE0000010000000000000021 /* Mail */,
-				EE0000010000000000000022 /* Download */,
-				EE0000010000000000000023 /* Settings */,
-			);
-			path = Features;
-			sourceTree = "<group>";
-		};
-		EE0000010000000000000016 /* Resources */ = {
-			isa = PBXGroup;
-			children = (
-				BB0000010000000000000012 /* Assets.xcassets */,
-				BB0000010000000000000013 /* Info.plist */,
-			);
-			path = Resources;
-			sourceTree = "<group>";
-		};
-		EE0000010000000000000020 /* Chat */ = {
-			isa = PBXGroup;
-			children = (
-				BB000001000000000000000E /* ChatListView.swift */,
-				BB0000010000000000000019 /* ChatThreadView.swift */,
-				BB000001000000000000001A /* ChatViewModel.swift */,
-				BB000001000000000000001C /* ImagineViewModel.swift */,
-				BB000001000000000000001D /* ImagineComposeView.swift */,
-				BB000001000000000000001E /* MediaBubbleView.swift */,
-			);
-			path = Chat;
-			sourceTree = "<group>";
-		};
-		EE0000010000000000000021 /* Mail */ = {
-			isa = PBXGroup;
-			children = (
-				BB000001000000000000000F /* AccountListView.swift */,
-				BB0000010000000000000017 /* InboxView.swift */,
-				BB0000010000000000000018 /* MessageDetailView.swift */,
-				BB0000010000000000000019 /* MailViewModel.swift */,
-			);
-			path = Mail;
-			sourceTree = "<group>";
-		};
-		EE0000010000000000000022 /* Download */ = {
-			isa = PBXGroup;
-			children = (
-				BB0000010000000000000010 /* DownloadHomeView.swift */,
-				BB0000010000000000000017 /* DownloadViewModel.swift */,
-				BB0000010000000000000018 /* TaskRowView.swift */,
-				BB0000010000000000000019 /* FilesListView.swift */,
-			);
-			path = Download;
-			sourceTree = "<group>";
-		};
-		EE0000010000000000000023 /* Settings */ = {
-			isa = PBXGroup;
-			children = (
-				BB0000010000000000000011 /* SettingsView.swift */,
-				BB0000010000000000000015 /* SettingsViewModel.swift */,
-				BB0000010000000000000016 /* ServiceProbeRow.swift */,
-			);
-			path = Settings;
-			sourceTree = "<group>";
-		};
-/* End PBXGroup section */
-
-/* Begin PBXNativeTarget section */
-		FF0000010000000000000001 /* PersonalToolbox */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = FF0000010000000000000010 /* Build configuration list for PBXNativeTarget "PersonalToolbox" */;
-			buildPhases = (
-				DD0000010000000000000001 /* Sources */,
-				DD0000010000000000000003 /* Frameworks */,
-				DD0000010000000000000002 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = PersonalToolbox;
-			productName = PersonalToolbox;
-			productReference = CC0000010000000000000001 /* PersonalToolbox.app */;
-			productType = "com.apple.product-type.application";
-		};
-/* End PBXNativeTarget section */
-
-/* Begin PBXProject section */
-		FF0000010000000000000002 /* Project object */ = {
-			isa = PBXProject;
-			attributes = {
-				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1500;
-				LastUpgradeCheck = 1500;
-				TargetAttributes = {
-					FF0000010000000000000001 = {
-						CreatedOnToolsVersion = 15.0;
-					};
-				};
-			};
-			buildConfigurationList = FF0000010000000000000011 /* Build configuration list for PBXProject "PersonalToolbox" */;
-			compatibilityVersion = "Xcode 14.0";
-			developmentRegion = en;
-			hasScannedForEncodings = 0;
-			knownRegions = (
-				en,
-				Base,
-				"zh-Hans",
-			);
-			mainGroup = EE0000010000000000000001;
-			productRefGroup = EE0000010000000000000003 /* Products */;
-			projectDirPath = "";
-			projectRoot = "";
-			targets = (
-				FF0000010000000000000001 /* PersonalToolbox */,
-			);
-		};
-/* End PBXProject section */
-
-/* Begin PBXResourcesBuildPhase section */
-		DD0000010000000000000002 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				AA0000010000000000000012 /* Assets.xcassets in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXResourcesBuildPhase section */
-
 /* Begin PBXSourcesBuildPhase section */
-		DD0000010000000000000001 /* Sources */ = {
+		000000000000000000000205 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AA0000010000000000000001 /* PersonalToolboxApp.swift in Sources */,
-				AA0000010000000000000002 /* RootTabView.swift in Sources */,
-				AA0000010000000000000003 /* AppSettings.swift in Sources */,
-				AA0000010000000000000004 /* KeychainStore.swift in Sources */,
-				AA0000010000000000000005 /* NetworkClient.swift in Sources */,
-				AA0000010000000000000006 /* SSEParser.swift in Sources */,
-				AA0000010000000000000014 /* Haptics.swift in Sources */,
-				AA000001000000000000001F /* BiometricAuth.swift in Sources */,
-				AA0000010000000000000007 /* AppleTheme.swift in Sources */,
-				AA0000010000000000000008 /* ChatModels.swift in Sources */,
-				AA0000010000000000000009 /* MailModels.swift in Sources */,
-				AA000001000000000000000A /* DownloadModels.swift in Sources */,
-				AA0000010000000000000017 /* ConversationEntity.swift in Sources */,
-				AA000001000000000000000B /* Sub2APIService.swift in Sources */,
-				AA000001000000000000000C /* MailService.swift in Sources */,
-				AA000001000000000000000D /* YTService.swift in Sources */,
-				AA0000010000000000000018 /* ConversationStore.swift in Sources */,
-				AA000001000000000000001B /* ImagineService.swift in Sources */,
-				AA000001000000000000000E /* ChatListView.swift in Sources */,
-				AA0000010000000000000019 /* ChatThreadView.swift in Sources */,
-				AA000001000000000000001A /* ChatViewModel.swift in Sources */,
-				AA000001000000000000001C /* ImagineViewModel.swift in Sources */,
-				AA000001000000000000001D /* ImagineComposeView.swift in Sources */,
-				AA000001000000000000001E /* MediaBubbleView.swift in Sources */,
-				AA000001000000000000000F /* AccountListView.swift in Sources */,
-				AA0000010000000000000017 /* InboxView.swift in Sources */,
-				AA0000010000000000000018 /* MessageDetailView.swift in Sources */,
-				AA0000010000000000000019 /* MailViewModel.swift in Sources */,
-				AA0000010000000000000010 /* DownloadHomeView.swift in Sources */,
-				AA0000010000000000000017 /* DownloadViewModel.swift in Sources */,
-				AA0000010000000000000018 /* TaskRowView.swift in Sources */,
-				AA0000010000000000000019 /* FilesListView.swift in Sources */,
-				AA0000010000000000000011 /* SettingsView.swift in Sources */,
-				AA0000010000000000000015 /* SettingsViewModel.swift in Sources */,
-				AA0000010000000000000016 /* ServiceProbeRow.swift in Sources */,
+				000000000000000000000102 /* PersonalToolboxApp.swift in Sources */,
+				000000000000000000000104 /* RootTabView.swift in Sources */,
+				000000000000000000000106 /* AppSettings.swift in Sources */,
+				000000000000000000000108 /* BiometricAuth.swift in Sources */,
+				00000000000000000000010A /* Haptics.swift in Sources */,
+				00000000000000000000010C /* KeychainStore.swift in Sources */,
+				00000000000000000000010E /* NetworkClient.swift in Sources */,
+				000000000000000000000110 /* SSEParser.swift in Sources */,
+				000000000000000000000112 /* ChatListView.swift in Sources */,
+				000000000000000000000114 /* ChatThreadView.swift in Sources */,
+				000000000000000000000116 /* ChatViewModel.swift in Sources */,
+				000000000000000000000118 /* ImagineComposeView.swift in Sources */,
+				00000000000000000000011A /* ImagineViewModel.swift in Sources */,
+				00000000000000000000011C /* MediaBubbleView.swift in Sources */,
+				00000000000000000000011E /* DownloadHomeView.swift in Sources */,
+				000000000000000000000120 /* DownloadViewModel.swift in Sources */,
+				000000000000000000000122 /* FilesListView.swift in Sources */,
+				000000000000000000000124 /* TaskRowView.swift in Sources */,
+				000000000000000000000126 /* AccountListView.swift in Sources */,
+				000000000000000000000128 /* InboxView.swift in Sources */,
+				00000000000000000000012A /* MailViewModel.swift in Sources */,
+				00000000000000000000012C /* MessageDetailView.swift in Sources */,
+				00000000000000000000012E /* ServiceProbeRow.swift in Sources */,
+				000000000000000000000130 /* SettingsView.swift in Sources */,
+				000000000000000000000132 /* SettingsViewModel.swift in Sources */,
+				000000000000000000000134 /* ChatModels.swift in Sources */,
+				000000000000000000000136 /* ConversationEntity.swift in Sources */,
+				000000000000000000000138 /* DownloadModels.swift in Sources */,
+				00000000000000000000013A /* MailModels.swift in Sources */,
+				00000000000000000000013C /* ConversationStore.swift in Sources */,
+				00000000000000000000013E /* ImagineService.swift in Sources */,
+				000000000000000000000140 /* MailService.swift in Sources */,
+				000000000000000000000142 /* Sub2APIService.swift in Sources */,
+				000000000000000000000144 /* YTService.swift in Sources */,
+				000000000000000000000146 /* AppleTheme.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		FF0000010000000000000020 /* Debug */ = {
+		000000000000000000000500 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
-				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
-				CLANG_ENABLE_OBJC_WEAK = YES;
-				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
-				CLANG_WARN_BOOL_CONVERSION = YES;
-				CLANG_WARN_COMMA = YES;
-				CLANG_WARN_CONSTANT_CONVERSION = YES;
-				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
-				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
-				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
-				CLANG_WARN_EMPTY_BODY = YES;
-				CLANG_WARN_ENUM_CONVERSION = YES;
-				CLANG_WARN_INFINITE_RECURSION = YES;
-				CLANG_WARN_INT_CONVERSION = YES;
-				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
-				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
-				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
-				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
-				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
-				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
-				CLANG_WARN_STRICT_PROTOTYPES = YES;
-				CLANG_WARN_SUSPICIOUS_MOVE = YES;
-				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
-				CLANG_WARN_UNREACHABLE_CODE = YES;
-				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
-				GCC_DYNAMIC_NO_PIC = NO;
-				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"DEBUG=1",
-					"$(inherited)",
-				);
-				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
-				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
-				GCC_WARN_UNDECLARED_SELECTOR = YES;
-				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
-				GCC_WARN_UNUSED_FUNCTION = YES;
-				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
-				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				SDKROOT = iphoneos;
 			};
 			name = Debug;
 		};
-		FF0000010000000000000021 /* Release */ = {
+		000000000000000000000501 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
-				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
-				CLANG_ENABLE_OBJC_WEAK = YES;
-				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
-				CLANG_WARN_BOOL_CONVERSION = YES;
-				CLANG_WARN_COMMA = YES;
-				CLANG_WARN_CONSTANT_CONVERSION = YES;
-				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
-				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
-				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
-				CLANG_WARN_EMPTY_BODY = YES;
-				CLANG_WARN_ENUM_CONVERSION = YES;
-				CLANG_WARN_INFINITE_RECURSION = YES;
-				CLANG_WARN_INT_CONVERSION = YES;
-				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
-				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
-				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
-				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
-				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
-				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
-				CLANG_WARN_STRICT_PROTOTYPES = YES;
-				CLANG_WARN_SUSPICIOUS_MOVE = YES;
-				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
-				CLANG_WARN_UNREACHABLE_CODE = YES;
-				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				ENABLE_NS_ASSERTIONS = NO;
-				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
-				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
-				GCC_WARN_UNDECLARED_SELECTOR = YES;
-				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
-				GCC_WARN_UNUSED_FUNCTION = YES;
-				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MTL_ENABLE_DEBUG_INFO = NO;
-				MTL_FAST_MATH = YES;
-				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				SDKROOT = iphoneos;
 			};
 			name = Release;
 		};
-		FF0000010000000000000022 /* Debug */ = {
+		000000000000000000000502 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -506,7 +410,7 @@
 			};
 			name = Debug;
 		};
-		FF0000010000000000000023 /* Release */ = {
+		000000000000000000000503 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -540,25 +444,25 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		FF0000010000000000000010 /* Build configuration list for PBXNativeTarget "PersonalToolbox" */ = {
+		000000000000000000000400 /* Build configuration list for PBXNativeTarget "PersonalToolbox" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				FF0000010000000000000022 /* Debug */,
-				FF0000010000000000000023 /* Release */,
+				000000000000000000000502 /* Debug */,
+				000000000000000000000503 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		FF0000010000000000000011 /* Build configuration list for PBXProject "PersonalToolbox" */ = {
+		000000000000000000000401 /* Build configuration list for PBXProject "PersonalToolbox" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				FF0000010000000000000020 /* Debug */,
-				FF0000010000000000000021 /* Release */,
+				000000000000000000000500 /* Debug */,
+				000000000000000000000501 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
-	rootObject = FF0000010000000000000002 /* Project object */;
+	rootObject = 000000000000000000000204 /* Project object */;
 }

@@ -3,6 +3,9 @@ import UIKit
 
 /// Download tab: URL + quality presets, running queue, completed files, Share export.
 struct DownloadHomeView: View {
+    /// From `RootTabView` selection — preferred over onAppear under TabView.
+    var isTabSelected: Bool = true
+
     @EnvironmentObject private var settings: AppSettings
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var viewModel = DownloadViewModel()
@@ -53,12 +56,18 @@ struct DownloadHomeView: View {
             .refreshable {
                 await viewModel.refreshNow()
             }
-            .onAppear { viewModel.onAppear() }
-            .onDisappear { viewModel.onDisappear() }
+            .onAppear {
+                viewModel.setTabVisible(isTabSelected)
+                viewModel.onScenePhase(scenePhase)
+            }
+            .onChange(of: isTabSelected) { _, selected in
+                viewModel.setTabVisible(selected)
+            }
             .onChange(of: scenePhase) { _, phase in
                 viewModel.onScenePhase(phase)
             }
             .sheet(item: $viewModel.shareItem, onDismiss: {
+                // Cleanup uses shareCleanupDirectory (not shareItem, which is already nil here).
                 viewModel.dismissShare()
             }) { item in
                 ActivityShareSheet(items: [item.url])

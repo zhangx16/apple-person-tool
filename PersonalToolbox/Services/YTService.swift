@@ -446,15 +446,16 @@ actor YTService {
     }
 
     /// Convert backend percentage string to 0...1. `"-1"` or status 2 → 1.0.
+    /// Backend always sends percent units (`"45.2%"`, `"1%"`, `"0.5%"`) — never fractions.
     static func progress01(percentageRaw: String, processStatus: Int) -> Double {
         if percentageRaw == "-1" || processStatus == 2 { return 1 }
         if processStatus == 0 { return 0 }
         let trimmed = percentageRaw.trimmingCharacters(in: .whitespacesAndNewlines)
             .replacingOccurrences(of: "%", with: "")
         guard let value = Double(trimmed), value.isFinite else { return 0 }
-        // Values like 45.2 mean percent; values in 0...1 stay as-is if already fraction.
+        // Negative sentinel (other than the string "-1") → complete.
         if value < 0 { return 1 }
-        if value <= 1 { return max(0, min(1, value)) }
+        // Always interpret as percent units: "1%" → 0.01, not 1.0.
         return max(0, min(1, value / 100))
     }
 

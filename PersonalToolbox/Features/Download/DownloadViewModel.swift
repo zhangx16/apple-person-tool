@@ -23,11 +23,13 @@ final class DownloadViewModel: ObservableObject {
     private let settings: AppSettings
     private let service = YTService.shared
     private var pollTask: Task<Void, Never>?
+    /// Driven by RootTabView selection (more reliable than onAppear/onDisappear under TabView).
     private var isTabVisible = false
     private var sceneActive = true
-    private var consecutiveUnauthorized = 0
     private var lastFilesRefresh: Date = .distantPast
     private let filesThrottle: TimeInterval = 4
+    /// Survives sheet `item` nil-ing so onDismiss can always delete the staged UUID directory.
+    private var shareCleanupDirectory: URL?
 
     init(settings: AppSettings = .shared) {
         self.settings = settings
@@ -35,16 +37,16 @@ final class DownloadViewModel: ObservableObject {
 
     // MARK: - Lifecycle / polling
 
-    func onAppear() {
-        isTabVisible = true
-        Task { await refreshNow() }
-        startPollingIfNeeded()
-    }
-
-    func onDisappear() {
-        isTabVisible = false
-        // Keep polling only while there are active tasks (background of other tabs).
-        if !tasks.contains(where: \.isActive) {
+    /// Called when Download tab selection changes (preferred over view appear/disappear).
+    func setTabVisible(_ visible: Bool) {
+        let wasVisible = isTabVisible
+        isTabVisible = visible
+        if visible {
+            if !wasVisible {
+                Task { await refreshNow() }
+            }
+            startPollingIfNeeded()
+        } else if !tasks.contains(where: \.isActive) {
             stopPolling()
         }
     }
@@ -236,6 +238,7 @@ final class DownloadViewModel: ObservableObject {
     }
 
     /// Download remote file into sandbox temp, then present Share sheet (no token in shared URL).
+    /// On 401, force re-login and retry the download once.
     func prepareShare(path: String, suggestedName: String?) async {
         guard isConfigured else {
             errorBanner = "请先在设置中配置下载服务"
@@ -244,40 +247,71 @@ final class DownloadViewModel: ObservableObject {
         downloadingPath = path
         defer { downloadingPath = nil }
         do {
-            try await service.ensureLogin(baseURL: baseURL, username: username, password: password)
-            let remote = try await service.downloadURL(baseURL: baseURL, path: path)
-            // Strip token from any logging path — only the URLSession request carries auth.
-            let (tempURL, response) = try await URLSession.shared.download(from: remote)
-            if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
-                throw NetworkError.http(http.statusCode, "下载失败")
-            }
-            let name = suggestedName
-                ?? (path as NSString).lastPathComponent
-                .ifEmpty("download.bin")
-            let dest = FileManager.default.temporaryDirectory
-                .appendingPathComponent(UUID().uuidString)
-                .appendingPathComponent(name)
-            try FileManager.default.createDirectory(
-                at: dest.deletingLastPathComponent(),
-                withIntermediateDirectories: true
-            )
-            if FileManager.default.fileExists(atPath: dest.path) {
-                try FileManager.default.removeItem(at: dest)
-            }
-            try FileManager.default.moveItem(at: tempURL, to: dest)
-            shareItem = ShareableFile(url: dest, name: name)
+            try await stageShareFile(path: path, suggestedName: suggestedName)
             Haptics.success()
         } catch {
+            if Self.isUnauthorized(error) {
+                // File download sits outside withAuthRetry — re-login and retry once.
+                await service.logout()
+                do {
+                    try await stageShareFile(path: path, suggestedName: suggestedName)
+                    Haptics.success()
+                    return
+                } catch {
+                    errorBanner = Self.chineseError(error)
+                    Haptics.error()
+                    return
+                }
+            }
             errorBanner = Self.chineseError(error)
             Haptics.error()
         }
     }
 
-    func dismissShare() {
-        if let item = shareItem {
-            try? FileManager.default.removeItem(at: item.url.deletingLastPathComponent())
+    private func stageShareFile(path: String, suggestedName: String?) async throws {
+        // Drop any previous staged share before creating a new temp dir.
+        cleanupShareDirectory()
+
+        try await service.ensureLogin(baseURL: baseURL, username: username, password: password)
+        let remote = try await service.downloadURL(baseURL: baseURL, path: path)
+        // Token stays on the URLSession request only — never handed to Share sheet.
+        let (tempURL, response) = try await URLSession.shared.download(from: remote)
+        if let http = response as? HTTPURLResponse {
+            if http.statusCode == 401 {
+                throw NetworkError.unauthorized
+            }
+            guard (200..<300).contains(http.statusCode) else {
+                throw NetworkError.http(http.statusCode, "下载失败")
+            }
         }
+        let name = suggestedName
+            ?? (path as NSString).lastPathComponent
+            .ifEmpty("download.bin")
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let dest = dir.appendingPathComponent(name)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        if FileManager.default.fileExists(atPath: dest.path) {
+            try FileManager.default.removeItem(at: dest)
+        }
+        try FileManager.default.moveItem(at: tempURL, to: dest)
+        // Remember dir independently of shareItem so sheet onDismiss still cleans up
+        // after SwiftUI has already nil'd the item binding.
+        shareCleanupDirectory = dir
+        shareItem = ShareableFile(url: dest, name: name)
+    }
+
+    /// Always safe to call from sheet onDismiss — uses `shareCleanupDirectory`, not `shareItem`.
+    func dismissShare() {
+        cleanupShareDirectory()
         shareItem = nil
+    }
+
+    private func cleanupShareDirectory() {
+        if let dir = shareCleanupDirectory {
+            try? FileManager.default.removeItem(at: dir)
+            shareCleanupDirectory = nil
+        }
     }
 
     // MARK: - Refresh
@@ -299,7 +333,6 @@ final class DownloadViewModel: ObservableObject {
                 password: password
             )
             tasks = nextTasks
-            consecutiveUnauthorized = 0
 
             let now = Date()
             let needFiles = !silent
@@ -316,9 +349,6 @@ final class DownloadViewModel: ObservableObject {
             }
             reevaluatePolling()
         } catch {
-            if let net = error as? NetworkError, case .unauthorized = net {
-                consecutiveUnauthorized += 1
-            }
             if !silent {
                 errorBanner = Self.chineseError(error)
             }
@@ -327,6 +357,17 @@ final class DownloadViewModel: ObservableObject {
     }
 
     // MARK: - Helpers
+
+    static func isUnauthorized(_ error: Error) -> Bool {
+        if let net = error as? NetworkError {
+            switch net {
+            case .unauthorized: return true
+            case .http(let code, _): return code == 401
+            default: return false
+            }
+        }
+        return false
+    }
 
     static func chineseError(_ error: Error) -> String {
         if let net = error as? NetworkError {

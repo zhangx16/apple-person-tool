@@ -25,7 +25,7 @@ struct RootTabView: View {
                 }
                 .tag(AppTab.mail)
 
-            DownloadHomeView()
+            DownloadHomeView(isTabSelected: selectedTab == .download)
                 .tabItem {
                     Label("下载", systemImage: "arrow.down.circle")
                 }

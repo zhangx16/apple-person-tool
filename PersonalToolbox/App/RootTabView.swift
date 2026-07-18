@@ -77,7 +77,9 @@ struct RootTabView: View {
         }
         .onChange(of: settings.requireBiometricUnlock) { _, enabled in
             if enabled {
-                isUnlocked = false
+                // Settings only commits `true` after a successful preflight auth.
+                // Stay unlocked for this session; re-lock on next background.
+                isUnlocked = true
             } else {
                 isUnlocked = true
             }

@@ -225,6 +225,7 @@ struct ChatThreadView: View {
             Text(text)
                 .font(.footnote)
                 .lineLimit(3)
+                .accessibilityLabel("错误：\(text)")
             Spacer(minLength: 4)
             Button("关闭") { viewModel.errorMessage = nil }
                 .font(.footnote.weight(.semibold))
@@ -237,9 +238,8 @@ struct ChatThreadView: View {
         .background(Color.orange.gradient, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .padding(.horizontal, 12)
         .padding(.top, 8)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("错误：\(text)")
-        .accessibilityAddTraits(.isStaticText)
+        // Keep dismiss as its own VO target (do not combine into static text).
+        .accessibilityElement(children: .contain)
     }
 }
 

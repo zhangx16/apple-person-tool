@@ -265,6 +265,7 @@ struct DownloadHomeView: View {
                 .font(.subheadline)
                 .foregroundStyle(.primary)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityLabel(isError ? "错误：\(text)" : text)
             Button(action: dismiss) {
                 Image(systemName: "xmark")
                     .font(.caption.weight(.semibold))
@@ -276,9 +277,8 @@ struct DownloadHomeView: View {
             .accessibilityLabel("关闭提示")
         }
         .padding(.vertical, 4)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(isError ? "错误：\(text)" : text)
-        .accessibilityAddTraits(.isStaticText)
+        // Keep dismiss as its own VO target (do not combine into static text).
+        .accessibilityElement(children: .contain)
     }
 }
 

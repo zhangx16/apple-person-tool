@@ -6,6 +6,8 @@ struct SettingsView: View {
     @StateObject private var viewModel = SettingsViewModel()
     @State private var confirmLogout = false
     @State private var favoriteDraft = ""
+    @State private var biometricAlert: String?
+    @State private var isEnablingBiometric = false
 
     var body: some View {
         NavigationStack {
@@ -42,6 +44,17 @@ struct SettingsView: View {
                 Button("好", role: .cancel) { viewModel.logoutNotice = nil }
             } message: {
                 Text(viewModel.logoutNotice ?? "")
+            }
+            .alert(
+                "无法开启应用锁",
+                isPresented: Binding(
+                    get: { biometricAlert != nil },
+                    set: { if !$0 { biometricAlert = nil } }
+                )
+            ) {
+                Button("好", role: .cancel) { biometricAlert = nil }
+            } message: {
+                Text(biometricAlert ?? "")
             }
         }
     }
@@ -263,8 +276,13 @@ struct SettingsView: View {
             Toggle("应用切换时隐藏敏感内容", isOn: $settings.hideSensitiveInAppSwitcher)
                 .accessibilityHint("切到后台或应用切换器时用遮罩隐藏界面")
 
-            Toggle("启动时需要面容/触控 ID", isOn: $settings.requireBiometricUnlock)
-                .accessibilityHint("每次进入应用需验证设备所有者身份")
+            Toggle("启动时需要面容/触控 ID", isOn: biometricUnlockBinding)
+                .disabled(isEnablingBiometric || (!BiometricAuth.canAuthenticate && !settings.requireBiometricUnlock))
+                .accessibilityHint(
+                    BiometricAuth.canAuthenticate || settings.requireBiometricUnlock
+                        ? "每次进入应用需验证设备所有者身份；开启前会先验证一次"
+                        : "设备未设置面容 ID、触控 ID 或密码，无法开启"
+                )
 
             Button(role: .destructive) {
                 confirmLogout = true
@@ -277,7 +295,50 @@ struct SettingsView: View {
         } header: {
             Label("隐私与会话", systemImage: "lock.shield")
         } footer: {
-            Text("生物识别锁默认关闭。注销仅清除本机 Cookie 与 Token，不会删除已保存的密钥。开启面容锁后，从后台返回也需要重新验证。")
+            Text(privacyFooterText)
+        }
+    }
+
+    private var privacyFooterText: String {
+        if !BiometricAuth.canAuthenticate && !settings.requireBiometricUnlock {
+            return "生物识别锁默认关闭。此设备未设置面容 ID、触控 ID 或设备密码，无法开启应用锁。注销仅清除本机 Cookie 与 Token，不会删除已保存的密钥。"
+        }
+        return "生物识别锁默认关闭。开启前会先验证身份；之后从后台返回也需重新验证。注销仅清除本机 Cookie 与 Token，不会删除已保存的密钥。"
+    }
+
+    /// Binding that only commits `true` after a successful auth preflight (review Issue 3).
+    private var biometricUnlockBinding: Binding<Bool> {
+        Binding(
+            get: { settings.requireBiometricUnlock },
+            set: { newValue in
+                if newValue {
+                    Task { await enableBiometricUnlock() }
+                } else {
+                    settings.requireBiometricUnlock = false
+                }
+            }
+        )
+    }
+
+    @MainActor
+    private func enableBiometricUnlock() async {
+        guard !isEnablingBiometric else { return }
+        guard BiometricAuth.canAuthenticate else {
+            biometricAlert = "此设备未设置面容 ID、触控 ID 或设备密码，无法开启应用锁。"
+            Haptics.error()
+            return
+        }
+        isEnablingBiometric = true
+        defer { isEnablingBiometric = false }
+        let ok = await BiometricAuth.authenticate(reason: "验证身份以开启应用锁")
+        if ok {
+            settings.requireBiometricUnlock = true
+            Haptics.success()
+        } else {
+            // Keep setting off so user is never locked out without a successful enable.
+            settings.requireBiometricUnlock = false
+            biometricAlert = "验证失败或已取消，未开启应用锁。"
+            Haptics.error()
         }
     }
 

@@ -186,11 +186,14 @@ private struct EmptyStateAccessibility: ViewModifier {
 }
 
 /// Full-screen cover used when `hideSensitiveInAppSwitcher` and app resigns active.
+/// Opaque base so chat/mail text is not legible in the app-switcher snapshot
+/// (`.ultraThinMaterial` alone is too translucent — review Issue 1).
 struct PrivacyCoverView: View {
     var body: some View {
         ZStack {
-            Rectangle()
-                .fill(.ultraThinMaterial)
+            // Solid fill first — material alone can leave content readable.
+            Color(.systemBackground)
+            AppleTheme.canvas.opacity(0.98)
             VStack(spacing: 12) {
                 Image(systemName: "lock.fill")
                     .font(.largeTitle)
@@ -253,6 +256,12 @@ struct BiometricLockView: View {
     @MainActor
     private func authenticate() async {
         guard !isAuthenticating else { return }
+        // No enrolled biometrics/passcode — cannot complete unlock UI.
+        // Enabling the setting requires a successful preflight in Settings.
+        guard BiometricAuth.canAuthenticate else {
+            statusMessage = "此设备未设置面容 ID、触控 ID 或设备密码，无法验证。请在系统设置中配置后再试。"
+            return
+        }
         isAuthenticating = true
         defer { isAuthenticating = false }
         let ok = await BiometricAuth.authenticate(reason: "解锁 PersonalToolbox 以继续使用")

@@ -103,7 +103,7 @@ final class ConversationStore {
                 .replacingOccurrences(of: "\n", with: " ")
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             if !flattened.isEmpty {
-                conversation.title = String(flattened.prefix(24))
+                conversation.title = String(flattened.prefix(ChatLimits.titlePrefixLength))
             }
         }
 

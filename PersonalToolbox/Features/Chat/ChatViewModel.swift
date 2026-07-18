@@ -100,10 +100,7 @@ final class ChatViewModel: ObservableObject {
     func newConversation() -> ChatConversation? {
         guard let store else { return nil }
         do {
-            let model = settings.preferredModel.isEmpty
-                ? AppSettings.defaultTextModel
-                : settings.preferredModel
-            let entity = try store.create(title: "新对话", model: model)
+            let entity = try store.create(title: "新对话", model: resolvedTextModel())
             let conv = entity.toChatConversation()
             conversations.insert(conv, at: 0)
             active = conv
@@ -114,6 +111,15 @@ final class ChatViewModel: ObservableObject {
             errorMessage = Self.chineseError(error)
             return nil
         }
+    }
+
+    /// Preferred model if it is a text model; otherwise default text model (never imagine*).
+    private func resolvedTextModel() -> String {
+        let preferred = settings.preferredModel.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !preferred.isEmpty, Sub2APIService.isTextModel(preferred) {
+            return preferred
+        }
+        return AppSettings.defaultTextModel
     }
 
     func deleteConversation(id: UUID) {
@@ -256,16 +262,23 @@ final class ChatViewModel: ObservableObject {
             from: conv,
             systemPrompt: settings.systemPrompt
         )
-        let model = conv.model
+        // Clamp to text models even if conversation.model was corrupted/legacy.
+        let model = Sub2APIService.isTextModel(conv.model) ? conv.model : resolvedTextModel()
+        if model != conv.model {
+            try? store.updateModel(conversationID: conv.id, model: model)
+            conv.model = model
+            active = conv
+            upsertConversationInList(conv)
+        }
         let baseURL = settings.sub2apiBaseURL
         let apiKey = settings.sub2apiAPIKey
         let conversationID = conv.id
 
-        streamTask = Task { [weak self] in
+        streamTask = Task { @MainActor [weak self] in
             guard let self else { return }
             var assembled = ""
             do {
-                let stream = self.service.streamChat(
+                let stream = await self.service.streamChat(
                     baseURL: baseURL,
                     apiKey: apiKey,
                     model: model,
@@ -280,7 +293,6 @@ final class ChatViewModel: ObservableObject {
                         content: assembled,
                         isStreaming: true
                     )
-                    try? self.store?.updateMessageContent(messageID: assistantID, content: assembled)
                 }
 
                 self.finishStream(
@@ -311,8 +323,19 @@ final class ChatViewModel: ObservableObject {
     }
 
     func stop() {
-        // Cancel producer; `finishStream` keeps partial content and clears isStreaming.
         streamTask?.cancel()
+        // Move UI to idle immediately (DESIGN interruptibility); finishStream stays idempotent.
+        if isStreaming {
+            isStreaming = false
+            if var conv = active,
+               let idx = conv.messages.lastIndex(where: { $0.role == .assistant && $0.isStreaming }) {
+                conv.messages[idx].isStreaming = false
+                let content = conv.messages[idx].content
+                try? store?.updateMessageContent(messageID: conv.messages[idx].id, content: content)
+                active = conv
+                upsertConversationInList(conv)
+            }
+        }
     }
 
     func copyMessage(_ message: ChatMessage) {
@@ -352,22 +375,32 @@ final class ChatViewModel: ObservableObject {
 
     // MARK: - Private helpers
 
+    /// Persist delta always; update in-memory `active` only when it is the streaming conversation.
     private func applyAssistantDelta(
         conversationID: UUID,
         messageID: UUID,
         content: String,
-        isStreaming: Bool
+        isStreaming streamingFlag: Bool
     ) {
-        guard var conv = active, conv.id == conversationID else { return }
-        if let idx = conv.messages.firstIndex(where: { $0.id == messageID }) {
-            conv.messages[idx].content = content
-            conv.messages[idx].isStreaming = isStreaming
+        try? store?.updateMessageContent(messageID: messageID, content: content)
+
+        if var conv = active, conv.id == conversationID {
+            if let idx = conv.messages.firstIndex(where: { $0.id == messageID }) {
+                conv.messages[idx].content = content
+                conv.messages[idx].isStreaming = streamingFlag
+            }
+            conv.updatedAt = .now
+            active = conv
+            upsertConversationInList(conv)
+        } else if let idx = conversations.firstIndex(where: { $0.id == conversationID }) {
+            // Touch list row so relative time / ordering stays fresh without requiring active.
+            conversations[idx].updatedAt = .now
+            conversations.sort { $0.updatedAt > $1.updatedAt }
         }
-        conv.updatedAt = .now
-        active = conv
-        upsertConversationInList(conv)
     }
 
+    /// Conversation-ID-scoped finalization: always writes/deletes via store, surfaces errors,
+    /// and patches `active` only when it matches the stream target.
     private func finishStream(
         conversationID: UUID,
         messageID: UUID,
@@ -380,36 +413,58 @@ final class ChatViewModel: ObservableObject {
             streamTask = nil
         }
 
-        guard var conv = active, conv.id == conversationID else { return }
+        let emptyOnError = content.isEmpty && error != nil && !cancelled
 
-        if let idx = conv.messages.firstIndex(where: { $0.id == messageID }) {
-            if content.isEmpty, let error, !cancelled {
-                conv.messages.remove(at: idx)
-                try? store?.deleteMessage(messageID: messageID)
+        if emptyOnError {
+            try? store?.deleteMessage(messageID: messageID)
+            if let error {
+                errorMessage = Self.chineseError(error)
+            }
+            Haptics.error()
+        } else {
+            try? store?.updateMessageContent(messageID: messageID, content: content)
+            if let error, !cancelled {
                 errorMessage = Self.chineseError(error)
                 Haptics.error()
-            } else {
-                conv.messages[idx].content = content
-                conv.messages[idx].isStreaming = false
-                try? store?.updateMessageContent(messageID: messageID, content: content)
-                if let error, !cancelled {
-                    errorMessage = Self.chineseError(error)
-                    Haptics.error()
-                } else if !cancelled {
-                    Haptics.success()
-                }
+            } else if !cancelled {
+                Haptics.success()
             }
         }
 
+        // Refresh title / updatedAt from store for list row.
+        var listConv: ChatConversation?
         if let entity = try? store?.conversation(id: conversationID) {
-            conv.title = entity.title
-            conv.updatedAt = entity.updatedAt
-        } else {
-            conv.updatedAt = .now
+            listConv = entity.toChatConversation()
         }
 
-        active = conv
-        upsertConversationInList(conv)
+        if var conv = active, conv.id == conversationID {
+            if emptyOnError {
+                conv.messages.removeAll { $0.id == messageID }
+            } else if let idx = conv.messages.firstIndex(where: { $0.id == messageID }) {
+                conv.messages[idx].content = content
+                conv.messages[idx].isStreaming = false
+            }
+            if let entity = try? store?.conversation(id: conversationID) {
+                conv.title = entity.title
+                conv.updatedAt = entity.updatedAt
+            } else {
+                conv.updatedAt = .now
+            }
+            active = conv
+            upsertConversationInList(conv)
+        } else if var refreshed = listConv {
+            // Ensure streaming flags off on list snapshot.
+            for i in refreshed.messages.indices {
+                refreshed.messages[i].isStreaming = false
+            }
+            if emptyOnError {
+                refreshed.messages.removeAll { $0.id == messageID }
+            }
+            upsertConversationInList(refreshed)
+        } else {
+            // Conversation may have been deleted mid-stream — still clear streaming via list reload.
+            reload()
+        }
     }
 
     private func upsertConversationInList(_ conv: ChatConversation) {

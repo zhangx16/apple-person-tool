@@ -14,12 +14,44 @@ final class LiveFollowStore: ObservableObject {
     }
 
     func load() {
-        guard let data = UserDefaults.standard.data(forKey: defaultsKey),
-              let decoded = try? JSONDecoder().decode([LiveFollowItem].self, from: data) else {
+        guard let data = UserDefaults.standard.data(forKey: defaultsKey) else {
             items = []
             return
         }
-        items = decoded.sorted { $0.addedAt > $1.addedAt }
+        // Drop entries whose platform was removed (e.g. bilibili).
+        if let decoded = try? JSONDecoder().decode([LiveFollowItem].self, from: data) {
+            items = decoded.sorted { $0.addedAt > $1.addedAt }
+            return
+        }
+        // Lenient path: decode array of dicts and skip unknown platforms.
+        guard let raw = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+            items = []
+            return
+        }
+        var out: [LiveFollowItem] = []
+        for dict in raw {
+            guard let pRaw = dict["platform"] as? String,
+                  let platform = LivePlatform(rawValue: pRaw),
+                  let roomId = dict["roomId"] as? String else { continue }
+            let added: Date
+            if let t = dict["addedAt"] as? TimeInterval {
+                added = Date(timeIntervalSinceReferenceDate: t)
+            } else if let t = dict["addedAt"] as? Double {
+                added = Date(timeIntervalSinceReferenceDate: t)
+            } else {
+                added = Date()
+            }
+            out.append(LiveFollowItem(
+                platform: platform,
+                roomId: roomId,
+                title: dict["title"] as? String ?? "",
+                userName: dict["userName"] as? String ?? "",
+                cover: dict["cover"] as? String ?? "",
+                addedAt: added
+            ))
+        }
+        items = out.sorted { $0.addedAt > $1.addedAt }
+        persist()
     }
 
     func isFollowing(platform: LivePlatform, roomId: String) -> Bool {

@@ -586,7 +586,17 @@ actor KuaishouLiveService {
 
     func getPlayURLs(detail: LiveRoomDetail, quality: LivePlayQuality) async throws -> LivePlayResult {
         guard !quality.readyURLs.isEmpty else { throw NetworkError.message("快手无播放地址") }
-        return LivePlayResult(urls: quality.readyURLs, headers: [
+        // Prefer HLS for iOS; keep others after.
+        let sorted = quality.readyURLs.sorted { a, b in
+            let am = a.contains(".m3u8") || a.contains("m3u8")
+            let bm = b.contains(".m3u8") || b.contains("m3u8")
+            if am != bm { return am && !bm }
+            let aflv = a.contains(".flv")
+            let bflv = b.contains(".flv")
+            if aflv != bflv { return !aflv && bflv }
+            return false
+        }
+        return LivePlayResult(urls: sorted, headers: [
             "User-Agent": ua,
             "Referer": "https://live.kuaishou.com/",
             "Cookie": currentCookieHeader()

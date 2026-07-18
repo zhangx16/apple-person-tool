@@ -180,7 +180,17 @@ actor DouyuLiveService {
                     let base = LiveJSON.string(data["rtmp_url"])
                     let live = htmlUnescape(LiveJSON.string(data["rtmp_live"]))
                     if !base.isEmpty, !live.isEmpty {
-                        urls.append("\(base)/\(live)")
+                        let full = "\(base)/\(live)"
+                        urls.append(full)
+                        // Some lines expose flv; try sibling m3u8 for AVPlayer.
+                        if full.contains(".flv") {
+                            urls.append(full.replacingOccurrences(of: ".flv", with: ".m3u8"))
+                        }
+                    }
+                    // Explicit HLS fields if present
+                    for key in ["hls_url", "https_hls_url", "rtmp_hls"] {
+                        let h = htmlUnescape(LiveJSON.string(data[key]))
+                        if h.contains("m3u8") { urls.append(h) }
                     }
                 }
             } catch {

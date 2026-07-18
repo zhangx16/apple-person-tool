@@ -21,7 +21,7 @@ struct LiveHomeView: View {
 
     @ObservedObject private var follows = LiveFollowStore.shared
     @State private var mode: MainMode = .follow
-    @State private var platform: LivePlatform = .bilibili
+    @State private var platform: LivePlatform = .huya
     @State private var keyword = ""
     @State private var roomIdInput = ""
     @State private var searchResults: [LiveRoomItem] = []

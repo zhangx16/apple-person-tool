@@ -34,11 +34,12 @@ final class LiveRoomViewModel: ObservableObject {
     init(room: LiveRoomItem) {
         self.room = room
         webURL = URL(string: defaultWebURL)
+        // 虎牙/斗鱼/快手主线路为 FLV，iOS AVPlayer 不可播 → 默认网页。
+        playMode = room.platform.prefersWebPlayback ? .web : .native
     }
 
     private var defaultWebURL: String {
         switch room.platform {
-        case .bilibili: return "https://live.bilibili.com/\(room.roomId)"
         case .huya: return "https://m.huya.com/\(room.roomId)"
         case .douyu: return "https://m.douyu.com/\(room.roomId)"
         case .douyin: return "https://live.douyin.com/\(room.roomId)"
@@ -78,20 +79,31 @@ final class LiveRoomViewModel: ObservableObject {
     private func load() async {
         isLoading = true
         errorMessage = nil
-        statusText = "获取房间信息…"
+        statusText = playMode == .web ? "加载网页直播…" : "获取房间信息…"
         defer { isLoading = false }
 
         do {
             let d = try await LiveSiteRouter.roomDetail(platform: room.platform, roomId: room.roomId)
             guard !Task.isCancelled else { return }
             detail = d
-            if let u = URL(string: d.webURL), u.scheme == "http" || u.scheme == "https" {
+            // Prefer mobile web pages for web mode.
+            if let u = URL(string: mobileWebURL(for: d)) {
+                webURL = u
+            } else if let u = URL(string: d.webURL), u.scheme == "http" || u.scheme == "https" {
                 webURL = u
             }
+
+            if playMode == .web {
+                statusText = d.isLive ? "网页播放中" : "未开播 · 网页可试"
+                isLoading = false
+                // Warm qualities in background for optional native switch.
+                Task { await warmNativeQualities(detail: d) }
+                return
+            }
+
             statusText = d.isLive ? "解析播放地址…" : "主播未开播"
             guard d.isLive else {
                 errorMessage = "当前未开播"
-                // Still allow web page.
                 playMode = .web
                 return
             }
@@ -100,21 +112,37 @@ final class LiveRoomViewModel: ObservableObject {
             guard !Task.isCancelled else { return }
             qualities = qs
             guard let first = qs.first else {
-                errorMessage = "无清晰度，已切换网页播放"
+                statusText = "无原生线路，使用网页"
                 playMode = .web
                 return
             }
             selectedId = first.id
             await play(quality: first)
-            // If native still blank shortly after, auto web.
             scheduleAutoWebFallback()
         } catch is CancellationError {
             return
         } catch {
             guard !Task.isCancelled else { return }
             errorMessage = error.localizedDescription
-            statusText = "加载失败，切换网页"
+            statusText = "信息加载失败，仍可试网页"
             playMode = .web
+        }
+    }
+
+    private func mobileWebURL(for d: LiveRoomDetail) -> String {
+        switch d.platform {
+        case .huya: return "https://m.huya.com/\(d.roomId)"
+        case .douyu: return "https://m.douyu.com/\(d.roomId)"
+        case .douyin: return "https://live.douyin.com/\(d.roomId)"
+        case .kuaishou: return "https://live.kuaishou.com/u/\(d.roomId)"
+        }
+    }
+
+    private func warmNativeQualities(detail: LiveRoomDetail) async {
+        guard detail.isLive else { return }
+        if let qs = try? await LiveSiteRouter.playQualities(detail: detail), !qs.isEmpty {
+            qualities = qs
+            if selectedId == nil { selectedId = qs.first?.id }
         }
     }
 
@@ -131,18 +159,16 @@ final class LiveRoomViewModel: ObservableObject {
             let result = try await LiveSiteRouter.playURLs(detail: detail, quality: quality)
             guard !Task.isCancelled else { return }
 
-            // HLS only for AVPlayer.
+            // HLS only — FLV cannot play in AVPlayer on iOS.
             var candidates = result.urls.filter {
-                $0.contains(".m3u8") || $0.contains("/index.m3u8")
-            }
-            if candidates.isEmpty {
-                candidates = result.urls.filter { !$0.contains(".flv") }
+                $0.contains(".m3u8") || $0.contains("m3u8")
             }
             candidates = candidates.filter { URL(string: $0) != nil }
 
             guard !candidates.isEmpty else {
-                errorMessage = "无 HLS 地址（FLV 无法在 iOS 播放）"
-                statusText = "改用网页"
+                // Not an error for 虎牙/斗鱼/快手 — expected FLV-first sites.
+                errorMessage = nil
+                statusText = "该平台线路为 FLV，iOS 请用网页播放"
                 playMode = .web
                 return
             }

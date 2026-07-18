@@ -9,17 +9,114 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                sub2Section
-                adminSection
-                ytSection
-                sublinkSection
-                komariSection
-                cloudflareSection
-                appearanceSection
-                privacySection
-                aboutSection
+            List {
+                Section {
+                    projectLink(
+                        brand: .sub2,
+                        title: "Sub2API 助手",
+                        subtitle: configuredHint(
+                            configured: settings.isAIConfigured,
+                            detail: hostHint(settings.sub2apiBaseURL)
+                        )
+                    ) {
+                        Sub2ChatSettingsPage(viewModel: viewModel)
+                    }
+
+                    projectLink(
+                        brand: .sub2,
+                        title: "Sub2API 监控",
+                        subtitle: configuredHint(
+                            configured: settings.isAdminConfigured,
+                            detail: "Admin API Key"
+                        )
+                    ) {
+                        Sub2AdminSettingsPage(viewModel: viewModel)
+                    }
+
+                    projectLink(
+                        brand: .youtube,
+                        title: "YouTube 下载",
+                        subtitle: configuredHint(
+                            configured: settings.isYTConfigured,
+                            detail: hostHint(settings.ytBaseURL)
+                        )
+                    ) {
+                        YTSettingsPage(viewModel: viewModel)
+                    }
+
+                    projectLink(
+                        brand: .sublink,
+                        title: "SublinkX",
+                        subtitle: configuredHint(
+                            configured: settings.isSublinkConfigured,
+                            detail: hostHint(settings.sublinkBaseURL)
+                        )
+                    ) {
+                        SublinkSettingsPage(viewModel: viewModel)
+                    }
+
+                    projectLink(
+                        brand: .komari,
+                        title: "Komari",
+                        subtitle: hostHint(settings.komariBaseURL)
+                    ) {
+                        KomariSettingsPage(viewModel: viewModel)
+                    }
+
+                    projectLink(
+                        brand: .cloudflare,
+                        title: "Cloudflare",
+                        subtitle: configuredHint(
+                            configured: settings.isCloudflareConfigured,
+                            detail: settings.cloudflareAccountName.isEmpty
+                                ? "API Token"
+                                : settings.cloudflareAccountName
+                        )
+                    ) {
+                        CloudflareSettingsPage(viewModel: viewModel)
+                    }
+                } header: {
+                    Text("服务配置")
+                } footer: {
+                    Text("仅显示项目名称，点进各自页面填写地址与密钥。")
+                }
+
+                Section("通用") {
+                    NavigationLink {
+                        AppearanceSettingsPage()
+                    } label: {
+                        projectRow(
+                            systemImage: "paintbrush.fill",
+                            title: "外观",
+                            subtitle: appearanceLabel
+                        )
+                    }
+
+                    NavigationLink {
+                        PrivacySettingsPage(
+                            confirmLogout: $confirmLogout,
+                            biometricAlert: $biometricAlert,
+                            isEnablingBiometric: $isEnablingBiometric,
+                            onLogout: { Task { await viewModel.logoutAllSessions() } }
+                        )
+                    } label: {
+                        projectRow(
+                            systemImage: "lock.shield.fill",
+                            title: "隐私与安全",
+                            subtitle: settings.requireBiometricUnlock ? "应用锁已开启" : "应用锁关闭"
+                        )
+                    }
+                }
+
+                Section("关于") {
+                    LabeledContent("应用", value: "Xin tools")
+                    LabeledContent("版本", value: appVersion)
+                    Text("助手 · 监控 · 下载 · 本地工具")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
+            .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
             .background(AppleTheme.canvas)
             .navigationTitle("设置")
@@ -60,238 +157,419 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Sub2API chat
+    // MARK: - Home rows
 
-    private var sub2Section: some View {
-        Section {
-            TextField("Base URL", text: $settings.sub2apiBaseURL)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .keyboardType(.URL)
-
-            SecureField("Chat API Key", text: $settings.sub2apiAPIKey)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .privacySensitive()
-
-            Picker("首选文本模型", selection: $settings.preferredModel) {
-                ForEach(viewModel.modelChoices, id: \.self) { Text($0).tag($0) }
+    private func projectLink<Destination: View>(
+        brand: ServiceBrand,
+        title: String,
+        subtitle: String,
+        @ViewBuilder destination: () -> Destination
+    ) -> some View {
+        NavigationLink {
+            destination()
+                .environmentObject(settings)
+        } label: {
+            HStack(spacing: 14) {
+                ServiceBrandIcon(brand: brand, size: 36)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
             }
-            Picker("默认生图模型", selection: $settings.preferredImagineImageModel) {
-                ForEach(viewModel.imagineImageChoices, id: \.self) { Text($0).tag($0) }
-            }
-            Picker("默认编辑模型", selection: $settings.preferredImagineEditModel) {
-                ForEach(viewModel.imagineEditChoices, id: \.self) { Text($0).tag($0) }
-            }
-            Picker("默认视频模型", selection: $settings.preferredImagineVideoModel) {
-                ForEach(viewModel.imagineVideoChoices, id: \.self) { Text($0).tag($0) }
-            }
-
-            TextField("系统提示词", text: $settings.systemPrompt, axis: .vertical)
-                .lineLimit(2...5)
-
-            ServiceProbeRow(state: viewModel.sub2Probe)
-            Button {
-                Task { await viewModel.testSub2API() }
-            } label: {
-                Label("测试 Chat 连接", systemImage: "bolt.horizontal.circle")
-            }
-            .buttonStyle(PressableButtonStyle())
-            .disabled(viewModel.sub2Probe.isProbing)
-        } header: {
-            settingsHeader(brand: .sub2, title: "Sub2API · 助手")
-        } footer: {
-            Text("用于对话与 Imagine。默认 \(settings.sub2apiBaseURL)")
+            .padding(.vertical, 2)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(title)，\(subtitle)")
         }
     }
 
-    // MARK: - Admin monitor
-
-    private var adminSection: some View {
-        Section {
-            SecureField("Admin API Key (x-api-key)", text: $settings.sub2apiAdminAPIKey)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .privacySensitive()
-
-            ServiceProbeRow(state: viewModel.adminProbe)
-            Button {
-                Task { await viewModel.testAdmin() }
-            } label: {
-                Label("测试监控接口", systemImage: "chart.bar")
-            }
-            .buttonStyle(PressableButtonStyle())
-            .disabled(viewModel.adminProbe.isProbing)
-        } header: {
-            settingsHeader(brand: .sub2, title: "Sub2API · 监控")
-        } footer: {
-            Text("对应 sub2api-mobile 的 Admin Token，访问 /api/v1/admin/dashboard/*。可与 Chat Key 不同。")
-        }
-    }
-
-    // MARK: - yt-dlp
-
-    private var ytSection: some View {
-        Section {
-            TextField("Base URL", text: $settings.ytBaseURL)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .keyboardType(.URL)
-            TextField("用户名", text: $settings.ytUsername)
-                .textInputAutocapitalization(.never)
-            SecureField("密码", text: $settings.ytPassword)
-                .privacySensitive()
-            ServiceProbeRow(state: viewModel.ytProbe)
-            Button {
-                Task { await viewModel.testYT() }
-            } label: {
-                Label("测试下载服务", systemImage: "arrow.down.circle")
-            }
-            .buttonStyle(PressableButtonStyle())
-        } header: {
-            settingsHeader(brand: .youtube, title: "视频下载 · yt-dlp")
-        }
-    }
-
-    // MARK: - SublinkX
-
-    private var sublinkSection: some View {
-        Section {
-            TextField("Base URL", text: $settings.sublinkBaseURL)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .keyboardType(.URL)
-            TextField("用户名", text: $settings.sublinkUsername)
-                .textInputAutocapitalization(.never)
-            SecureField("密码", text: $settings.sublinkPassword)
-                .privacySensitive()
-            ServiceProbeRow(state: viewModel.sublinkProbe)
-            Button {
-                Task { await viewModel.testSublink() }
-            } label: {
-                Label("测试 SublinkX", systemImage: "link")
-            }
-            .buttonStyle(PressableButtonStyle())
-        } header: {
-            settingsHeader(brand: .sublink, title: "SublinkX")
-        } footer: {
-            Text("默认 https://sub.996616.xyz · 登录需验证码（在服务页完成）")
-        }
-    }
-
-    // MARK: - Komari
-
-    private var komariSection: some View {
-        Section {
-            TextField("Base URL", text: $settings.komariBaseURL)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .keyboardType(.URL)
-            ServiceProbeRow(state: viewModel.komariProbe)
-            Button {
-                Task { await viewModel.testKomari() }
-            } label: {
-                Label("测试 Komari", systemImage: "server.rack")
-            }
-            .buttonStyle(PressableButtonStyle())
-        } header: {
-            settingsHeader(brand: .komari, title: "Komari 探针")
-        } footer: {
-            Text("默认 https://komari.996616.xyz · 使用公开 /api/nodes 接口")
-        }
-    }
-
-    // MARK: - Cloudflare
-
-    private var cloudflareSection: some View {
-        Section {
-            SecureField("API Token / Global Key", text: $settings.cloudflareAPIToken)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .privacySensitive()
-            TextField("Email（仅 Global Key 时填写）", text: $settings.cloudflareEmail)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .keyboardType(.emailAddress)
-            TextField("Account ID", text: $settings.cloudflareAccountId)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-            if !settings.cloudflareAccountName.isEmpty {
-                LabeledContent("账户名", value: settings.cloudflareAccountName)
-            }
-            ServiceProbeRow(state: viewModel.cloudflareProbe)
-            Button {
-                Task { await viewModel.testCloudflare() }
-            } label: {
-                Label("测试 Cloudflare", systemImage: "bolt.fill")
-            }
-            .buttonStyle(PressableButtonStyle())
-            .disabled(viewModel.cloudflareProbe.isProbing)
-            Button {
-                Task { await viewModel.fetchCloudflareAccounts() }
-            } label: {
-                Label("拉取账户并填入第一个", systemImage: "person.2")
-            }
-            .buttonStyle(PressableButtonStyle())
-            .disabled(viewModel.cloudflareProbe.isProbing)
-        } header: {
-            settingsHeader(brand: .cloudflare, title: "Cloudflare")
-        } footer: {
-            Text("推荐使用 API Token（Bearer）。填写 Email 时按 Global API Key 方式鉴权。Account ID 用于 Workers/Pages 用量。")
-        }
-    }
-
-    private func settingsHeader(brand: ServiceBrand, title: String) -> some View {
-        HStack(spacing: 8) {
-            ServiceBrandIcon(brand: brand, size: 18, showsBackground: false)
-            Text(title)
-        }
-    }
-
-    // MARK: - Appearance / privacy
-
-    private var appearanceSection: some View {
-        Section("外观") {
-            Picker("主题", selection: $settings.appearance) {
-                Text("跟随系统").tag(AppSettings.Appearance.system.rawValue)
-                Text("浅色").tag(AppSettings.Appearance.light.rawValue)
-                Text("深色").tag(AppSettings.Appearance.dark.rawValue)
-            }
-        }
-    }
-
-    private var privacySection: some View {
-        Section("隐私与安全") {
-            Toggle("应用切换时隐藏敏感内容", isOn: $settings.hideSensitiveInAppSwitcher)
-            Toggle(
-                "启动时需要面容/触控 ID",
-                isOn: Binding(
-                    get: { settings.requireBiometricUnlock },
-                    set: { newValue in
-                        if newValue {
-                            Task { await enableBiometric() }
-                        } else {
-                            settings.requireBiometricUnlock = false
-                        }
-                    }
-                )
-            )
-            .disabled(!BiometricAuth.canAuthenticate && !settings.requireBiometricUnlock)
-
-            Button("注销全部会话", role: .destructive) {
-                confirmLogout = true
-            }
-        }
-    }
-
-    private var aboutSection: some View {
-        Section("关于") {
-            LabeledContent("应用", value: "PersonalToolbox")
-            LabeledContent("版本", value: "1.1")
-            Text("助手 · Sub2API 监控 · SublinkX · Komari · yt-dlp")
-                .font(.caption)
+    private func projectRow(systemImage: String, title: String, subtitle: String) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: systemImage)
+                .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(.secondary)
+                .frame(width: 36, height: 36)
+                .background(
+                    Color(.secondarySystemBackground),
+                    in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+                )
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.body.weight(.semibold))
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
         }
+        .padding(.vertical, 2)
+    }
+
+    private func configuredHint(configured: Bool, detail: String) -> String {
+        if configured {
+            return detail.isEmpty ? "已配置" : detail
+        }
+        return "未配置"
+    }
+
+    private func hostHint(_ baseURL: String) -> String {
+        let trimmed = baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = URL(string: trimmed), let host = url.host, !host.isEmpty else {
+            return trimmed.isEmpty ? "未配置" : trimmed
+        }
+        return host
+    }
+
+    private var appearanceLabel: String {
+        switch AppSettings.Appearance(rawValue: settings.appearance) {
+        case .light: return "浅色"
+        case .dark: return "深色"
+        default: return "跟随系统"
+        }
+    }
+
+    private var appVersion: String {
+        let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—"
+        return "\(short) (\(build))"
+    }
+}
+
+// MARK: - Project detail pages
+
+struct Sub2ChatSettingsPage: View {
+    @EnvironmentObject private var settings: AppSettings
+    @ObservedObject var viewModel: SettingsViewModel
+
+    var body: some View {
+        Form {
+            Section {
+                TextField("Base URL", text: $settings.sub2apiBaseURL)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.URL)
+                SecureField("Chat API Key", text: $settings.sub2apiAPIKey)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .privacySensitive()
+            } header: {
+                Text("连接")
+            } footer: {
+                Text("用于对话与 Imagine。")
+            }
+
+            Section("模型") {
+                Picker("首选文本模型", selection: $settings.preferredModel) {
+                    ForEach(viewModel.modelChoices, id: \.self) { Text($0).tag($0) }
+                }
+                Picker("默认生图模型", selection: $settings.preferredImagineImageModel) {
+                    ForEach(viewModel.imagineImageChoices, id: \.self) { Text($0).tag($0) }
+                }
+                Picker("默认编辑模型", selection: $settings.preferredImagineEditModel) {
+                    ForEach(viewModel.imagineEditChoices, id: \.self) { Text($0).tag($0) }
+                }
+                Picker("默认视频模型", selection: $settings.preferredImagineVideoModel) {
+                    ForEach(viewModel.imagineVideoChoices, id: \.self) { Text($0).tag($0) }
+                }
+            }
+
+            Section("系统提示词") {
+                TextField("系统提示词", text: $settings.systemPrompt, axis: .vertical)
+                    .lineLimit(3...8)
+            }
+
+            Section {
+                ServiceProbeRow(state: viewModel.sub2Probe)
+                Button {
+                    Task { await viewModel.testSub2API() }
+                } label: {
+                    Label("测试 Chat 连接", systemImage: "bolt.horizontal.circle")
+                }
+                .buttonStyle(PressableButtonStyle())
+                .disabled(viewModel.sub2Probe.isProbing)
+            } header: {
+                Text("检测")
+            }
+        }
+        .navigationTitle("Sub2API 助手")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                ServiceBrandTitle(brand: .sub2, title: "Sub2API 助手")
+            }
+        }
+    }
+}
+
+struct Sub2AdminSettingsPage: View {
+    @EnvironmentObject private var settings: AppSettings
+    @ObservedObject var viewModel: SettingsViewModel
+
+    var body: some View {
+        Form {
+            Section {
+                SecureField("Admin API Key (x-api-key)", text: $settings.sub2apiAdminAPIKey)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .privacySensitive()
+            } header: {
+                Text("凭证")
+            } footer: {
+                Text("对应 sub2api-mobile 的 Admin Token，访问 /api/v1/admin/*。可与 Chat Key 不同。Base URL 与「Sub2API 助手」共用。")
+            }
+
+            Section {
+                LabeledContent("Base URL", value: settings.sub2apiBaseURL)
+                ServiceProbeRow(state: viewModel.adminProbe)
+                Button {
+                    Task { await viewModel.testAdmin() }
+                } label: {
+                    Label("测试监控接口", systemImage: "chart.bar")
+                }
+                .buttonStyle(PressableButtonStyle())
+                .disabled(viewModel.adminProbe.isProbing)
+            } header: {
+                Text("检测")
+            }
+        }
+        .navigationTitle("Sub2API 监控")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                ServiceBrandTitle(brand: .sub2, title: "Sub2API 监控")
+            }
+        }
+    }
+}
+
+struct YTSettingsPage: View {
+    @EnvironmentObject private var settings: AppSettings
+    @ObservedObject var viewModel: SettingsViewModel
+
+    var body: some View {
+        Form {
+            Section {
+                TextField("Base URL", text: $settings.ytBaseURL)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.URL)
+                TextField("用户名", text: $settings.ytUsername)
+                    .textInputAutocapitalization(.never)
+                SecureField("密码", text: $settings.ytPassword)
+                    .privacySensitive()
+            } header: {
+                Text("yt-dlp-web-ui")
+            } footer: {
+                Text("YouTube 等通用视频下载走此服务。抖音在下载 Tab 本机解析，无需此项。")
+            }
+
+            Section {
+                ServiceProbeRow(state: viewModel.ytProbe)
+                Button {
+                    Task { await viewModel.testYT() }
+                } label: {
+                    Label("测试下载服务", systemImage: "arrow.down.circle")
+                }
+                .buttonStyle(PressableButtonStyle())
+            }
+        }
+        .navigationTitle("YouTube 下载")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                ServiceBrandTitle(brand: .youtube, title: "YouTube 下载")
+            }
+        }
+    }
+}
+
+struct SublinkSettingsPage: View {
+    @EnvironmentObject private var settings: AppSettings
+    @ObservedObject var viewModel: SettingsViewModel
+
+    var body: some View {
+        Form {
+            Section {
+                TextField("Base URL", text: $settings.sublinkBaseURL)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.URL)
+                TextField("用户名", text: $settings.sublinkUsername)
+                    .textInputAutocapitalization(.never)
+                SecureField("密码", text: $settings.sublinkPassword)
+                    .privacySensitive()
+            } footer: {
+                Text("登录需验证码时，在服务页 SublinkX 完成。")
+            }
+
+            Section {
+                ServiceProbeRow(state: viewModel.sublinkProbe)
+                Button {
+                    Task { await viewModel.testSublink() }
+                } label: {
+                    Label("测试 SublinkX", systemImage: "link")
+                }
+                .buttonStyle(PressableButtonStyle())
+            }
+        }
+        .navigationTitle("SublinkX")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                ServiceBrandTitle(brand: .sublink, title: "SublinkX")
+            }
+        }
+    }
+}
+
+struct KomariSettingsPage: View {
+    @EnvironmentObject private var settings: AppSettings
+    @ObservedObject var viewModel: SettingsViewModel
+
+    var body: some View {
+        Form {
+            Section {
+                TextField("Base URL", text: $settings.komariBaseURL)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.URL)
+            } footer: {
+                Text("使用公开 /api/nodes 接口。")
+            }
+
+            Section {
+                ServiceProbeRow(state: viewModel.komariProbe)
+                Button {
+                    Task { await viewModel.testKomari() }
+                } label: {
+                    Label("测试 Komari", systemImage: "server.rack")
+                }
+                .buttonStyle(PressableButtonStyle())
+            }
+        }
+        .navigationTitle("Komari")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                ServiceBrandTitle(brand: .komari, title: "Komari")
+            }
+        }
+    }
+}
+
+struct CloudflareSettingsPage: View {
+    @EnvironmentObject private var settings: AppSettings
+    @ObservedObject var viewModel: SettingsViewModel
+
+    var body: some View {
+        Form {
+            Section {
+                SecureField("API Token / Global Key", text: $settings.cloudflareAPIToken)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .privacySensitive()
+                TextField("Email（仅 Global Key 时填写）", text: $settings.cloudflareEmail)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.emailAddress)
+                TextField("Account ID", text: $settings.cloudflareAccountId)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                if !settings.cloudflareAccountName.isEmpty {
+                    LabeledContent("账户名", value: settings.cloudflareAccountName)
+                }
+            } footer: {
+                Text("推荐 API Token（Bearer）。填写 Email 时按 Global API Key 鉴权。Account ID 用于 Workers/Pages 用量。")
+            }
+
+            Section {
+                ServiceProbeRow(state: viewModel.cloudflareProbe)
+                Button {
+                    Task { await viewModel.testCloudflare() }
+                } label: {
+                    Label("测试 Cloudflare", systemImage: "bolt.fill")
+                }
+                .buttonStyle(PressableButtonStyle())
+                .disabled(viewModel.cloudflareProbe.isProbing)
+                Button {
+                    Task { await viewModel.fetchCloudflareAccounts() }
+                } label: {
+                    Label("拉取账户并填入第一个", systemImage: "person.2")
+                }
+                .buttonStyle(PressableButtonStyle())
+                .disabled(viewModel.cloudflareProbe.isProbing)
+            }
+        }
+        .navigationTitle("Cloudflare")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                ServiceBrandTitle(brand: .cloudflare, title: "Cloudflare")
+            }
+        }
+    }
+}
+
+struct AppearanceSettingsPage: View {
+    @EnvironmentObject private var settings: AppSettings
+
+    var body: some View {
+        Form {
+            Section {
+                Picker("主题", selection: $settings.appearance) {
+                    Text("跟随系统").tag(AppSettings.Appearance.system.rawValue)
+                    Text("浅色").tag(AppSettings.Appearance.light.rawValue)
+                    Text("深色").tag(AppSettings.Appearance.dark.rawValue)
+                }
+                .pickerStyle(.inline)
+            }
+        }
+        .navigationTitle("外观")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+struct PrivacySettingsPage: View {
+    @EnvironmentObject private var settings: AppSettings
+    @Binding var confirmLogout: Bool
+    @Binding var biometricAlert: String?
+    @Binding var isEnablingBiometric: Bool
+    var onLogout: () -> Void
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("应用切换时隐藏敏感内容", isOn: $settings.hideSensitiveInAppSwitcher)
+                Toggle(
+                    "启动时需要面容/触控 ID",
+                    isOn: Binding(
+                        get: { settings.requireBiometricUnlock },
+                        set: { newValue in
+                            if newValue {
+                                Task { await enableBiometric() }
+                            } else {
+                                settings.requireBiometricUnlock = false
+                            }
+                        }
+                    )
+                )
+                .disabled(!BiometricAuth.canAuthenticate && !settings.requireBiometricUnlock)
+            }
+
+            Section {
+                Button("注销全部会话", role: .destructive) {
+                    confirmLogout = true
+                }
+            } footer: {
+                Text("清除下载 Token、SublinkX 登录态与 Cookie。已保存的密钥不会删除。")
+            }
+        }
+        .navigationTitle("隐私与安全")
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     private func enableBiometric() async {

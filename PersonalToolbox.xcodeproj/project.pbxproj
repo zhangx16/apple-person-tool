@@ -25,6 +25,8 @@
 		AA000001000000000000000F /* AccountListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000001000000000000000F /* AccountListView.swift */; };
 		AA0000010000000000000010 /* DownloadHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000010 /* DownloadHomeView.swift */; };
 		AA0000010000000000000011 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000011 /* SettingsView.swift */; };
+		AA0000010000000000000015 /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000015 /* SettingsViewModel.swift */; };
+		AA0000010000000000000016 /* ServiceProbeRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000016 /* ServiceProbeRow.swift */; };
 		AA0000010000000000000012 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000012 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -47,6 +49,8 @@
 		BB000001000000000000000F /* AccountListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountListView.swift; sourceTree = "<group>"; };
 		BB0000010000000000000010 /* DownloadHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadHomeView.swift; sourceTree = "<group>"; };
 		BB0000010000000000000011 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		BB0000010000000000000015 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
+		BB0000010000000000000016 /* ServiceProbeRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceProbeRow.swift; sourceTree = "<group>"; };
 		BB0000010000000000000012 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		BB0000010000000000000013 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		CC0000010000000000000001 /* PersonalToolbox.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PersonalToolbox.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -190,6 +194,8 @@
 			isa = PBXGroup;
 			children = (
 				BB0000010000000000000011 /* SettingsView.swift */,
+				BB0000010000000000000015 /* SettingsViewModel.swift */,
+				BB0000010000000000000016 /* ServiceProbeRow.swift */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
@@ -282,6 +288,8 @@
 				AA000001000000000000000F /* AccountListView.swift in Sources */,
 				AA0000010000000000000010 /* DownloadHomeView.swift in Sources */,
 				AA0000010000000000000011 /* SettingsView.swift in Sources */,
+				AA0000010000000000000015 /* SettingsViewModel.swift in Sources */,
+				AA0000010000000000000016 /* ServiceProbeRow.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

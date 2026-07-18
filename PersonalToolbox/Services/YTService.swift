@@ -48,6 +48,11 @@ actor YTService {
         try await login(baseURL: baseURL, username: username, password: password)
     }
 
+    /// Drops the in-memory auth token (Settings「注销全部会话」).
+    func logout() {
+        token = nil
+    }
+
     private func withAuthRetry<T>(
         baseURL: String,
         username: String,

@@ -65,23 +65,39 @@ actor KomariService {
         var samplesByUUID: [String: KomariRecentSample] = [:]
         samplesByUUID.reserveCapacity(nodes.count)
 
-        // Bounded concurrency so large fleets don't open dozens of sockets at once.
+        // Bounded concurrency via detached tasks to avoid actor-isolation issues
+        // when hopping from TaskGroup child tasks back onto this actor.
         let chunkSize = 8
         var start = 0
         while start < nodes.count {
             let end = min(start + chunkSize, nodes.count)
             let slice = Array(nodes[start..<end])
-            await withTaskGroup(of: (String, KomariRecentSample?).self) { group in
+            let base = baseURL
+            let fetched: [(String, KomariRecentSample?)] = await withTaskGroup(
+                of: (String, KomariRecentSample?).self,
+                returning: [(String, KomariRecentSample?)].self
+            ) { group in
                 for node in slice {
+                    let uuid = node.uuid
                     group.addTask {
-                        let samples = try? await self.recent(baseURL: baseURL, uuid: node.uuid)
-                        return (node.uuid, samples?.first)
+                        do {
+                            let samples = try await Self.fetchRecent(baseURL: base, uuid: uuid)
+                            return (uuid, samples.first)
+                        } catch {
+                            return (uuid, nil)
+                        }
                     }
                 }
-                for await (uuid, sample) in group {
-                    if let sample {
-                        samplesByUUID[uuid] = sample
-                    }
+                var out: [(String, KomariRecentSample?)] = []
+                out.reserveCapacity(slice.count)
+                for await item in group {
+                    out.append(item)
+                }
+                return out
+            }
+            for (uuid, sample) in fetched {
+                if let sample {
+                    samplesByUUID[uuid] = sample
                 }
             }
             start = end
@@ -91,6 +107,24 @@ actor KomariService {
             KomariNodeRow(node: node, recent: samplesByUUID[node.uuid])
         }
         .sorted { ($0.node.weight ?? 0) < ($1.node.weight ?? 0) }
+    }
+
+    /// Non-isolated recent fetch so TaskGroup children do not need actor re-entry.
+    nonisolated private static func fetchRecent(
+        baseURL: String,
+        uuid: String
+    ) async throws -> [KomariRecentSample] {
+        let client = NetworkClient.shared
+        let (data, http) = try await client.data(
+            base: baseURL,
+            path: "/api/recent/\(uuid)",
+            headers: ["Accept": "application/json"]
+        )
+        guard (200..<300).contains(http.statusCode) else {
+            throw NetworkClient.httpError(status: http.statusCode, body: data)
+        }
+        let env = try JSONDecoder().decode(KomariEnvelope<[KomariRecentSample]>.self, from: data)
+        return env.data ?? []
     }
 
     func probe(baseURL: String) async throws -> String {

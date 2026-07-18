@@ -113,6 +113,7 @@ jobs:
         run: |
           set -euo pipefail
           set -o pipefail
+          set +e
           xcodebuild \
             -project PersonalToolbox.xcodeproj \
             -scheme PersonalToolbox \
@@ -125,7 +126,18 @@ jobs:
             CODE_SIGN_IDENTITY="iPhone Distribution" \
             PRODUCT_BUNDLE_IDENTIFIER=app.parsnip6345.lake8262 \
             PROVISIONING_PROFILE_SPECIFIER="00008150-001A088E148B401C6F01CD" \
-            | tee "$RUNNER_TEMP/xcodebuild-archive.log"
+            2>&1 | tee "$RUNNER_TEMP/xcodebuild-archive.log"
+          STATUS=${PIPESTATUS[0]}
+          set -e
+          if [ "$STATUS" -ne 0 ]; then
+            echo "::group::Swift / xcodebuild errors"
+            grep -E 'error:|warning:.*error|❌|fatal error' "$RUNNER_TEMP/xcodebuild-archive.log" | tail -n 80 || true
+            echo "::endgroup::"
+            echo "::group::Last 120 log lines"
+            tail -n 120 "$RUNNER_TEMP/xcodebuild-archive.log" || true
+            echo "::endgroup::"
+            exit "$STATUS"
+          fi
 
       - name: Export IPA
         run: |

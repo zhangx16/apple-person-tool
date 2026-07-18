@@ -1,7 +1,7 @@
 import Foundation
 import Compression
 
-/// Live chat message stream for Bilibili + Douyu (SimpleLive protocols).
+/// Live chat: Bilibili / Douyu / Huya / Douyin (SimpleLive protocols).
 @MainActor
 final class LiveDanmakuService: ObservableObject {
     @Published private(set) var messages: [LiveChatMessage] = []
@@ -13,6 +13,7 @@ final class LiveDanmakuService: ObservableObject {
     private var webSocket: URLSessionWebSocketTask?
     private var session: URLSession?
     private let maxMessages = 80
+    private var heartbeatInterval: UInt64 = 30_000_000_000
 
     func start(platform: LivePlatform, danmakuJSON: String, roomId: String) {
         stop()
@@ -20,18 +21,22 @@ final class LiveDanmakuService: ObservableObject {
             statusText = "弹幕已关闭"
             return
         }
+        let ctx = LiveJSON.decodeObject(danmakuJSON)
         switch platform {
         case .bilibili:
-            let ctx = LiveJSON.decodeObject(danmakuJSON)
             guard !LiveJSON.string(ctx["token"]).isEmpty else {
                 statusText = "无弹幕 token"
                 return
             }
             connectBilibili(ctx: ctx)
         case .douyu:
-            connectDouyu(roomId: roomId)
-        case .huya, .douyin, .kuaishou:
-            statusText = "\(platform.title)弹幕后续接入"
+            connectDouyu(roomId: LiveJSON.string(ctx["roomId"]).ifEmpty(roomId))
+        case .huya:
+            connectHuya(ctx: ctx)
+        case .douyin:
+            Task { await connectDouyin(ctx: ctx, webRid: roomId) }
+        case .kuaishou:
+            statusText = "快手弹幕暂未接入"
         }
     }
 
@@ -318,6 +323,173 @@ final class LiveDanmakuService: ObservableObject {
             }
         }
         return result
+    }
+
+    // MARK: - Huya
+
+    private func connectHuya(ctx: [String: Any]) {
+        let ayyuid = Int64(LiveJSON.int(ctx["ayyuid"]))
+        let topSid = Int64(LiveJSON.int(ctx["topSid"]))
+        let subSid = Int64(LiveJSON.int(ctx["subSid"]))
+        guard ayyuid > 0 || topSid > 0 else {
+            statusText = "无虎牙弹幕参数"
+            return
+        }
+        guard let url = URL(string: "wss://cdnws.api.huya.com") else { return }
+        session = URLSession(configuration: .default)
+        let ws = session!.webSocketTask(with: url)
+        webSocket = ws
+        ws.resume()
+        statusText = "弹幕连接中…"
+        let tid = topSid > 0 ? topSid : subSid
+        let sid = subSid > 0 ? subSid : topSid
+        sendBinary(LiveTars.huyaJoinPacket(ayyuid: ayyuid, tid: tid, sid: sid))
+        heartbeatInterval = 60_000_000_000
+        heartbeat = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 60_000_000_000)
+                self?.sendBinary(LiveTars.huyaHeartbeat)
+            }
+        }
+        task = Task { [weak self] in
+            await self?.receiveLoopHuya()
+        }
+        statusText = "弹幕已连接"
+    }
+
+    private func receiveLoopHuya() async {
+        while !Task.isCancelled {
+            guard let ws = webSocket else { break }
+            do {
+                let msg = try await ws.receive()
+                switch msg {
+                case .data(let data):
+                    for chat in LiveTars.parseHuyaPush(data) {
+                        append(LiveChatMessage(userName: chat.userName, text: chat.content, colorHex: chat.color))
+                    }
+                case .string(let s):
+                    for chat in LiveTars.parseHuyaPush(Data(s.utf8)) {
+                        append(LiveChatMessage(userName: chat.userName, text: chat.content, colorHex: chat.color))
+                    }
+                @unknown default: break
+                }
+            } catch {
+                if !Task.isCancelled { statusText = "弹幕断开" }
+                break
+            }
+        }
+    }
+
+    // MARK: - Douyin
+
+    private func connectDouyin(ctx: [String: Any], webRid: String) async {
+        let roomId = LiveJSON.string(ctx["roomId"]).ifEmpty(webRid)
+        let userId = LiveJSON.string(ctx["userId"]).ifEmpty(randomDigits(12))
+        var cookie = LiveJSON.string(ctx["cookie"])
+        if cookie.isEmpty {
+            cookie = "ttwid=1%7CB1qls3GdnZhUov9o2NxOMxxYS2ff6OSvEWbv0ytbES4%7C1680522049%7C280d802d6d478e3e78d0c807f7c487e7ffec0ae4e5fdd6a0fe74c3c6af149511"
+        }
+        let ua =
+            "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.5845.97 Safari/537.36 Core/1.116.567.400 QQBrowser/19.7.6764.400"
+        let ts = Int(Date().timeIntervalSince1970 * 1000)
+        var comps = URLComponents(string: "wss://webcast3-ws-web-lq.douyin.com/webcast/im/push/v2/")!
+        comps.queryItems = [
+            URLQueryItem(name: "app_name", value: "douyin_web"),
+            URLQueryItem(name: "version_code", value: "180800"),
+            URLQueryItem(name: "webcast_sdk_version", value: "1.3.0"),
+            URLQueryItem(name: "update_version_code", value: "1.3.0"),
+            URLQueryItem(name: "compress", value: "gzip"),
+            URLQueryItem(name: "cursor", value: "h-1_t-\(ts)_r-1_d-1_u-1"),
+            URLQueryItem(name: "host", value: "https://live.douyin.com"),
+            URLQueryItem(name: "aid", value: "6383"),
+            URLQueryItem(name: "live_id", value: "1"),
+            URLQueryItem(name: "did_rule", value: "3"),
+            URLQueryItem(name: "debug", value: "false"),
+            URLQueryItem(name: "maxCacheMessageNumber", value: "20"),
+            URLQueryItem(name: "endpoint", value: "live_pc"),
+            URLQueryItem(name: "support_wrds", value: "1"),
+            URLQueryItem(name: "im_path", value: "/webcast/im/fetch/"),
+            URLQueryItem(name: "user_unique_id", value: userId),
+            URLQueryItem(name: "device_platform", value: "web"),
+            URLQueryItem(name: "cookie_enabled", value: "true"),
+            URLQueryItem(name: "screen_width", value: "1920"),
+            URLQueryItem(name: "screen_height", value: "1080"),
+            URLQueryItem(name: "browser_language", value: "zh-CN"),
+            URLQueryItem(name: "browser_platform", value: "Win32"),
+            URLQueryItem(name: "browser_name", value: "Mozilla"),
+            URLQueryItem(name: "browser_version", value: ua.replacingOccurrences(of: "Mozilla/", with: "")),
+            URLQueryItem(name: "browser_online", value: "true"),
+            URLQueryItem(name: "tz_name", value: "Asia/Shanghai"),
+            URLQueryItem(name: "identity", value: "audience"),
+            URLQueryItem(name: "room_id", value: roomId),
+            URLQueryItem(name: "heartbeatDuration", value: "0")
+        ]
+        var urlString = comps.url?.absoluteString ?? ""
+        if let sig = try? LiveJSEngine.shared.douyinMSSDKSignature(roomId: roomId, userUniqueId: userId) {
+            urlString += (urlString.contains("?") ? "&" : "?") + "signature=\(sig)"
+        }
+        guard let url = URL(string: urlString) else {
+            statusText = "抖音弹幕地址无效"
+            return
+        }
+        let config = URLSessionConfiguration.default
+        session = URLSession(configuration: config)
+        var req = URLRequest(url: url)
+        req.setValue(ua, forHTTPHeaderField: "User-Agent")
+        req.setValue(cookie, forHTTPHeaderField: "Cookie")
+        req.setValue("https://live.douyin.com", forHTTPHeaderField: "Origin")
+        req.setValue("https://live.douyin.com/\(webRid)", forHTTPHeaderField: "Referer")
+        let ws = session!.webSocketTask(with: req)
+        webSocket = ws
+        ws.resume()
+        statusText = "弹幕连接中…"
+        // join = hb
+        sendBinary(LiveProtoWire.pushFrame(payloadType: "hb"))
+        heartbeatInterval = 10_000_000_000
+        heartbeat = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 10_000_000_000)
+                self?.sendBinary(LiveProtoWire.pushFrame(payloadType: "hb"))
+            }
+        }
+        task = Task { [weak self] in
+            await self?.receiveLoopDouyin()
+        }
+        statusText = "弹幕已连接"
+    }
+
+    private func receiveLoopDouyin() async {
+        while !Task.isCancelled {
+            guard let ws = webSocket else { break }
+            do {
+                let msg = try await ws.receive()
+                let data: Data
+                switch msg {
+                case .data(let d): data = d
+                case .string(let s): data = Data(s.utf8)
+                @unknown default: continue
+                }
+                let decoded = LiveProtoWire.decodeDouyinChats(fromPushFrameData: data)
+                if decoded.needAck {
+                    let ackPayload = Data(decoded.internalExt.utf8)
+                    sendBinary(LiveProtoWire.pushFrame(
+                        payloadType: "ack",
+                        logId: decoded.logId,
+                        payload: ackPayload
+                    ))
+                }
+                for chat in decoded.chats {
+                    append(LiveChatMessage(userName: chat.userName, text: chat.content, colorHex: 0xFFFFFF))
+                }
+            } catch {
+                if !Task.isCancelled { statusText = "弹幕断开" }
+                break
+            }
+        }
+    }
+
+    private func randomDigits(_ n: Int) -> String {
+        String((0..<n).map { _ in String(Int.random(in: 0...9)) }.joined())
     }
 
     // MARK: - Shared

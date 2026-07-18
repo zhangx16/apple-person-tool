@@ -321,6 +321,10 @@ actor DouyinLiveService {
             ? urlListFirst(LiveJSON.object(owner["avatar_thumb"]))
             : urlListFirst(LiveJSON.object(userData["avatar_thumb"]))
         let online = isLive ? LiveJSON.int(LiveJSON.object(roomData["room_view_stats"])?["display_value"]) : 0
+        let numericRoomId = LiveJSON.string(roomData["id_str"]).ifEmpty(LiveJSON.string(roomData["id"]))
+        let userUniqueId = randomDigits(12)
+        let headers = await requestHeaders()
+        let cookie = headers["cookie"] ?? headers["Cookie"] ?? defaultCookie
         return LiveRoomDetail(
             platform: .douyin,
             roomId: webRid,
@@ -332,7 +336,13 @@ actor DouyinLiveService {
             isLive: isLive,
             webURL: "https://live.douyin.com/\(webRid)",
             introduction: LiveJSON.string(owner["signature"]),
-            playContextJSON: LiveJSON.encode(stream)
+            playContextJSON: LiveJSON.encode(stream),
+            danmakuJSON: LiveJSON.encode([
+                "webRid": webRid,
+                "roomId": numericRoomId,
+                "userId": userUniqueId,
+                "cookie": cookie
+            ])
         )
     }
 
@@ -370,6 +380,10 @@ actor DouyinLiveService {
         let owner = LiveJSON.object(room["owner"]) ?? [:]
         let isLive = LiveJSON.int(room["status"]) == 2
         let stream = isLive ? (LiveJSON.object(room["stream_url"]) ?? [:]) : [:]
+        let numericRoomId = LiveJSON.string(room["id_str"]).ifEmpty(LiveJSON.string(room["id"]))
+        let userUniqueId = LiveJSON.string(
+            LiveJSON.object(LiveJSON.object(state["userStore"])?["odin"])?["user_unique_id"]
+        ).ifEmpty(randomDigits(12))
         return LiveRoomDetail(
             platform: .douyin,
             roomId: webRid,
@@ -381,7 +395,13 @@ actor DouyinLiveService {
             isLive: isLive,
             webURL: "https://live.douyin.com/\(webRid)",
             introduction: LiveJSON.string(owner["signature"]),
-            playContextJSON: LiveJSON.encode(stream)
+            playContextJSON: LiveJSON.encode(stream),
+            danmakuJSON: LiveJSON.encode([
+                "webRid": webRid,
+                "roomId": numericRoomId,
+                "userId": userUniqueId,
+                "cookie": dyCookie
+            ])
         )
     }
 
@@ -402,19 +422,32 @@ actor DouyinLiveService {
         }
         let isLive = status == 2
         let stream = isLive ? (LiveJSON.object(room["stream_url"]) ?? [:]) : [:]
+        let rid = webRid.isEmpty ? roomId : webRid
+        let headers = await requestHeaders()
+        let cookie = headers["cookie"] ?? headers["Cookie"] ?? defaultCookie
         return LiveRoomDetail(
             platform: .douyin,
-            roomId: webRid.isEmpty ? roomId : webRid,
+            roomId: rid,
             title: LiveJSON.string(room["title"]),
             cover: isLive ? urlListFirst(LiveJSON.object(room["cover"])) : "",
             userName: LiveJSON.string(owner["nickname"]),
             userAvatar: urlListFirst(LiveJSON.object(owner["avatar_thumb"])),
             online: isLive ? LiveJSON.int(LiveJSON.object(room["room_view_stats"])?["display_value"]) : 0,
             isLive: isLive,
-            webURL: "https://live.douyin.com/\(webRid.isEmpty ? roomId : webRid)",
+            webURL: "https://live.douyin.com/\(rid)",
             introduction: LiveJSON.string(owner["signature"]),
-            playContextJSON: LiveJSON.encode(stream)
+            playContextJSON: LiveJSON.encode(stream),
+            danmakuJSON: LiveJSON.encode([
+                "webRid": rid,
+                "roomId": LiveJSON.string(room["id_str"]).ifEmpty(roomId),
+                "userId": randomDigits(12),
+                "cookie": cookie
+            ])
         )
+    }
+
+    private func randomDigits(_ n: Int) -> String {
+        String((0..<n).map { _ in String(Int.random(in: 0...9)) }.joined())
     }
 
     // MARK: - Helpers
@@ -525,4 +558,9 @@ actor DouyinLiveService {
         }
         return String(data: data, encoding: .utf8) ?? ""
     }
+}
+
+
+private extension String {
+    func ifEmpty(_ alt: String) -> String { isEmpty ? alt : self }
 }

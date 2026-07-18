@@ -177,6 +177,7 @@ actor HuyaLiveService {
             "lines": lines,
             "bitRates": bitRates
         ])
+        let ayyuid = LiveJSON.int(tLiveInfo["lYyid"])
         let realRoom = LiveJSON.string(tLiveInfo["lProfileRoom"])
         return LiveRoomDetail(
             platform: .huya,
@@ -189,7 +190,12 @@ actor HuyaLiveService {
             isLive: LiveJSON.int(roomInfoMap["eLiveStatus"]) == 2,
             webURL: "https://www.huya.com/\(roomId)",
             introduction: LiveJSON.string(tLiveInfo["sIntroduction"]),
-            playContextJSON: ctx
+            playContextJSON: ctx,
+            danmakuJSON: LiveJSON.encode([
+                "ayyuid": ayyuid,
+                "topSid": topSid,
+                "subSid": subSid
+            ])
         )
     }
 

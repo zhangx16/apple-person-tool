@@ -1,11 +1,9 @@
 import SwiftUI
 import UIKit
 
-/// Live tab — 关注 + 搜索 + 原生播放（无推荐）。
+/// Live tab — 关注 + 搜索 + 应用内播放（无推荐）。
 ///
-/// Presentation notes:
-/// - Do **not** nest `Button` as List row content (often eats taps / no-ops on device).
-/// - Use a unique `Identifiable` wrapper each open so sheet always presents.
+/// Room opens as a **pushed page** (NavigationStack), not a sheet popup.
 struct LiveHomeView: View {
     private enum MainMode: String, CaseIterable, Identifiable {
         case follow = "关注"
@@ -13,10 +11,15 @@ struct LiveHomeView: View {
         var id: String { rawValue }
     }
 
-    /// Fresh id every open — avoids fullScreenCover/sheet ignoring same-item reselect.
-    private struct RoomPresentation: Identifiable {
-        let id = UUID()
+    /// Hashable route so the same room can be opened again after pop.
+    private struct RoomRoute: Hashable {
+        let token: UUID
         let room: LiveRoomItem
+
+        init(room: LiveRoomItem) {
+            self.token = UUID()
+            self.room = room
+        }
     }
 
     @ObservedObject private var follows = LiveFollowStore.shared
@@ -27,63 +30,38 @@ struct LiveHomeView: View {
     @State private var searchResults: [LiveRoomItem] = []
     @State private var isSearching = false
     @State private var searchError: String?
-    @State private var presentation: RoomPresentation?
+    @State private var path = NavigationPath()
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            modePicker
-            platformBar
-            Divider()
-            if mode == .follow {
-                followList
-            } else {
-                searchPanel
+        NavigationStack(path: $path) {
+            VStack(spacing: 0) {
+                modePicker
+                platformBar
+                Divider()
+                if mode == .follow {
+                    followList
+                } else {
+                    searchPanel
+                }
             }
-        }
-        .background(Color(.systemGroupedBackground))
-        // sheet is more reliable than fullScreenCover under TabView on recent iOS.
-        .sheet(item: $presentation) { item in
-            NavigationStack {
-                LiveRoomView(room: item.room)
-                    .toolbar {
-                        ToolbarItem(placement: .topBarLeading) {
-                            Button("关闭") { presentation = nil }
-                        }
-                    }
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("直播")
+            .navigationBarTitleDisplayMode(.large)
+            .navigationDestination(for: RoomRoute.self) { route in
+                LiveRoomView(room: route.room)
             }
-            // Large detent so player is usable.
-            .presentationDetents([.large])
-            .presentationDragIndicator(.visible)
         }
     }
 
     private func openRoom(_ room: LiveRoomItem) {
-        // Dismiss keyboard first so sheet is not blocked.
         UIApplication.shared.sendAction(
             #selector(UIResponder.resignFirstResponder),
             to: nil, from: nil, for: nil
         )
-        presentation = RoomPresentation(room: room)
+        path.append(RoomRoute(room: room))
     }
 
     // MARK: - Chrome
-
-    private var header: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("直播")
-                    .font(.title2.bold())
-                Text("关注 · 搜索 · 点条目进入播放")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 12)
-        .padding(.bottom, 8)
-    }
 
     private var modePicker: some View {
         Picker("模式", selection: $mode) {

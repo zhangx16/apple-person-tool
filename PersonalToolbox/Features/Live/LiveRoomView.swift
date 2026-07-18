@@ -371,12 +371,13 @@ final class LiveHeaderResourceLoader: NSObject, AVAssetResourceLoaderDelegate {
     }
 }
 
-// MARK: - Room UI
+// MARK: - Room UI (full page; optional true fullscreen player)
 
 struct LiveRoomView: View {
     let room: LiveRoomItem
     @StateObject private var vm: LiveRoomViewModel
     @ObservedObject private var follows = LiveFollowStore.shared
+    @State private var isPlayerFullscreen = false
 
     init(room: LiveRoomItem) {
         self.room = room
@@ -388,10 +389,24 @@ struct LiveRoomView: View {
             playerArea
                 .frame(minHeight: 240, maxHeight: 320)
                 .background(Color.black)
+                .overlay(alignment: .bottomTrailing) {
+                    Button {
+                        isPlayerFullscreen = true
+                    } label: {
+                        Label("全屏", systemImage: "arrow.up.left.and.arrow.down.right")
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(.ultraThinMaterial, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .padding(10)
+                    .disabled(vm.streamURL == nil && vm.playMode == .native && vm.webURL == nil)
+                }
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
-                    Picker("模式", selection: $vm.playMode) {
+                    Picker("播放方式", selection: $vm.playMode) {
                         ForEach(LiveRoomViewModel.PlayMode.allCases) { m in
                             Text(m.rawValue).tag(m)
                         }
@@ -415,7 +430,7 @@ struct LiveRoomView: View {
                         .foregroundStyle(.secondary)
 
                     #if canImport(MobileVLCKit)
-                    Text("应用内播放器：VLC（可播 FLV，对齐 SimpleLive）")
+                    Text("应用内：VLC 可播 FLV · 点播放器右下角全屏")
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                     #else
@@ -433,8 +448,14 @@ struct LiveRoomView: View {
                     HStack {
                         Button("重试应用内") { vm.retryNative() }
                             .buttonStyle(.bordered)
-                        Button("网页播放") { vm.switchToWeb() }
-                            .buttonStyle(.borderedProminent)
+                        Button("网页") { vm.switchToWeb() }
+                            .buttonStyle(.bordered)
+                        Button {
+                            isPlayerFullscreen = true
+                        } label: {
+                            Label("全屏播放", systemImage: "arrow.up.left.and.arrow.down.right")
+                        }
+                        .buttonStyle(.borderedProminent)
                     }
                 }
                 .padding()
@@ -445,16 +466,33 @@ struct LiveRoomView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    toggleFollow()
-                } label: {
-                    Image(systemName: isFollowed ? "star.fill" : "star")
-                        .foregroundStyle(isFollowed ? Color.yellow : Color.primary)
+                HStack(spacing: 12) {
+                    Button {
+                        isPlayerFullscreen = true
+                    } label: {
+                        Image(systemName: "arrow.up.left.and.arrow.down.right")
+                    }
+                    .accessibilityLabel("全屏播放")
+
+                    Button {
+                        toggleFollow()
+                    } label: {
+                        Image(systemName: isFollowed ? "star.fill" : "star")
+                            .foregroundStyle(isFollowed ? Color.yellow : Color.primary)
+                    }
                 }
             }
         }
         .task { vm.start() }
-        .onDisappear { vm.stop() }
+        // Only tear down when leaving the room page (not when entering fullscreen cover).
+        .onDisappear {
+            if !isPlayerFullscreen {
+                vm.stop()
+            }
+        }
+        .fullScreenCover(isPresented: $isPlayerFullscreen) {
+            LiveRoomFullscreenView(vm: vm)
+        }
     }
 
     private var navTitle: String {
@@ -488,48 +526,7 @@ struct LiveRoomView: View {
 
     @ViewBuilder
     private var playerArea: some View {
-        ZStack {
-            Color.black
-            switch vm.playMode {
-            case .web:
-                if let url = vm.webURL {
-                    LiveRoomWebView(url: url)
-                } else {
-                    Text("无网页地址").foregroundStyle(.white)
-                }
-            case .native:
-                if let url = vm.streamURL {
-                    #if canImport(MobileVLCKit)
-                    LiveVLCPlayerView(url: url, headers: vm.streamHeaders, isPlaying: true)
-                        .id(url.absoluteString)
-                    #else
-                    if let p = vm.systemPlayer {
-                        VideoPlayer(player: p)
-                    } else {
-                        ProgressView().tint(.white)
-                    }
-                    #endif
-                } else if vm.isLoading {
-                    VStack(spacing: 10) {
-                        ProgressView().tint(.white)
-                        Text(vm.statusText)
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.9))
-                    }
-                } else {
-                    VStack(spacing: 8) {
-                        Image(systemName: "play.slash")
-                            .font(.title)
-                            .foregroundStyle(.white.opacity(0.7))
-                        Text(vm.errorMessage ?? "暂无画面")
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.8))
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal)
-                    }
-                }
-            }
-        }
+        LivePlayerSurface(vm: vm)
     }
 
     private var infoArea: some View {
@@ -581,6 +578,144 @@ struct LiveRoomView: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Shared player surface (inline + fullscreen)
+
+struct LivePlayerSurface: View {
+    @ObservedObject var vm: LiveRoomViewModel
+
+    var body: some View {
+        ZStack {
+            Color.black
+            switch vm.playMode {
+            case .web:
+                if let url = vm.webURL {
+                    LiveRoomWebView(url: url)
+                } else {
+                    Text("无网页地址").foregroundStyle(.white)
+                }
+            case .native:
+                if let url = vm.streamURL {
+                    #if canImport(MobileVLCKit)
+                    LiveVLCPlayerView(url: url, headers: vm.streamHeaders, isPlaying: true)
+                        .id(url.absoluteString)
+                    #else
+                    if let p = vm.systemPlayer {
+                        VideoPlayer(player: p)
+                    } else {
+                        ProgressView().tint(.white)
+                    }
+                    #endif
+                } else if vm.isLoading {
+                    VStack(spacing: 10) {
+                        ProgressView().tint(.white)
+                        Text(vm.statusText)
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.9))
+                    }
+                } else {
+                    VStack(spacing: 8) {
+                        Image(systemName: "play.slash")
+                            .font(.title)
+                            .foregroundStyle(.white.opacity(0.7))
+                        Text(vm.errorMessage ?? "暂无画面")
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.8))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// True fullscreen player page (not a sheet over the list).
+struct LiveRoomFullscreenView: View {
+    @ObservedObject var vm: LiveRoomViewModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var showChrome = true
+
+    var body: some View {
+        ZStack {
+            LivePlayerSurface(vm: vm)
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        showChrome.toggle()
+                    }
+                }
+
+            if showChrome {
+                VStack {
+                    HStack {
+                        Button {
+                            dismiss()
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.title2)
+                                .symbolRenderingMode(.hierarchical)
+                                .foregroundStyle(.white)
+                        }
+                        Spacer()
+                        Text(vm.detail?.userName ?? "全屏播放")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white)
+                        Spacer()
+                        // Balance trailing space with close button.
+                        Color.clear.frame(width: 28, height: 28)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+
+                    Spacer()
+
+                    if vm.playMode == .native, !vm.qualities.isEmpty {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack {
+                                ForEach(vm.qualities) { q in
+                                    Button {
+                                        vm.selectQuality(q)
+                                    } label: {
+                                        Text(q.name)
+                                            .font(.caption.weight(.semibold))
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 8)
+                                            .foregroundStyle(vm.selectedId == q.id ? Color.black : Color.white)
+                                            .background(
+                                                vm.selectedId == q.id ? Color.white : Color.white.opacity(0.2),
+                                                in: Capsule()
+                                            )
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .padding(.horizontal, 16)
+                        }
+                        .padding(.bottom, 8)
+                    }
+
+                    Text(vm.statusText)
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.85))
+                        .padding(.bottom, 20)
+                }
+                .background(
+                    LinearGradient(
+                        colors: [Color.black.opacity(0.55), .clear, Color.black.opacity(0.45)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
+                )
+            }
+        }
+        .statusBarHidden(true)
+        .persistentSystemOverlays(.hidden)
     }
 }
 

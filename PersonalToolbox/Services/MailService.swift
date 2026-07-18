@@ -35,6 +35,11 @@ actor MailService {
         try await login(baseURL: baseURL, password: password)
     }
 
+    /// Clears local session flag. Call with `NetworkClient.clearCookies()` on logout-all.
+    func logout() {
+        sessionLoggedIn = false
+    }
+
     func listAccounts(baseURL: String, password: String) async throws -> [MailAccount] {
         try await ensureSession(baseURL: baseURL, password: password)
         let (data, http) = try await client.data(

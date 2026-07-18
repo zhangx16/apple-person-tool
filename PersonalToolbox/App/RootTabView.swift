@@ -8,6 +8,7 @@ enum AppTab: Hashable {
 }
 
 struct RootTabView: View {
+    @EnvironmentObject private var settings: AppSettings
     @State private var selectedTab: AppTab = .chat
 
     var body: some View {
@@ -35,6 +36,15 @@ struct RootTabView: View {
                     Label("设置", systemImage: "gearshape")
                 }
                 .tag(AppTab.settings)
+        }
+        .preferredColorScheme(preferredScheme)
+    }
+
+    private var preferredScheme: ColorScheme? {
+        switch AppSettings.Appearance(rawValue: settings.appearance) {
+        case .light: return .light
+        case .dark: return .dark
+        default: return nil
         }
     }
 }

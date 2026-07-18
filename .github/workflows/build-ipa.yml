@@ -131,11 +131,21 @@ jobs:
           STATUS=${PIPESTATUS[0]}
           set -e
           if [ "$STATUS" -ne 0 ]; then
+            {
+              echo "### ❌ Archive failed"
+              echo
+              echo "#### Grep errors"
+              echo '```'
+              grep -E 'error:|fatal error' "$RUNNER_TEMP/xcodebuild-archive.log" | tail -n 100 || echo "(no grep hits)"
+              echo '```'
+              echo
+              echo "#### Tail (200 lines)"
+              echo '```'
+              tail -n 200 "$RUNNER_TEMP/xcodebuild-archive.log" || true
+              echo '```'
+            } | tee -a "$GITHUB_STEP_SUMMARY"
             echo "::group::Swift / xcodebuild errors"
             grep -E 'error:|warning:.*error|❌|fatal error' "$RUNNER_TEMP/xcodebuild-archive.log" | tail -n 80 || true
-            echo "::endgroup::"
-            echo "::group::Last 120 log lines"
-            tail -n 120 "$RUNNER_TEMP/xcodebuild-archive.log" || true
             echo "::endgroup::"
             exit "$STATUS"
           fi

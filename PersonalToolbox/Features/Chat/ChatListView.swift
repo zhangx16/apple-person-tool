@@ -147,11 +147,12 @@ private struct ConversationRow: View {
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .frame(width: 28)
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 4) {
                 Text(conversation.title)
                     .font(.body.weight(.medium))
                     .foregroundStyle(.primary)
-                    .lineLimit(1)
+                    .lineLimit(2)
                 Text(conversation.model)
                     .font(.caption)
                     .foregroundStyle(.tertiary)
@@ -163,7 +164,11 @@ private struct ConversationRow: View {
                 .foregroundStyle(.secondary)
         }
         .padding(.vertical, 4)
+        .frame(minHeight: 44)
         .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(conversation.title)，\(Self.relativeDate(conversation.updatedAt))，模型 \(conversation.model)")
+        .accessibilityHint("打开对话")
     }
 
     private static func relativeDate(_ date: Date) -> String {

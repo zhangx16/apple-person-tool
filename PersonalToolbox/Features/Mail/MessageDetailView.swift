@@ -34,10 +34,11 @@ struct MessageDetailView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 if let html = viewModel.detail?.htmlBody, !html.isEmpty {
                     Button(showHTML ? "纯文本" : "查看 HTML") {
-                        withAnimation(AppleTheme.snappy) {
+                        withAnimation(AppleTheme.preferredSnappy) {
                             showHTML.toggle()
                         }
                     }
+                    .accessibilityLabel(showHTML ? "切换为纯文本" : "查看 HTML 正文")
                 }
             }
         }
@@ -101,11 +102,16 @@ struct MessageDetailView: View {
                     .padding(.vertical, 8)
                     .background(.ultraThinMaterial, in: Capsule())
                     .padding(.bottom, 24)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .transition(.opacity)
+                    .accessibilityLabel("已复制验证码 \(copiedCode)")
                     .onAppear {
+                        UIAccessibility.post(
+                            notification: .announcement,
+                            argument: "已复制验证码 \(copiedCode)"
+                        )
                         Task {
                             try? await Task.sleep(nanoseconds: 1_500_000_000)
-                            withAnimation { self.copiedCode = nil }
+                            withAnimation(AppleTheme.preferredSnappy) { self.copiedCode = nil }
                         }
                     }
             }
@@ -128,9 +134,10 @@ struct MessageDetailView: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                     Button("查看 HTML") {
-                        withAnimation(AppleTheme.snappy) { showHTML = true }
+                        withAnimation(AppleTheme.preferredSnappy) { showHTML = true }
                     }
                     .buttonStyle(PressableButtonStyle())
+                    .accessibilityLabel("查看 HTML 正文")
                 }
                 .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -211,9 +218,12 @@ struct VerificationCodeBanner: View {
             Color.accentColor.opacity(0.12),
             in: RoundedRectangle(cornerRadius: AppleTheme.cornerRadius, style: .continuous)
         )
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onCopy)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("验证码 \(code)")
-        .accessibilityHint("轻点复制")
+        .accessibilityHint("轻点复制验证码")
+        .accessibilityAddTraits(.isButton)
         .accessibilityAction(named: "复制", onCopy)
     }
 }

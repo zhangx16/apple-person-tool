@@ -115,6 +115,7 @@ struct DownloadHomeView: View {
                             .font(.subheadline.weight(.semibold))
                     }
                     .frame(maxWidth: .infinity)
+                    .frame(minHeight: 44)
                     .padding(.vertical, 10)
                     .foregroundStyle(Color.accentColor)
                     .background(
@@ -124,6 +125,8 @@ struct DownloadHomeView: View {
                 }
                 .buttonStyle(PressableButtonStyle())
                 .disabled(viewModel.isParsing || viewModel.isEnqueueing)
+                .accessibilityLabel("解析链接")
+                .accessibilityHint("获取视频标题与格式信息")
 
                 Button {
                     Task { await viewModel.startDownload() }
@@ -140,6 +143,7 @@ struct DownloadHomeView: View {
                             .font(.subheadline.weight(.semibold))
                     }
                     .frame(maxWidth: .infinity)
+                    .frame(minHeight: 44)
                     .padding(.vertical, 10)
                     .foregroundStyle(.white)
                     .background(
@@ -149,6 +153,8 @@ struct DownloadHomeView: View {
                 }
                 .buttonStyle(PressableButtonStyle())
                 .disabled(viewModel.isParsing || viewModel.isEnqueueing)
+                .accessibilityLabel("开始下载")
+                .accessibilityHint("按所选画质加入下载队列")
             }
             .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 12, trailing: 16))
         } header: {
@@ -250,9 +256,11 @@ struct DownloadHomeView: View {
     }
 
     private func bannerRow(text: String, color: Color, dismiss: @escaping () -> Void) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: color == .red ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
+        let isError = color == .red
+        return HStack(alignment: .top, spacing: 10) {
+            Image(systemName: isError ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
                 .foregroundStyle(color)
+                .accessibilityHidden(true)
             Text(text)
                 .font(.subheadline)
                 .foregroundStyle(.primary)
@@ -261,11 +269,16 @@ struct DownloadHomeView: View {
                 Image(systemName: "xmark")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.borderless)
-            .accessibilityLabel("关闭")
+            .accessibilityLabel("关闭提示")
         }
         .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(isError ? "错误：\(text)" : text)
+        .accessibilityAddTraits(.isStaticText)
     }
 }
 
@@ -282,12 +295,13 @@ struct FormatChipBar: View {
                     let selected = selection.id == preset.id
                     Button {
                         selection = preset
-                        Haptics.light()
+                        // Selection feedback only — no continuous scroll haptics (DESIGN §3.8).
                     } label: {
                         Text(preset.label)
                             .font(.subheadline.weight(.semibold))
                             .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
+                            .padding(.vertical, 10)
+                            .frame(minHeight: 44)
                             .foregroundStyle(selected ? Color.white : Color.primary)
                             .background(
                                 selected ? Color.accentColor : Color(.tertiarySystemFill),
@@ -295,10 +309,14 @@ struct FormatChipBar: View {
                             )
                     }
                     .buttonStyle(PressableButtonStyle())
-                    .accessibilityAddTraits(selected ? .isSelected : [])
+                    .accessibilityLabel(preset.label)
+                    .accessibilityHint("画质预设")
+                    .accessibilityAddTraits(selected ? [.isSelected, .isButton] : .isButton)
                 }
             }
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("画质")
     }
 }
 

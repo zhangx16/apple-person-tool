@@ -83,6 +83,9 @@ struct ImagineComposeView: View {
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("正在生成，\(note)")
+                        .accessibilityAddTraits(.updatesFrequently)
                     }
                 }
 
@@ -91,10 +94,13 @@ struct ImagineComposeView: View {
                         HStack(alignment: .top, spacing: 8) {
                             Image(systemName: "exclamationmark.triangle.fill")
                                 .foregroundStyle(.orange)
+                                .accessibilityHidden(true)
                             Text(err)
                                 .font(.footnote)
                                 .foregroundStyle(.primary)
                         }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel("错误：\(err)")
                     }
                 }
 
@@ -112,6 +118,7 @@ struct ImagineComposeView: View {
                     .disabled(!viewModel.canSubmit)
                     .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                     .listRowBackground(Color.clear)
+                    .accessibilityHint(submitAccessibilityHint)
 
                     if viewModel.isRunning {
                         Button(role: .destructive) {
@@ -121,6 +128,7 @@ struct ImagineComposeView: View {
                                 .frame(maxWidth: .infinity, minHeight: 44)
                         }
                         .buttonStyle(PressableButtonStyle())
+                        .accessibilityLabel("取消生成")
                     }
                 }
             }
@@ -202,6 +210,14 @@ struct ImagineComposeView: View {
         case .image: return "photo"
         case .edit: return "wand.and.stars"
         case .video: return "film"
+        }
+    }
+
+    private var submitAccessibilityHint: String {
+        switch viewModel.mode {
+        case .image: return "根据提示词生成图片"
+        case .edit: return "根据提示词编辑所选图片"
+        case .video: return "根据提示词生成视频"
         }
     }
 

@@ -7,6 +7,7 @@ struct ChatThreadView: View {
     @ObservedObject var viewModel: ChatViewModel
     @EnvironmentObject private var settings: AppSettings
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @StateObject private var imagineVM = ImagineViewModel()
     @State private var showImagine = false
@@ -79,11 +80,13 @@ struct ChatThreadView: View {
             .foregroundStyle(.primary)
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
+            .frame(minHeight: 44)
             .background(AppleTheme.assistantBubble, in: Capsule())
         }
         .buttonStyle(PressableButtonStyle())
         .disabled(viewModel.isStreaming)
-        .accessibilityLabel("选择模型")
+        .accessibilityLabel("选择模型，当前 \(viewModel.active?.model ?? settings.preferredModel)")
+        .accessibilityHint("打开模型列表")
     }
 
     // MARK: - Messages
@@ -118,20 +121,22 @@ struct ChatThreadView: View {
                                 }
                             }
                             .id(message.id)
+                            .transition(AppleTheme.bubbleTransition(reduceMotion: reduceMotion))
                         }
                     }
                     Color.clear.frame(height: 8).id("bottom")
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
+                .animation(AppleTheme.insertAnimation(reduceMotion: reduceMotion), value: viewModel.active?.messages.count)
             }
             .onChange(of: viewModel.active?.messages.last?.content) { _, _ in
-                withAnimation(AppleTheme.snappy) {
+                withAnimation(AppleTheme.snappyAnimation(reduceMotion: reduceMotion)) {
                     proxy.scrollTo("bottom", anchor: .bottom)
                 }
             }
             .onChange(of: viewModel.active?.messages.count) { _, _ in
-                withAnimation(AppleTheme.snappy) {
+                withAnimation(AppleTheme.snappyAnimation(reduceMotion: reduceMotion)) {
                     proxy.scrollTo("bottom", anchor: .bottom)
                 }
             }
@@ -149,10 +154,12 @@ struct ChatThreadView: View {
                     } label: {
                         Label("停止", systemImage: "stop.circle.fill")
                             .font(.body.weight(.semibold))
-                            .frame(minHeight: 44)
+                            .frame(minWidth: 44, minHeight: 44)
                     }
                     .buttonStyle(PressableButtonStyle())
                     .foregroundStyle(.red)
+                    .accessibilityLabel("停止")
+                    .accessibilityHint("停止生成回复")
                     Spacer()
                 }
                 .padding(.horizontal, 14)
@@ -164,34 +171,40 @@ struct ChatThreadView: View {
                     showImagine = true
                 } label: {
                     Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 28))
+                        .font(.title)
                         .symbolRenderingMode(.hierarchical)
                         .foregroundStyle(settings.isAIConfigured && !viewModel.isStreaming ? Color.accentColor : Color.secondary)
                         .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(PressableButtonStyle())
                 .disabled(!settings.isAIConfigured || viewModel.isStreaming)
                 .accessibilityLabel("创作")
+                .accessibilityHint("打开生图、编辑或视频创作")
 
                 TextField("发送消息…", text: $viewModel.input, axis: .vertical)
+                    .font(.body)
                     .lineLimit(1...6)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
                     .background(AppleTheme.assistantBubble, in: RoundedRectangle(cornerRadius: AppleTheme.controlRadius, style: .continuous))
                     .disabled(viewModel.isStreaming)
+                    .accessibilityLabel("消息输入")
 
                 Button {
                     viewModel.send()
                 } label: {
                     Image(systemName: "arrow.up.circle.fill")
-                        .font(.system(size: 32))
+                        .font(.title)
                         .symbolRenderingMode(.hierarchical)
                         .foregroundStyle(canSend ? Color.accentColor : Color.secondary)
                         .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(PressableButtonStyle())
                 .disabled(!canSend)
                 .accessibilityLabel("发送")
+                .accessibilityHint("发送消息")
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
@@ -208,18 +221,25 @@ struct ChatThreadView: View {
     private func errorBanner(_ text: String) -> some View {
         HStack(spacing: 8) {
             Image(systemName: "exclamationmark.triangle.fill")
+                .accessibilityHidden(true)
             Text(text)
                 .font(.footnote)
                 .lineLimit(3)
             Spacer(minLength: 4)
             Button("关闭") { viewModel.errorMessage = nil }
                 .font(.footnote.weight(.semibold))
+                .frame(minWidth: 44, minHeight: 44)
+                .accessibilityLabel("关闭错误提示")
         }
         .foregroundStyle(.white)
-        .padding(12)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 4)
         .background(Color.orange.gradient, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .padding(.horizontal, 12)
         .padding(.top, 8)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("错误：\(text)")
+        .accessibilityAddTraits(.isStaticText)
     }
 }
 
@@ -245,6 +265,7 @@ struct MessageBubbleView: View {
                             .font(.body)
                             .foregroundStyle(isUser ? Color.white : Color.primary)
                             .textSelection(.enabled)
+                            .fixedSize(horizontal: false, vertical: true)
                             .padding(.horizontal, 14)
                             .padding(.vertical, 10)
                         if message.isStreaming {
@@ -270,13 +291,19 @@ struct MessageBubbleView: View {
                 }
             }
         }
+        .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
+        .accessibilityHint(message.isStreaming ? "正在流式生成" : "长按可复制")
+        .accessibilityAddTraits(message.isStreaming ? .updatesFrequently : [])
     }
 
     private var accessibilityLabel: String {
         let role = isUser ? "我" : "助手"
         if message.isStreaming {
-            return "\(role)，正在生成"
+            if message.content.isEmpty {
+                return "\(role)，正在生成"
+            }
+            return "\(role)，正在生成：\(message.content)"
         }
         return "\(role)：\(message.content)"
     }
@@ -285,14 +312,16 @@ struct MessageBubbleView: View {
 // MARK: - Streaming cursor
 
 struct StreamingCursor: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var on = true
 
     var body: some View {
         Capsule()
             .fill(Color.secondary)
             .frame(width: 7, height: 16)
-            .opacity(on ? 1 : 0.2)
+            .opacity(reduceMotion ? 1 : (on ? 1 : 0.2))
             .onAppear {
+                guard !reduceMotion else { return }
                 withAnimation(.easeInOut(duration: 0.55).repeatForever(autoreverses: true)) {
                     on = false
                 }
@@ -324,9 +353,12 @@ struct ModelPickerSheet: View {
                                 if model == selected {
                                     Image(systemName: "checkmark")
                                         .foregroundStyle(Color.accentColor)
+                                        .accessibilityHidden(true)
                                 }
                             }
                         }
+                        .accessibilityLabel(model)
+                        .accessibilityAddTraits(model == selected ? .isSelected : [])
                     }
                 } header: {
                     Text("文本模型")

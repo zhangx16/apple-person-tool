@@ -50,6 +50,8 @@ struct FileRowView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(file.sizeText.isEmpty ? file.name : "\(file.name)，\(file.sizeText)")
 
             Spacer(minLength: 0)
 
@@ -63,8 +65,9 @@ struct FileRowView: View {
                 }
             }
             .buttonStyle(.borderless)
+            .frame(minWidth: 44, minHeight: 44)
             .disabled(isDownloading)
-            .accessibilityLabel("分享下载")
+            .accessibilityLabel("分享 \(file.name)")
 
             Button(role: .destructive) {
                 onDelete()
@@ -72,9 +75,11 @@ struct FileRowView: View {
                 Image(systemName: "trash")
             }
             .buttonStyle(.borderless)
-            .accessibilityLabel("删除文件")
+            .frame(minWidth: 44, minHeight: 44)
+            .accessibilityLabel("删除 \(file.name)")
         }
         .padding(.vertical, 4)
+        .frame(minHeight: 44)
     }
 }
 

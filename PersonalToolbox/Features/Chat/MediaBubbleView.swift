@@ -57,7 +57,10 @@ struct MediaBubbleView: View {
         .sheet(isPresented: $showShare) {
             ActivityView(activityItems: shareItems)
         }
+        .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
+        .accessibilityHint(accessibilityHint)
+        .accessibilityAddTraits(message.isMediaPending ? .updatesFrequently : [])
     }
 
     // MARK: - Media content
@@ -85,12 +88,15 @@ struct MediaBubbleView: View {
     private var pendingCard: some View {
         VStack(spacing: 10) {
             ProgressView()
+                .accessibilityLabel("生成中")
             Text(message.content.isEmpty ? "媒体生成中…" : message.content)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(width: 220, height: 160)
+        .frame(minWidth: 180, maxWidth: 280, minHeight: 120)
+        .padding(16)
         .background(AppleTheme.assistantBubble, in: RoundedRectangle(cornerRadius: AppleTheme.bubbleRadius, style: .continuous))
     }
 
@@ -149,6 +155,7 @@ struct MediaBubbleView: View {
                 }
                 .buttonStyle(PressableButtonStyle())
                 .padding(8)
+                .frame(minWidth: 44, minHeight: 44)
                 .accessibilityLabel("分享图片")
             }
         }
@@ -177,6 +184,7 @@ struct MediaBubbleView: View {
                 }
                 .buttonStyle(PressableButtonStyle())
                 .padding(8)
+                .frame(minWidth: 44, minHeight: 44)
                 .accessibilityLabel("分享视频")
             }
         }
@@ -241,10 +249,31 @@ struct MediaBubbleView: View {
 
     private var accessibilityLabel: String {
         let role = isUser ? "我" : "助手"
-        if message.isMediaPending { return "\(role)，媒体生成中" }
-        if message.mediaKind == .video { return "\(role)，视频：\(message.content)" }
-        if message.mediaKind == .image { return "\(role)，图片：\(message.content)" }
+        if message.isMediaFailed {
+            let detail = message.content.isEmpty ? "媒体生成失败" : message.content
+            return "\(role)，\(detail)"
+        }
+        if message.isMediaPending {
+            return "\(role)，正在生成媒体"
+        }
+        if message.mediaKind == .video {
+            let caption = message.content.isEmpty ? "视频" : message.content
+            return "\(role)，视频：\(caption)"
+        }
+        if message.mediaKind == .image {
+            let caption = message.content.isEmpty ? "图片" : message.content
+            return "\(role)，图片：\(caption)"
+        }
         return "\(role)：\(message.content)"
+    }
+
+    private var accessibilityHint: String {
+        if message.isMediaPending { return "媒体生成中，请稍候" }
+        if message.isMediaFailed { return "生成失败" }
+        if shareableURL != nil || message.mediaRemoteURL != nil {
+            return "可分享或长按更多操作"
+        }
+        return ""
     }
 }
 

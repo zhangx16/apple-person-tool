@@ -46,5 +46,7 @@
 	<string>用于选择图片作为 Grok Imagine 图像编辑的输入图源。</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>如通过系统分享将生成的图片或视频保存到相册，需要相册写入权限。</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>用于在开启「启动时需要面容/触控 ID」时验证身份并解锁 PersonalToolbox。</string>
 </dict>
 </plist>

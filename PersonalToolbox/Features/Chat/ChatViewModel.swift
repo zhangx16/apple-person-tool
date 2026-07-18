@@ -453,6 +453,8 @@ final class ChatViewModel: ObservableObject {
                     Haptics.error()
                 } else if !cancelled {
                     Haptics.success()
+                    // VoiceOver: announce completion (DESIGN §3.10).
+                    UIAccessibility.post(notification: .announcement, argument: "回复完成")
                 }
             }
         }

@@ -143,8 +143,20 @@ private struct MessageRow: View {
             }
         }
         .padding(.vertical, 4)
+        .frame(minHeight: 44)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(message.subject)，来自 \(message.from)")
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityHint("打开邮件详情")
+    }
+
+    private var accessibilityLabel: String {
+        let from = message.from.isEmpty ? "未知发件人" : message.from
+        let subject = message.subject.isEmpty ? "无主题" : message.subject
+        var parts = [subject, "来自 \(from)", message.displayDate]
+        if !message.preview.isEmpty {
+            parts.append(message.preview)
+        }
+        return parts.filter { !$0.isEmpty }.joined(separator: "，")
     }
 }
 

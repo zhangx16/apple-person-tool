@@ -88,13 +88,13 @@ struct SettingsView: View {
                 .lineLimit(2...5)
 
             Button {
-                Haptics.light()
                 Task { await viewModel.testSub2API() }
             } label: {
                 probeButtonLabel(title: "测试连接", busy: viewModel.sub2Probe.isProbing)
             }
             .disabled(viewModel.sub2Probe.isProbing)
             .buttonStyle(PressableButtonStyle())
+            .accessibilityHint("探测 sub2api 连通性")
 
             ServiceProbeRow(state: viewModel.sub2Probe)
         } header: {
@@ -174,13 +174,13 @@ struct SettingsView: View {
             }
 
             Button {
-                Haptics.light()
                 Task { await viewModel.testMail() }
             } label: {
                 probeButtonLabel(title: "测试连接", busy: viewModel.mailProbe.isProbing)
             }
             .disabled(viewModel.mailProbe.isProbing)
             .buttonStyle(PressableButtonStyle())
+            .accessibilityHint("探测邮件服务连通性")
 
             ServiceProbeRow(state: viewModel.mailProbe)
         } header: {
@@ -225,13 +225,13 @@ struct SettingsView: View {
                 .privacySensitive()
 
             Button {
-                Haptics.light()
                 Task { await viewModel.testYT() }
             } label: {
                 probeButtonLabel(title: "测试连接", busy: viewModel.ytProbe.isProbing)
             }
             .disabled(viewModel.ytProbe.isProbing)
             .buttonStyle(PressableButtonStyle())
+            .accessibilityHint("探测下载服务连通性")
 
             ServiceProbeRow(state: viewModel.ytProbe)
         } header: {
@@ -261,20 +261,23 @@ struct SettingsView: View {
     private var privacySection: some View {
         Section {
             Toggle("应用切换时隐藏敏感内容", isOn: $settings.hideSensitiveInAppSwitcher)
+                .accessibilityHint("切到后台或应用切换器时用遮罩隐藏界面")
 
             Toggle("启动时需要面容/触控 ID", isOn: $settings.requireBiometricUnlock)
+                .accessibilityHint("每次进入应用需验证设备所有者身份")
 
             Button(role: .destructive) {
-                Haptics.light()
                 confirmLogout = true
             } label: {
                 Label("注销全部会话", systemImage: "rectangle.portrait.and.arrow.right")
+                    .frame(minHeight: 44)
             }
             .buttonStyle(PressableButtonStyle())
+            .accessibilityHint("清除本机邮件 Cookie 与下载 Token")
         } header: {
             Label("隐私与会话", systemImage: "lock.shield")
         } footer: {
-            Text("生物识别锁默认关闭。注销仅清除本机 Cookie 与 Token，不会删除已保存的密钥。")
+            Text("生物识别锁默认关闭。注销仅清除本机 Cookie 与 Token，不会删除已保存的密钥。开启面容锁后，从后台返回也需要重新验证。")
         }
     }
 

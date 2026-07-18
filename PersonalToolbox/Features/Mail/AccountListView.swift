@@ -189,8 +189,17 @@ private struct AccountRow: View {
             Spacer(minLength: 0)
         }
         .padding(.vertical, 4)
+        .frame(minHeight: 44)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("邮箱 \(account.email)")
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityHint("打开收件箱")
+    }
+
+    private var accessibilityLabel: String {
+        var parts = ["邮箱 \(account.email)"]
+        if let remark = account.remark, !remark.isEmpty { parts.append(remark) }
+        if let status = account.status, !status.isEmpty { parts.append(status) }
+        return parts.joined(separator: "，")
     }
 }
 

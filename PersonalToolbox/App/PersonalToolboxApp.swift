@@ -7,6 +7,7 @@ struct PersonalToolboxApp: App {
         WindowGroup {
             RootTabView()
                 .environmentObject(AppSettings.shared)
+                // App shell owns biometric gate + app-switcher redaction (PR-7).
         }
         .modelContainer(for: [ConversationEntity.self, MessageEntity.self])
     }

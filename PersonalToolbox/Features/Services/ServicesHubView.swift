@@ -195,7 +195,7 @@ struct ServicesHubView: View {
                 Section("直播") {
                     hubLabel(
                         title: "多平台直播",
-                        subtitle: "底部「直播」Tab · B站/虎牙/斗鱼/抖音/快手",
+                        subtitle: "关注 + 搜索 · 原生播放（无推荐）",
                         brand: .live
                     )
                 }

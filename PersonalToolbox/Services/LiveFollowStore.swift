@@ -1,0 +1,90 @@
+import Foundation
+
+/// Local follow list for a few streamers (no cloud / no recommend feed).
+@MainActor
+final class LiveFollowStore: ObservableObject {
+    static let shared = LiveFollowStore()
+
+    @Published private(set) var items: [LiveFollowItem] = []
+
+    private let defaultsKey = "liveFollowItems.v1"
+
+    private init() {
+        load()
+    }
+
+    func load() {
+        guard let data = UserDefaults.standard.data(forKey: defaultsKey),
+              let decoded = try? JSONDecoder().decode([LiveFollowItem].self, from: data) else {
+            items = []
+            return
+        }
+        items = decoded.sorted { $0.addedAt > $1.addedAt }
+    }
+
+    func isFollowing(platform: LivePlatform, roomId: String) -> Bool {
+        let rid = roomId.trimmingCharacters(in: .whitespacesAndNewlines)
+        return items.contains { $0.platform == platform && $0.roomId == rid }
+    }
+
+    func follow(_ room: LiveRoomItem) {
+        let rid = room.roomId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !rid.isEmpty else { return }
+        if let idx = items.firstIndex(where: { $0.platform == room.platform && $0.roomId == rid }) {
+            var updated = items[idx]
+            updated.title = room.title.isEmpty ? updated.title : room.title
+            updated.userName = room.userName.isEmpty ? updated.userName : room.userName
+            updated.cover = room.cover.isEmpty ? updated.cover : room.cover
+            items[idx] = updated
+        } else {
+            items.insert(
+                LiveFollowItem(
+                    platform: room.platform,
+                    roomId: rid,
+                    title: room.title,
+                    userName: room.userName,
+                    cover: room.cover,
+                    addedAt: Date()
+                ),
+                at: 0
+            )
+        }
+        persist()
+    }
+
+    func unfollow(platform: LivePlatform, roomId: String) {
+        let rid = roomId.trimmingCharacters(in: .whitespacesAndNewlines)
+        items.removeAll { $0.platform == platform && $0.roomId == rid }
+        persist()
+    }
+
+    func unfollow(_ item: LiveFollowItem) {
+        unfollow(platform: item.platform, roomId: item.roomId)
+    }
+
+    func asRoomItem(_ item: LiveFollowItem) -> LiveRoomItem {
+        LiveRoomItem(
+            platform: item.platform,
+            roomId: item.roomId,
+            title: item.title,
+            cover: item.cover,
+            userName: item.userName,
+            online: 0
+        )
+    }
+
+    private func persist() {
+        guard let data = try? JSONEncoder().encode(items) else { return }
+        UserDefaults.standard.set(data, forKey: defaultsKey)
+    }
+}
+
+struct LiveFollowItem: Codable, Identifiable, Hashable {
+    var id: String { "\(platform.rawValue)-\(roomId)" }
+    var platform: LivePlatform
+    var roomId: String
+    var title: String
+    var userName: String
+    var cover: String
+    var addedAt: Date
+}

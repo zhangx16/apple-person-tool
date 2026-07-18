@@ -2,7 +2,7 @@ import SwiftUI
 import AVFoundation
 import UIKit
 
-// MARK: - Room ViewModel
+// MARK: - Room ViewModel (play only — no danmaku)
 
 @MainActor
 final class LiveRoomViewModel: ObservableObject {
@@ -13,7 +13,6 @@ final class LiveRoomViewModel: ObservableObject {
     @Published var selectedId: String?
     @Published var isLoading = true
     @Published var errorMessage: String?
-    @Published var showDanmaku = true
     @Published private(set) var player: AVPlayer?
 
     private var loadTask: Task<Void, Never>?
@@ -104,6 +103,7 @@ final class LiveRoomViewModel: ObservableObject {
     }
 
     var webFallback: String {
+        if let web = detail?.webURL, !web.isEmpty { return web }
         switch room.platform {
         case .bilibili: return "https://live.bilibili.com/\(room.roomId)"
         case .huya: return "https://www.huya.com/\(room.roomId)"
@@ -119,7 +119,7 @@ final class LiveRoomViewModel: ObservableObject {
 struct LiveRoomView: View {
     let room: LiveRoomItem
     @StateObject private var vm: LiveRoomViewModel
-    @StateObject private var danmaku = LiveDanmakuService()
+    @ObservedObject private var follows = LiveFollowStore.shared
 
     init(room: LiveRoomItem) {
         self.room = room
@@ -129,20 +129,22 @@ struct LiveRoomView: View {
     var body: some View {
         VStack(spacing: 0) {
             playerArea
-                .frame(height: 220)
+                .frame(height: 240)
                 .background(Color.black)
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    if vm.showDanmaku {
-                        danmakuPanel
-                    }
                     infoArea
                     qualityPicker
                     if let errorMessage = vm.errorMessage {
                         Text(errorMessage)
                             .font(.footnote)
                             .foregroundStyle(.red)
+                    }
+                    if let url = URL(string: vm.webFallback),
+                       url.scheme == "http" || url.scheme == "https" {
+                        Link("网页打开（备用）", destination: url)
+                            .font(.footnote)
                     }
                 }
                 .padding()
@@ -153,49 +155,44 @@ struct LiveRoomView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                HStack(spacing: 12) {
-                    Button {
-                        vm.showDanmaku.toggle()
-                        danmaku.isEnabled = vm.showDanmaku
-                        if vm.showDanmaku, let d = vm.detail {
-                            softStartDanmaku(d)
-                        } else {
-                            danmaku.stop()
-                        }
-                    } label: {
-                        Image(systemName: vm.showDanmaku ? "text.bubble.fill" : "text.bubble")
-                    }
-                    if let url = URL(string: vm.detail?.webURL ?? vm.webFallback),
-                       url.scheme == "http" || url.scheme == "https" {
-                        Link(destination: url) {
-                            Image(systemName: "safari")
-                        }
-                    }
+                Button {
+                    toggleFollow()
+                } label: {
+                    Image(systemName: isFollowed ? "star.fill" : "star")
+                        .foregroundStyle(isFollowed ? Color.yellow : Color.primary)
                 }
+                .accessibilityLabel(isFollowed ? "取消关注" : "关注")
             }
         }
         .onAppear { vm.start() }
-        .onDisappear {
-            danmaku.stop()
-            vm.stop()
-        }
-        .onChange(of: vm.detail?.roomId) { _, _ in
-            if vm.showDanmaku, let d = vm.detail, d.isLive {
-                softStartDanmaku(d)
-            }
-        }
+        .onDisappear { vm.stop() }
     }
 
     private var navTitle: String {
         if let name = vm.detail?.userName, !name.isEmpty { return name }
-        return room.userName.isEmpty ? "直播间" : room.userName
+        if !room.userName.isEmpty { return room.userName }
+        return "直播间"
     }
 
-    private func softStartDanmaku(_ d: LiveRoomDetail) {
-        Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 200_000_000)
-            guard vm.showDanmaku else { return }
-            danmaku.start(platform: room.platform, danmakuJSON: d.danmakuJSON, roomId: d.roomId)
+    private var isFollowed: Bool {
+        let rid = vm.detail?.roomId ?? room.roomId
+        let p = vm.detail?.platform ?? room.platform
+        return follows.isFollowing(platform: p, roomId: rid)
+    }
+
+    private func toggleFollow() {
+        let item = LiveRoomItem(
+            platform: vm.detail?.platform ?? room.platform,
+            roomId: vm.detail?.roomId ?? room.roomId,
+            title: vm.detail?.title ?? room.title,
+            cover: vm.detail?.cover ?? room.cover,
+            userName: vm.detail?.userName ?? room.userName,
+            online: vm.detail?.online ?? room.online
+        )
+        if isFollowed {
+            follows.unfollow(platform: item.platform, roomId: item.roomId)
+        } else {
+            follows.follow(item)
         }
     }
 
@@ -208,64 +205,25 @@ struct LiveRoomView: View {
             } else if vm.isLoading {
                 ProgressView().tint(.white)
             } else {
-                Image(systemName: "play.slash")
-                    .foregroundStyle(.white.opacity(0.7))
-            }
-        }
-    }
-
-    private var danmakuPanel: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text("弹幕")
-                    .font(.caption.weight(.semibold))
-                Spacer()
-                Text(danmaku.statusText)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-            ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 4) {
-                        ForEach(danmaku.messages) { msg in
-                            HStack(alignment: .top, spacing: 4) {
-                                Text(msg.userName.isEmpty ? "用户" : msg.userName)
-                                    .font(.caption2.weight(.semibold))
-                                    .foregroundStyle(safeColor(msg.colorHex))
-                                Text(msg.text)
-                                    .font(.caption2)
-                                    .foregroundStyle(.primary)
-                            }
-                            .id(msg.id)
-                        }
-                    }
-                }
-                .frame(maxHeight: 140)
-                .padding(8)
-                .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .onChange(of: danmaku.messages.count) { _, _ in
-                    if let last = danmaku.messages.last {
-                        proxy.scrollTo(last.id, anchor: .bottom)
+                VStack(spacing: 8) {
+                    Image(systemName: "play.slash")
+                        .foregroundStyle(.white.opacity(0.7))
+                    if vm.errorMessage != nil {
+                        Text("无法播放")
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.7))
                     }
                 }
             }
         }
-    }
-
-    private func safeColor(_ hex: UInt32) -> Color {
-        let r = Double((hex >> 16) & 0xFF) / 255
-        let g = Double((hex >> 8) & 0xFF) / 255
-        let b = Double(hex & 0xFF) / 255
-        return Color(.sRGB, red: r, green: g, blue: b, opacity: 1)
     }
 
     private var infoArea: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(vm.detail?.title ?? room.title)
+            Text(vm.detail?.title ?? (room.title.isEmpty ? "直播间 \(room.roomId)" : room.title))
                 .font(.headline)
             HStack {
-                Text(vm.detail?.userName ?? room.userName)
+                Text(vm.detail?.userName ?? (room.userName.isEmpty ? platformTitle : room.userName))
                 Spacer()
                 if let d = vm.detail {
                     Text(d.isLive ? "直播中" : "未开播")
@@ -275,13 +233,14 @@ struct LiveRoomView: View {
             }
             .font(.subheadline)
             .foregroundStyle(.secondary)
-            if let intro = vm.detail?.introduction, !intro.isEmpty {
-                Text(intro)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(4)
-            }
+            Text("\(platformTitle) · 房间 \(vm.detail?.roomId ?? room.roomId)")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
         }
+    }
+
+    private var platformTitle: String {
+        (vm.detail?.platform ?? room.platform).title
     }
 
     @ViewBuilder
@@ -311,7 +270,7 @@ struct LiveRoomView: View {
     }
 }
 
-// MARK: - AVPlayerLayer host (no AVPlayerViewController)
+// MARK: - AVPlayerLayer host
 
 struct LivePlayerLayerView: UIViewRepresentable {
     let player: AVPlayer
@@ -337,8 +296,7 @@ struct LivePlayerLayerView: UIViewRepresentable {
     final class PlayerContainerView: UIView {
         override class var layerClass: AnyClass { AVPlayerLayer.self }
         var playerLayer: AVPlayerLayer {
-            // layerClass guarantees type
-            layer as? AVPlayerLayer ?? AVPlayerLayer()
+            (layer as? AVPlayerLayer) ?? AVPlayerLayer()
         }
 
         override func layoutSubviews() {

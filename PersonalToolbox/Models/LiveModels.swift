@@ -1,6 +1,6 @@
 import Foundation
 
-enum LivePlatform: String, CaseIterable, Identifiable, Hashable {
+enum LivePlatform: String, CaseIterable, Identifiable, Hashable, Codable {
     case bilibili
     case huya
     case douyu

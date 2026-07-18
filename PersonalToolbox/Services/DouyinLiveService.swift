@@ -323,7 +323,6 @@ actor DouyinLiveService {
         let online = isLive ? LiveJSON.int(LiveJSON.object(roomData["room_view_stats"])?["display_value"]) : 0
         let numericRoomId = LiveJSON.string(roomData["id_str"]).ifEmpty(LiveJSON.string(roomData["id"]))
         let userUniqueId = randomDigits(12)
-        let headers = await requestHeaders()
         let cookie = headers["cookie"] ?? headers["Cookie"] ?? defaultCookie
         return LiveRoomDetail(
             platform: .douyin,

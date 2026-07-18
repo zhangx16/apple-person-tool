@@ -88,7 +88,7 @@ struct LiveHomeView: View {
                 ForEach(LivePlatform.allCases) { p in
                     Button {
                         platform = p
-                        Haptics.light()
+                        Task { @MainActor in Haptics.light() }
                     } label: {
                         HStack(spacing: 4) {
                             Image(systemName: p.systemImage)

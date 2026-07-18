@@ -1,6 +1,7 @@
 import SwiftUI
 import AVKit
 import AVFoundation
+import UIKit
 
 /// Live tab — multi-site shell (crash-hardened for device TabView).
 struct LiveHomeView: View {
@@ -102,11 +103,11 @@ struct LiveHomeView: View {
                     Button {
                         platform = p
                     } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: p.systemImage)
+                        HStack(spacing: 6) {
+                            platformIcon(p, selected: selected)
                             Text(p.title)
+                                .font(.subheadline.weight(.semibold))
                         }
-                        .font(.subheadline.weight(.semibold))
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
                         .foregroundStyle(selected ? Color.white : Color.primary)
@@ -120,6 +121,24 @@ struct LiveHomeView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
+        }
+    }
+
+    /// Official-style platform badge (asset catalog) with SF Symbol fallback.
+    @ViewBuilder
+    private func platformIcon(_ p: LivePlatform, selected: Bool) -> some View {
+        let size: CGFloat = 20
+        if UIImage(named: p.brandAssetName) != nil {
+            Image(p.brandAssetName)
+                .resizable()
+                .scaledToFit()
+                .frame(width: size, height: size)
+                .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+        } else {
+            Image(systemName: p.systemImage)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(selected ? Color.white.opacity(0.9) : platformTint(p))
+                .frame(width: size, height: size)
         }
     }
 
@@ -212,9 +231,11 @@ struct LiveHomeView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if !isLoading, rooms.isEmpty {
             VStack(spacing: 12) {
-                Image(systemName: platform.systemImage)
-                    .font(.largeTitle)
-                    .foregroundStyle(platformTint(platform))
+                Image(platform.brandAssetName)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 56, height: 56)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 Text(platform.title)
                     .font(.headline)
                 Text(emptyHint ?? defaultEmptyHint)

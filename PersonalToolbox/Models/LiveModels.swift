@@ -19,7 +19,7 @@ enum LivePlatform: String, CaseIterable, Identifiable, Hashable {
         }
     }
 
-    /// Stick to widely-available SF Symbols (avoid rare glyphs that can fail on some iOS builds).
+    /// Stick to widely-available SF Symbols (fallback if asset missing).
     var systemImage: String {
         switch self {
         case .bilibili: return "play.rectangle.fill"
@@ -27,6 +27,17 @@ enum LivePlatform: String, CaseIterable, Identifiable, Hashable {
         case .douyu: return "tv.fill"
         case .douyin: return "music.note"
         case .kuaishou: return "video.fill"
+        }
+    }
+
+    /// Asset catalog brand mark (official-style platform icon).
+    var brandAssetName: String {
+        switch self {
+        case .bilibili: return "IconLiveBilibili"
+        case .huya: return "IconLiveHuya"
+        case .douyu: return "IconLiveDouyu"
+        case .douyin: return "IconLiveDouyinLive"
+        case .kuaishou: return "IconLiveKuaishou"
         }
     }
 

@@ -292,11 +292,13 @@ actor BilibiliLiveService {
         let sortedKeys = p.keys.sorted()
         var filtered: [String: String] = [:]
         for k in sortedKeys {
-            let v = p[k]!.filter { !"!'()*".contains($0) }
+            guard let raw = p[k] else { continue }
+            let v = raw.filter { !"!'()*".contains($0) }
             filtered[k] = v
         }
         let query = filtered.keys.sorted().map { key in
-            let enc = filtered[key]!.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? filtered[key]!
+            let val = filtered[key] ?? ""
+            let enc = val.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? val
             return "\(key)=\(enc)"
         }.joined(separator: "&")
         let digest = Insecure.MD5.hash(data: Data((query + mixin).utf8))

@@ -108,9 +108,10 @@ final class SettingsViewModel: ObservableObject {
                     return
                 }
                 // Shared ensureSession; then list accounts to verify cookie path end-to-end.
-                let accounts = try await mail.listAccounts(baseURL: base, password: password)
+                let page = try await mail.listAccounts(baseURL: base, password: password)
                 let ms = elapsedMs(since: start)
-                mailProbe = .success(latencyMs: ms, detail: "\(accounts.count) 个邮箱账号")
+                let total = page.totalCount ?? page.accounts.count
+                mailProbe = .success(latencyMs: ms, detail: "\(total) 个邮箱账号")
                 Haptics.success()
             }
         } catch {

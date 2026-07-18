@@ -23,6 +23,9 @@
 		AA000001000000000000000D /* YTService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000001000000000000000D /* YTService.swift */; };
 		AA000001000000000000000E /* ChatListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000001000000000000000E /* ChatListView.swift */; };
 		AA000001000000000000000F /* AccountListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB000001000000000000000F /* AccountListView.swift */; };
+		AA0000010000000000000017 /* InboxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000017 /* InboxView.swift */; };
+		AA0000010000000000000018 /* MessageDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000018 /* MessageDetailView.swift */; };
+		AA0000010000000000000019 /* MailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000019 /* MailViewModel.swift */; };
 		AA0000010000000000000010 /* DownloadHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000010 /* DownloadHomeView.swift */; };
 		AA0000010000000000000011 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000011 /* SettingsView.swift */; };
 		AA0000010000000000000015 /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000015 /* SettingsViewModel.swift */; };
@@ -47,6 +50,9 @@
 		BB000001000000000000000D /* YTService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTService.swift; sourceTree = "<group>"; };
 		BB000001000000000000000E /* ChatListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatListView.swift; sourceTree = "<group>"; };
 		BB000001000000000000000F /* AccountListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountListView.swift; sourceTree = "<group>"; };
+		BB0000010000000000000017 /* InboxView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InboxView.swift; sourceTree = "<group>"; };
+		BB0000010000000000000018 /* MessageDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageDetailView.swift; sourceTree = "<group>"; };
+		BB0000010000000000000019 /* MailViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailViewModel.swift; sourceTree = "<group>"; };
 		BB0000010000000000000010 /* DownloadHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadHomeView.swift; sourceTree = "<group>"; };
 		BB0000010000000000000011 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		BB0000010000000000000015 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
@@ -178,6 +184,9 @@
 			isa = PBXGroup;
 			children = (
 				BB000001000000000000000F /* AccountListView.swift */,
+				BB0000010000000000000017 /* InboxView.swift */,
+				BB0000010000000000000018 /* MessageDetailView.swift */,
+				BB0000010000000000000019 /* MailViewModel.swift */,
 			);
 			path = Mail;
 			sourceTree = "<group>";
@@ -286,6 +295,9 @@
 				AA000001000000000000000D /* YTService.swift in Sources */,
 				AA000001000000000000000E /* ChatListView.swift in Sources */,
 				AA000001000000000000000F /* AccountListView.swift in Sources */,
+				AA0000010000000000000017 /* InboxView.swift in Sources */,
+				AA0000010000000000000018 /* MessageDetailView.swift in Sources */,
+				AA0000010000000000000019 /* MailViewModel.swift in Sources */,
 				AA0000010000000000000010 /* DownloadHomeView.swift in Sources */,
 				AA0000010000000000000011 /* SettingsView.swift in Sources */,
 				AA0000010000000000000015 /* SettingsViewModel.swift in Sources */,

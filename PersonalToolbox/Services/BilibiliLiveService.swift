@@ -334,7 +334,7 @@ actor BilibiliLiveService {
         if signed, !query.isEmpty {
             // already signed by caller when needed
         }
-        var comps = URLComponents(string: url)!
+        guard var comps = URLComponents(string: url) else { throw NetworkError.invalidURL }
         if !q.isEmpty {
             comps.queryItems = q.map { URLQueryItem(name: $0.key, value: $0.value) }
         }

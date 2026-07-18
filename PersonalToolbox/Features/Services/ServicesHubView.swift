@@ -12,30 +12,30 @@ struct ServicesHubView: View {
                     NavigationLink {
                         QuickActionsHomeView()
                     } label: {
-                        sfHubLabel(
+                        hubLabel(
                             title: "快捷动作中心",
                             subtitle: "剪贴板 / 链接 / 单号智能分流",
-                            systemImage: "bolt.horizontal.circle.fill"
+                            brand: .quickActions
                         )
                     }
 
                     NavigationLink {
                         ClipboardHomeView()
                     } label: {
-                        sfHubLabel(
+                        hubLabel(
                             title: "剪贴板工具箱",
                             subtitle: "历史 · 验证码 · 动作推荐",
-                            systemImage: "doc.on.clipboard.fill"
+                            brand: .clipboard
                         )
                     }
 
                     NavigationLink {
                         PasswordGeneratorHomeView()
                     } label: {
-                        sfHubLabel(
+                        hubLabel(
                             title: "密码生成器",
                             subtitle: "本地随机 · 强度提示",
-                            systemImage: "key.fill"
+                            brand: .password
                         )
                     }
                 }
@@ -54,10 +54,10 @@ struct ServicesHubView: View {
                     NavigationLink {
                         HabitsTodosHomeView()
                     } label: {
-                        sfHubLabel(
+                        hubLabel(
                             title: "习惯与待办",
                             subtitle: "打卡连续天数 · 待办清单",
-                            systemImage: "checklist"
+                            brand: .habits
                         )
                     }
 
@@ -84,20 +84,20 @@ struct ServicesHubView: View {
                     NavigationLink {
                         ExpressHomeView()
                     } label: {
-                        sfHubLabel(
+                        hubLabel(
                             title: "快递查询",
                             subtitle: "单号本机管理 · 跳转查询",
-                            systemImage: "shippingbox.fill"
+                            brand: .express
                         )
                     }
 
                     NavigationLink {
                         MarketQuotesHomeView()
                     } label: {
-                        sfHubLabel(
+                        hubLabel(
                             title: "油价 / 汇率 / 金价",
                             subtitle: "国际参考行情",
-                            systemImage: "chart.line.uptrend.xyaxis"
+                            brand: .market
                         )
                     }
                 }
@@ -106,10 +106,10 @@ struct ServicesHubView: View {
                     NavigationLink {
                         RSSHomeView()
                     } label: {
-                        sfHubLabel(
+                        hubLabel(
                             title: "RSS 阅读器",
                             subtitle: "多源订阅 · 下拉刷新",
-                            systemImage: "dot.radiowaves.up.forward"
+                            brand: .rss
                         )
                     }
 
@@ -139,10 +139,10 @@ struct ServicesHubView: View {
                     NavigationLink {
                         ServiceHealthHomeView()
                     } label: {
-                        sfHubLabel(
+                        hubLabel(
                             title: "服务健康总览",
                             subtitle: "一键探测全部已配置服务",
-                            systemImage: "heart.text.square.fill"
+                            brand: .health
                         )
                     }
 
@@ -193,9 +193,11 @@ struct ServicesHubView: View {
                 }
 
                 Section("直播") {
-                    Text("底部「直播」Tab：B站 · 虎牙 · 斗鱼 · 抖音 · 快手（SimpleLive master 协议 · 含快手弹幕）。")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    hubLabel(
+                        title: "多平台直播",
+                        subtitle: "底部「直播」Tab · B站/虎牙/斗鱼/抖音/快手",
+                        brand: .live
+                    )
                 }
             }
             .scrollContentBackground(.hidden)
@@ -219,29 +221,7 @@ struct ServicesHubView: View {
             Spacer(minLength: 0)
         }
         .padding(.vertical, 4)
-    }
-
-    private func sfHubLabel(title: String, subtitle: String, systemImage: String) -> some View {
-        HStack(spacing: 14) {
-            Image(systemName: systemImage)
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .frame(width: 40, height: 40)
-                .background(
-                    Color(.secondarySystemBackground),
-                    in: RoundedRectangle(cornerRadius: 9, style: .continuous)
-                )
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(.primary)
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title)，\(subtitle)")
     }
 }

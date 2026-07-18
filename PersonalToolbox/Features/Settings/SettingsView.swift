@@ -82,7 +82,8 @@ struct SettingsView: View {
                         projectRow(
                             systemImage: "shippingbox.fill",
                             title: "快递100",
-                            subtitle: settings.kuaidi100Customer.isEmpty ? "未配置" : "customer 已填"
+                            subtitle: settings.kuaidi100Customer.isEmpty ? "未配置" : "customer 已填",
+                            tint: ServiceBrand.express.tint
                         )
                     }
 
@@ -92,7 +93,8 @@ struct SettingsView: View {
                         projectRow(
                             systemImage: "video.fill",
                             title: "快手直播",
-                            subtitle: settings.kuaishouCookie.isEmpty ? "匿名可播 · 弹幕需 Cookie" : "Cookie 已配置"
+                            subtitle: settings.kuaishouCookie.isEmpty ? "匿名可播 · 弹幕需 Cookie" : "Cookie 已配置",
+                            tint: ServiceBrand.live.tint
                         )
                     }
                 } header: {
@@ -108,7 +110,8 @@ struct SettingsView: View {
                         projectRow(
                             systemImage: "bell.badge.fill",
                             title: "通知",
-                            subtitle: settings.notifyDownloadCompleted ? "下载完成提醒已开" : "下载完成提醒已关"
+                            subtitle: settings.notifyDownloadCompleted ? "下载完成提醒已开" : "下载完成提醒已关",
+                            tint: Color(hex: 0xFF9F0A)
                         )
                     }
 
@@ -118,7 +121,8 @@ struct SettingsView: View {
                         projectRow(
                             systemImage: "paintbrush.fill",
                             title: "外观",
-                            subtitle: appearanceLabel
+                            subtitle: appearanceLabel,
+                            tint: Color(hex: 0xBF5AF2)
                         )
                     }
 
@@ -217,14 +221,19 @@ struct SettingsView: View {
         }
     }
 
-    private func projectRow(systemImage: String, title: String, subtitle: String) -> some View {
+    private func projectRow(
+        systemImage: String,
+        title: String,
+        subtitle: String,
+        tint: Color = Color(hex: 0x0A84FF)
+    ) -> some View {
         HStack(spacing: 14) {
             Image(systemName: systemImage)
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(tint)
                 .frame(width: 36, height: 36)
                 .background(
-                    Color(.secondarySystemBackground),
+                    tint.opacity(0.16),
                     in: RoundedRectangle(cornerRadius: 8, style: .continuous)
                 )
             VStack(alignment: .leading, spacing: 2) {

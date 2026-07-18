@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-/// Brand icons for self-hosted projects shown in hub / settings / headers.
+/// Brand icons for self-hosted projects + local tools (hub / settings / headers).
 enum ServiceBrand: String, CaseIterable, Identifiable {
     case sublink
     case komari
@@ -16,6 +16,16 @@ enum ServiceBrand: String, CaseIterable, Identifiable {
     case ipCheck
     case chat
     case settings
+    // Local tools / hub entries without custom assets — colored SF glyphs
+    case quickActions
+    case clipboard
+    case password
+    case habits
+    case express
+    case market
+    case rss
+    case health
+    case live
 
     var id: String { rawValue }
 
@@ -33,11 +43,11 @@ enum ServiceBrand: String, CaseIterable, Identifiable {
         case .cloudflare: return "IconCloudflare"
         case .clsNews: return "IconCLS"
         case .ipCheck: return "IconIPCheck"
-        case .chat, .settings: return nil
+        default: return nil
         }
     }
 
-    /// SF Symbol fallback (and for tab bars that need template glyphs).
+    /// SF Symbol (fallback or primary for tools).
     var systemImage: String {
         switch self {
         case .sublink: return "link.circle.fill"
@@ -53,6 +63,43 @@ enum ServiceBrand: String, CaseIterable, Identifiable {
         case .ipCheck: return "antenna.radiowaves.left.and.right"
         case .chat: return "sparkles"
         case .settings: return "gearshape.fill"
+        case .quickActions: return "bolt.horizontal.circle.fill"
+        case .clipboard: return "doc.on.clipboard.fill"
+        case .password: return "key.fill"
+        case .habits: return "checklist"
+        case .express: return "shippingbox.fill"
+        case .market: return "chart.line.uptrend.xyaxis"
+        case .rss: return "dot.radiowaves.up.forward"
+        case .health: return "heart.text.square.fill"
+        case .live: return "play.tv.fill"
+        }
+    }
+
+    /// Brand / accent color for SF glyph + soft plate.
+    var tint: Color {
+        switch self {
+        case .sublink: return Color(hex: 0x0A84FF)
+        case .komari: return Color(hex: 0x30D158)
+        case .youtube: return Color(hex: 0xFF3B30)
+        case .douyin: return Color(hex: 0xFF2D55)
+        case .sub2: return Color(hex: 0x5E5CE6)
+        case .anniversary: return Color(hex: 0xFF2D55)
+        case .qrAssistant: return Color(hex: 0x64D2FF)
+        case .translator: return Color(hex: 0xBF5AF2)
+        case .cloudflare: return Color(hex: 0xF6821F)
+        case .clsNews: return Color(hex: 0xFF9F0A)
+        case .ipCheck: return Color(hex: 0xAE6DD8)
+        case .chat: return Color(hex: 0x0A84FF)
+        case .settings: return Color(hex: 0x8E8E93)
+        case .quickActions: return Color(hex: 0xFF9F0A)
+        case .clipboard: return Color(hex: 0x0A84FF)
+        case .password: return Color(hex: 0xBF5AF2)
+        case .habits: return Color(hex: 0x30D158)
+        case .express: return Color(hex: 0xAC8E68)
+        case .market: return Color(hex: 0x34C759)
+        case .rss: return Color(hex: 0xFF9500)
+        case .health: return Color(hex: 0xFF375F)
+        case .live: return Color(hex: 0xFF375F)
         }
     }
 
@@ -71,6 +118,15 @@ enum ServiceBrand: String, CaseIterable, Identifiable {
         case .ipCheck: return "IP 检测"
         case .chat: return "助手"
         case .settings: return "设置"
+        case .quickActions: return "快捷动作"
+        case .clipboard: return "剪贴板"
+        case .password: return "密码生成器"
+        case .habits: return "习惯与待办"
+        case .express: return "快递查询"
+        case .market: return "行情"
+        case .rss: return "RSS"
+        case .health: return "服务健康"
+        case .live: return "直播"
         }
     }
 }
@@ -80,18 +136,25 @@ struct ServiceBrandIcon: View {
     let brand: ServiceBrand
     var size: CGFloat = 36
     var cornerRadius: CGFloat? = nil
-    /// Draw a subtle plate behind transparent logos.
+    /// Draw a soft tinted plate (or neutral when using custom asset).
     var showsBackground: Bool = true
 
     private var radius: CGFloat {
         cornerRadius ?? size * 0.22
     }
 
+    private var hasAsset: Bool {
+        if let asset = brand.assetName, UIImage(named: asset) != nil { return true }
+        return false
+    }
+
     var body: some View {
         ZStack {
             if showsBackground {
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .fill(Color(.secondarySystemBackground))
+                    .fill(hasAsset
+                          ? Color(.secondarySystemBackground)
+                          : brand.tint.opacity(0.16))
             }
             Group {
                 if let asset = brand.assetName, UIImage(named: asset) != nil {
@@ -101,8 +164,9 @@ struct ServiceBrandIcon: View {
                         .padding(size * 0.12)
                 } else {
                     Image(systemName: brand.systemImage)
-                        .font(.system(size: size * 0.48, weight: .semibold))
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: size * 0.44, weight: .semibold))
+                        .foregroundStyle(brand.tint)
+                        .symbolRenderingMode(.hierarchical)
                 }
             }
             .frame(width: size, height: size)

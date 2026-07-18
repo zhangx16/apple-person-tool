@@ -2,28 +2,29 @@ import SwiftUI
 import AVKit
 import AVFoundation
 
-/// Live tab — multi-site shell from SimpleLive v1.12.6 (+ Kuaishou live_api).
+/// Live tab — multi-site shell (crash-hardened for device TabView).
 struct LiveHomeView: View {
     @State private var platform: LivePlatform = .bilibili
     @State private var rooms: [LiveRoomItem] = []
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var searchText = ""
-    @State private var path = NavigationPath()
     @State private var emptyHint: String?
+    @State private var didAppear = false
 
     @State private var categories: [LiveCategory] = []
     @State private var selectedParentId: String?
     @State private var selectedSub: LiveSubCategory?
     @State private var browseMode: BrowseMode = .recommend
 
-    enum BrowseMode: String, CaseIterable {
+    enum BrowseMode: String, CaseIterable, Identifiable {
         case recommend = "推荐"
         case category = "分区"
+        var id: String { rawValue }
     }
 
     var body: some View {
-        NavigationStack(path: $path) {
+        NavigationStack {
             VStack(spacing: 0) {
                 platformPicker
                 modePicker
@@ -37,7 +38,7 @@ struct LiveHomeView: View {
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $searchText, prompt: searchPrompt)
             .onSubmit(of: .search) {
-                Task { await search() }
+                Task { await reload() }
             }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -49,10 +50,14 @@ struct LiveHomeView: View {
                     }
                 }
             }
-            .navigationDestination(for: LiveRoomItem.self) { room in
-                LiveRoomView(room: room)
+            .task {
+                // Delay one tick so TabView switch finishes before network + UI churn
+                if !didAppear {
+                    didAppear = true
+                    try? await Task.sleep(nanoseconds: 50_000_000)
+                }
+                await reload()
             }
-            .task { await reload() }
             .onChange(of: platform) { _, _ in
                 rooms = []
                 categories = []
@@ -76,9 +81,16 @@ struct LiveHomeView: View {
     }
 
     private var searchPrompt: String {
-        switch platform {
-        case .kuaishou: return "搜索主播 / 标题 / 房间号"
-        default: return "搜索直播间 / 主播"
+        platform == .kuaishou ? "搜索主播 / 标题 / 房间号" : "搜索直播间 / 主播"
+    }
+
+    private func platformTint(_ p: LivePlatform) -> Color {
+        switch p {
+        case .bilibili: return Color(hex: 0x00A1D6)
+        case .huya: return Color(hex: 0xFF8C00)
+        case .douyu: return Color(hex: 0xFF6A00)
+        case .douyin: return Color(hex: 0x111111)
+        case .kuaishou: return Color(hex: 0xFF4906)
         }
     }
 
@@ -86,9 +98,9 @@ struct LiveHomeView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(LivePlatform.allCases) { p in
+                    let selected = platform == p
                     Button {
                         platform = p
-                        Task { @MainActor in Haptics.light() }
                     } label: {
                         HStack(spacing: 4) {
                             Image(systemName: p.systemImage)
@@ -97,9 +109,9 @@ struct LiveHomeView: View {
                         .font(.subheadline.weight(.semibold))
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
-                        .foregroundStyle(platform == p ? Color.white : Color.primary)
+                        .foregroundStyle(selected ? Color.white : Color.primary)
                         .background(
-                            platform == p ? Color.accentColor : Color(.tertiarySystemFill),
+                            selected ? platformTint(p) : Color(.tertiarySystemFill),
                             in: Capsule()
                         )
                     }
@@ -113,7 +125,7 @@ struct LiveHomeView: View {
 
     private var modePicker: some View {
         Picker("模式", selection: $browseMode) {
-            ForEach(BrowseMode.allCases, id: \.self) { m in
+            ForEach(BrowseMode.allCases) { m in
                 Text(m.rawValue).tag(m)
             }
         }
@@ -143,7 +155,7 @@ struct LiveHomeView: View {
                                 .padding(.vertical, 6)
                                 .foregroundStyle(selectedParentId == cat.id ? Color.white : Color.primary)
                                 .background(
-                                    selectedParentId == cat.id ? Color.accentColor : Color(.tertiarySystemFill),
+                                    selectedParentId == cat.id ? platformTint(platform) : Color(.tertiarySystemFill),
                                     in: Capsule()
                                 )
                         }
@@ -183,33 +195,52 @@ struct LiveHomeView: View {
     @ViewBuilder
     private var content: some View {
         if let errorMessage, rooms.isEmpty {
-            ContentUnavailableView {
-                Label("加载失败", systemImage: "wifi.exclamationmark")
-            } description: {
+            VStack(spacing: 12) {
+                Image(systemName: "wifi.exclamationmark")
+                    .font(.largeTitle)
+                    .foregroundStyle(.secondary)
+                Text("加载失败")
+                    .font(.headline)
                 Text(errorMessage)
-            } actions: {
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
                 Button("重试") { Task { await reload() } }
+                    .buttonStyle(.borderedProminent)
             }
-            .frame(maxHeight: .infinity)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if !isLoading, rooms.isEmpty {
-            ContentUnavailableView {
-                Label(platform.title, systemImage: platform.systemImage)
-            } description: {
+            VStack(spacing: 12) {
+                Image(systemName: platform.systemImage)
+                    .font(.largeTitle)
+                    .foregroundStyle(platformTint(platform))
+                Text(platform.title)
+                    .font(.headline)
                 Text(emptyHint ?? defaultEmptyHint)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
             }
-            .frame(maxHeight: .infinity)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             List {
                 if isLoading && rooms.isEmpty {
-                    ProgressView("加载中…")
+                    HStack {
+                        Spacer()
+                        ProgressView("加载中…")
+                        Spacer()
+                    }
+                    .listRowBackground(Color.clear)
                 }
                 ForEach(rooms) { room in
-                    Button {
-                        path.append(room)
+                    // Prefer NavigationLink over NavigationPath (more stable on iOS 17 TabView)
+                    NavigationLink {
+                        LiveRoomView(room: room)
                     } label: {
                         roomRow(room)
                     }
-                    .buttonStyle(.plain)
                 }
             }
             .listStyle(.plain)
@@ -230,23 +261,13 @@ struct LiveHomeView: View {
 
     private func roomRow(_ room: LiveRoomItem) -> some View {
         HStack(spacing: 12) {
-            AsyncImage(url: URL(string: room.cover)) { phase in
-                switch phase {
-                case .success(let img):
-                    img.resizable().scaledToFill()
-                default:
-                    Color(.tertiarySystemFill)
-                }
-            }
-            .frame(width: 120, height: 68)
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-
+            coverView(room.cover)
             VStack(alignment: .leading, spacing: 4) {
-                Text(room.title)
+                Text(room.title.isEmpty ? "未命名直播间" : room.title)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(2)
-                Text(room.userName)
+                Text(room.userName.isEmpty ? "主播" : room.userName)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Text("\(Self.formatOnline(room.online)) 人气")
@@ -258,50 +279,89 @@ struct LiveHomeView: View {
         .padding(.vertical, 4)
     }
 
+    @ViewBuilder
+    private func coverView(_ cover: String) -> some View {
+        let url = URL(string: cover)
+        ZStack {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color(.tertiarySystemFill))
+            if let url, url.scheme == "http" || url.scheme == "https" {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let img):
+                        img.resizable().scaledToFill()
+                    default:
+                        EmptyView()
+                    }
+                }
+            }
+        }
+        .frame(width: 120, height: 68)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
     private func loadCategoriesIfNeeded() async {
         guard categories.isEmpty else { return }
         do {
             let cats = try await LiveSiteRouter.categories(platform: platform)
-            categories = cats
-            if selectedParentId == nil {
-                selectedParentId = cats.first?.id
-                selectedSub = cats.first?.children.first
+            await MainActor.run {
+                categories = cats
+                if selectedParentId == nil {
+                    selectedParentId = cats.first?.id
+                    selectedSub = cats.first?.children.first
+                }
             }
+        } catch is CancellationError {
+            return
         } catch {
-            errorMessage = error.localizedDescription
+            await MainActor.run {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
     private func reload() async {
-        isLoading = true
-        errorMessage = nil
-        emptyHint = nil
-        defer { isLoading = false }
+        await MainActor.run {
+            isLoading = true
+            errorMessage = nil
+            emptyHint = nil
+        }
+        defer {
+            Task { @MainActor in isLoading = false }
+        }
         do {
             let kw = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+            let result: [LiveRoomItem]
             if !kw.isEmpty {
-                rooms = try await LiveSiteRouter.search(platform: platform, keyword: kw, page: 1)
+                result = try await LiveSiteRouter.search(platform: platform, keyword: kw, page: 1)
             } else if browseMode == .category {
                 await loadCategoriesIfNeeded()
                 if let sub = selectedSub {
-                    rooms = try await LiveSiteRouter.categoryRooms(platform: platform, category: sub, page: 1)
+                    result = try await LiveSiteRouter.categoryRooms(platform: platform, category: sub, page: 1)
                 } else {
-                    rooms = []
-                    emptyHint = "请选择分区"
+                    await MainActor.run {
+                        rooms = []
+                        emptyHint = "请选择分区"
+                    }
+                    return
                 }
             } else {
-                rooms = try await LiveSiteRouter.recommend(platform: platform, page: 1)
+                result = try await LiveSiteRouter.recommend(platform: platform, page: 1)
             }
-            if rooms.isEmpty, errorMessage == nil {
-                emptyHint = defaultEmptyHint
+            await MainActor.run {
+                rooms = result
+                if rooms.isEmpty {
+                    emptyHint = defaultEmptyHint
+                }
             }
+        } catch is CancellationError {
+            return
         } catch {
-            errorMessage = error.localizedDescription
+            await MainActor.run {
+                rooms = []
+                errorMessage = error.localizedDescription
+            }
         }
-    }
-
-    private func search() async {
-        await reload()
     }
 
     private static func formatOnline(_ n: Int) -> String {
@@ -339,7 +399,7 @@ struct LiveRoomView: View {
             .padding()
         }
         .background(AppleTheme.canvas)
-        .navigationTitle(detail?.userName ?? room.userName)
+        .navigationTitle(detail?.userName.isEmpty == false ? (detail?.userName ?? room.userName) : room.userName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -355,7 +415,8 @@ struct LiveRoomView: View {
                     } label: {
                         Image(systemName: showDanmaku ? "text.bubble.fill" : "text.bubble")
                     }
-                    if let url = URL(string: detail?.webURL ?? webFallback) {
+                    if let url = URL(string: detail?.webURL ?? webFallback),
+                       url.scheme == "http" || url.scheme == "https" {
                         Link(destination: url) {
                             Image(systemName: "safari")
                         }
@@ -409,13 +470,14 @@ struct LiveRoomView: View {
                 Text(danmaku.statusText)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 4) {
                         ForEach(danmaku.messages) { msg in
                             HStack(alignment: .top, spacing: 4) {
-                                Text(msg.userName)
+                                Text(msg.userName.isEmpty ? "用户" : msg.userName)
                                     .font(.caption2.weight(.semibold))
                                     .foregroundStyle(Color(hex: msg.colorHex))
                                 Text(msg.text)
@@ -492,29 +554,35 @@ struct LiveRoomView: View {
     }
 
     private func load() async {
-        isLoading = true
-        errorMessage = nil
-        defer { isLoading = false }
+        await MainActor.run {
+            isLoading = true
+            errorMessage = nil
+        }
+        defer { Task { @MainActor in isLoading = false } }
         do {
             let d = try await LiveSiteRouter.roomDetail(platform: room.platform, roomId: room.roomId)
-            detail = d
+            await MainActor.run { detail = d }
             guard d.isLive else {
-                errorMessage = "当前未开播"
+                await MainActor.run { errorMessage = "当前未开播" }
                 return
             }
             let qs = try await LiveSiteRouter.playQualities(detail: d)
-            qualities = qs
+            await MainActor.run { qualities = qs }
             guard let first = qs.first else {
-                errorMessage = "无可用清晰度"
+                await MainActor.run { errorMessage = "无可用清晰度" }
                 return
             }
-            selectedId = first.id
+            await MainActor.run { selectedId = first.id }
             await play(quality: first)
             if showDanmaku {
-                danmaku.start(platform: room.platform, danmakuJSON: d.danmakuJSON, roomId: d.roomId)
+                await MainActor.run {
+                    danmaku.start(platform: room.platform, danmakuJSON: d.danmakuJSON, roomId: d.roomId)
+                }
             }
+        } catch is CancellationError {
+            return
         } catch {
-            errorMessage = error.localizedDescription
+            await MainActor.run { errorMessage = error.localizedDescription }
         }
     }
 
@@ -522,27 +590,31 @@ struct LiveRoomView: View {
         guard let detail else { return }
         do {
             let result = try await LiveSiteRouter.playURLs(detail: detail, quality: quality)
-            let ordered = result.urls.sorted { a, b in
+            let ordered = result.urls.filter { URL(string: $0) != nil }.sorted { a, b in
                 let am = a.contains(".m3u8")
                 let bm = b.contains(".m3u8")
                 if am != bm { return am && !bm }
                 return false
             }
             guard let first = ordered.first, let url = URL(string: first) else {
-                errorMessage = "无可用播放地址"
+                await MainActor.run { errorMessage = "无可用播放地址" }
                 return
             }
-            let asset = AVURLAsset(url: url, options: [
-                "AVURLAssetHTTPHeaderFieldsKey": result.headers
-            ])
-            let item = AVPlayerItem(asset: asset)
-            let p = AVPlayer(playerItem: item)
-            player?.pause()
-            player = p
-            p.play()
-            errorMessage = nil
+            await MainActor.run {
+                let asset = AVURLAsset(url: url, options: [
+                    "AVURLAssetHTTPHeaderFieldsKey": result.headers
+                ])
+                let item = AVPlayerItem(asset: asset)
+                let p = AVPlayer(playerItem: item)
+                player?.pause()
+                player = p
+                p.play()
+                errorMessage = nil
+            }
+        } catch is CancellationError {
+            return
         } catch {
-            errorMessage = error.localizedDescription
+            await MainActor.run { errorMessage = error.localizedDescription }
         }
     }
 }
@@ -563,4 +635,3 @@ struct LiveAVPlayerView: UIViewControllerRepresentable {
         }
     }
 }
-

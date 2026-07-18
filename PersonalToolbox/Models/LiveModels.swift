@@ -19,12 +19,13 @@ enum LivePlatform: String, CaseIterable, Identifiable, Hashable {
         }
     }
 
+    /// Stick to widely-available SF Symbols (avoid rare glyphs that can fail on some iOS builds).
     var systemImage: String {
         switch self {
         case .bilibili: return "play.rectangle.fill"
         case .huya: return "gamecontroller.fill"
-        case .douyu: return "fish.fill"
-        case .douyin: return "music.note.tv.fill"
+        case .douyu: return "tv.fill"
+        case .douyin: return "music.note"
         case .kuaishou: return "video.fill"
         }
     }
@@ -222,11 +223,37 @@ enum LiveJSON {
     }
 
     static func string(_ any: Any?) -> String {
+        guard let any, !(any is NSNull) else { return "" }
         if let s = any as? String { return s }
         if let n = any as? NSNumber { return n.stringValue }
         if let i = any as? Int { return "\(i)" }
-        if any is NSNull || any == nil { return "" }
-        return "\(any!)"
+        if let d = any as? Double { return String(d) }
+        return String(describing: any)
+    }
+
+    static func encodeJSONSafe(_ dict: [String: Any]) -> String {
+        // Drop non-JSON values so serialization never traps.
+        let cleaned = sanitize(dict)
+        guard JSONSerialization.isValidJSONObject(cleaned),
+              let data = try? JSONSerialization.data(withJSONObject: cleaned, options: []),
+              let s = String(data: data, encoding: .utf8) else { return "{}" }
+        return s
+    }
+
+    private static func sanitize(_ value: Any) -> Any {
+        if value is NSNull { return NSNull() }
+        if value is String || value is Int || value is Double || value is Bool || value is NSNumber {
+            return value
+        }
+        if let dict = value as? [String: Any] {
+            var out: [String: Any] = [:]
+            for (k, v) in dict { out[k] = sanitize(v) }
+            return out
+        }
+        if let arr = value as? [Any] {
+            return arr.map { sanitize($0) }
+        }
+        return string(value)
     }
 
     static func int(_ any: Any?) -> Int {
@@ -237,9 +264,7 @@ enum LiveJSON {
     }
 
     static func encode(_ dict: [String: Any]) -> String {
-        guard let data = try? JSONSerialization.data(withJSONObject: dict, options: []),
-              let s = String(data: data, encoding: .utf8) else { return "{}" }
-        return s
+        encodeJSONSafe(dict)
     }
 
     static func decodeObject(_ s: String) -> [String: Any] {

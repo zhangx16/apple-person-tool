@@ -129,7 +129,7 @@ enum ActionRouter {
         guard !t.isEmpty else { return [] }
         var out: [AppActionPayload] = []
         if let url = extractFirstURL(from: t) {
-            if DouyinService.isDouyinURL(url) {
+            if isDouyinURL(url) {
                 out.append(.init(action: .downloadDouyin, text: t, url: url))
             } else {
                 out.append(.init(action: .downloadYouTube, text: t, url: url))

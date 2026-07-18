@@ -117,18 +117,6 @@ struct VideoMetadata: Hashable {
 
 // MARK: - Local media helpers (Douyin)
 
-enum DownloadSourceKind: String, Hashable {
-    case remoteYT
-    case douyin
-
-    var label: String {
-        switch self {
-        case .remoteYT: return "yt-dlp 服务"
-        case .douyin: return "抖音（本机解析）"
-        }
-    }
-}
-
 extension YTTask {
     /// Local Douyin task id prefix.
     static let localDouyinPrefix = "local-douyin-"

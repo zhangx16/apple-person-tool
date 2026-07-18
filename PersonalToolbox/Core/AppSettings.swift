@@ -88,6 +88,17 @@ final class AppSettings: ObservableObject {
         didSet { UserDefaults.standard.set(clsFeedURL, forKey: Keys.clsFeedURL) }
     }
 
+    // MARK: - Tab project selection (bottom tabs)
+
+    /// `MonitorProject.rawValue`: sub2 | cloudflare
+    @Published var monitorProjectRaw: String {
+        didSet { UserDefaults.standard.set(monitorProjectRaw, forKey: Keys.monitorProjectRaw) }
+    }
+    /// `DownloadProject.rawValue`: youtube | douyin
+    @Published var downloadProjectRaw: String {
+        didSet { UserDefaults.standard.set(downloadProjectRaw, forKey: Keys.downloadProjectRaw) }
+    }
+
     // MARK: - Appearance / privacy
 
     @Published var appearance: String {
@@ -126,6 +137,8 @@ final class AppSettings: ObservableObject {
         static let cloudflareAccountId = "cloudflareAccountId"
         static let cloudflareAccountName = "cloudflareAccountName"
         static let clsFeedURL = "clsFeedURL"
+        static let monitorProjectRaw = "monitorProjectRaw"
+        static let downloadProjectRaw = "downloadProjectRaw"
         static let appearance = "appearance"
         static let hideSensitiveInAppSwitcher = "hideSensitiveInAppSwitcher"
         static let requireBiometricUnlock = "requireBiometricUnlock"
@@ -179,6 +192,8 @@ final class AppSettings: ObservableObject {
         cloudflareAccountName = d.string(forKey: Keys.cloudflareAccountName) ?? ""
         clsFeedURL = d.string(forKey: Keys.clsFeedURL)
             ?? "https://pyrsshub.vercel.app/cls/telegraph/"
+        monitorProjectRaw = d.string(forKey: Keys.monitorProjectRaw) ?? "sub2"
+        downloadProjectRaw = d.string(forKey: Keys.downloadProjectRaw) ?? "youtube"
         appearance = d.string(forKey: Keys.appearance) ?? Appearance.system.rawValue
         hideSensitiveInAppSwitcher = d.object(forKey: Keys.hideSensitiveInAppSwitcher) as? Bool ?? false
         requireBiometricUnlock = d.object(forKey: Keys.requireBiometricUnlock) as? Bool ?? false

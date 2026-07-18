@@ -2,6 +2,9 @@ import SwiftUI
 
 /// Cloudflare 监控面板 MVP（参考 CFPanel）：用量 + 域名列表。
 struct CloudflareHomeView: View {
+    /// When true (MonitorShellView), hide principal title — shell menu owns it.
+    var hidesChromeTitle: Bool = false
+
     @EnvironmentObject private var settings: AppSettings
     @StateObject private var viewModel = CloudflareViewModel()
     @State private var search = ""
@@ -63,11 +66,13 @@ struct CloudflareHomeView: View {
             }
         }
         .background(AppleTheme.canvas)
-        .navigationTitle("Cloudflare")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationTitle(hidesChromeTitle ? "" : "Cloudflare")
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .principal) {
-                ServiceBrandTitle(brand: .cloudflare, title: "Cloudflare")
+            if !hidesChromeTitle {
+                ToolbarItem(placement: .principal) {
+                    ServiceBrandTitle(brand: .cloudflare, title: "Cloudflare")
+                }
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Button {

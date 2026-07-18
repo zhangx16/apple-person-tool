@@ -40,11 +40,14 @@ struct DownloadHomeView: View {
             }
             .listStyle(.insetGrouped)
             .background(AppleTheme.canvas)
-            .navigationTitle("下载")
+            .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    ServiceBrandTitle(brand: .youtube, title: "视频下载")
+                    DownloadNavTitle(selection: Binding(
+                        get: { viewModel.project },
+                        set: { viewModel.setProject($0) }
+                    ))
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -64,11 +67,18 @@ struct DownloadHomeView: View {
                 await viewModel.refreshNow()
             }
             .onAppear {
+                viewModel.syncProjectFromSettings()
                 viewModel.setTabVisible(isTabSelected)
                 viewModel.onScenePhase(scenePhase)
             }
             .onChange(of: isTabSelected) { _, selected in
+                if selected {
+                    viewModel.syncProjectFromSettings()
+                }
                 viewModel.setTabVisible(selected)
+            }
+            .onChange(of: settings.downloadProjectRaw) { _, _ in
+                viewModel.syncProjectFromSettings()
             }
             .onChange(of: scenePhase) { _, phase in
                 viewModel.onScenePhase(phase)
@@ -102,15 +112,7 @@ struct DownloadHomeView: View {
                 .accessibilityLabel("粘贴")
             }
 
-            // Route badge when URL field looks like Douyin.
-            if viewModel.isDouyinMode {
-                Label("抖音链接 · 本机解析（无需下载服务）", systemImage: "play.rectangle.fill")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(Color.accentColor)
-                    .accessibilityLabel("当前为抖音本机解析模式")
-            }
-
-            // Quality presets only apply to remote yt-dlp backend.
+            // Quality presets only apply to YouTube / yt-dlp backend.
             if !viewModel.isDouyinMode {
                 FormatChipBar(
                     presets: YTFormatOption.presets,
@@ -180,14 +182,14 @@ struct DownloadHomeView: View {
             }
             .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 12, trailing: 16))
         } header: {
-            Text("新建下载")
+            Text(viewModel.isDouyinMode ? "新建抖音下载" : "新建 YouTube 下载")
         } footer: {
             if viewModel.isDouyinMode {
-                Text("支持 v.douyin.com / douyin.com 分享链接与含链接的分享文案。优先尝试无水印地址，文件保存在本机 Documents/douyin-downloader。")
+                Text("粘贴 v.douyin.com / douyin.com 分享链接或分享文案。优先无水印，文件保存在本机 Documents/douyin-downloader。点顶部标题可切回 YouTube。")
             } else if !settings.isYTConfigured {
-                Text("请先在「设置」中填写下载服务账号密码。抖音链接可直接粘贴，无需服务端。")
+                Text("请先在「设置」中填写 yt-dlp 下载服务账号密码。抖音请点顶部标题切换到「抖音」。")
             } else {
-                Text("通用视频走 yt-dlp 服务；抖音分享链接自动切换为本机解析。")
+                Text("通过 yt-dlp 服务下载 YouTube 等通用链接。抖音请点顶部标题切换到「抖音」。")
             }
         }
     }

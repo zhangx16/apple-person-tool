@@ -56,6 +56,7 @@ struct ServicesHubView: View {
 
                 Section("监控") {
                     Button {
+                        settings.monitorProjectRaw = MonitorProject.sub2.rawValue
                         selectedTab = .monitor
                     } label: {
                         hubLabel(
@@ -66,19 +67,9 @@ struct ServicesHubView: View {
                     }
                     .accessibilityLabel("打开 Sub2API 管理")
 
-                    NavigationLink {
-                        KomariHomeView()
-                    } label: {
-                        hubLabel(
-                            title: "Komari",
-                            subtitle: settings.komariBaseURL,
-                            brand: .komari
-                        )
-                    }
-                    .accessibilityLabel("Komari 服务器监控")
-
-                    NavigationLink {
-                        CloudflareHomeView()
+                    Button {
+                        settings.monitorProjectRaw = MonitorProject.cloudflare.rawValue
+                        selectedTab = .monitor
                     } label: {
                         hubLabel(
                             title: "Cloudflare",
@@ -90,7 +81,18 @@ struct ServicesHubView: View {
                             brand: .cloudflare
                         )
                     }
-                    .accessibilityLabel("Cloudflare 管理")
+                    .accessibilityLabel("打开 Cloudflare 监控")
+
+                    NavigationLink {
+                        KomariHomeView()
+                    } label: {
+                        hubLabel(
+                            title: "Komari",
+                            subtitle: settings.komariBaseURL,
+                            brand: .komari
+                        )
+                    }
+                    .accessibilityLabel("Komari 服务器监控")
 
                     NavigationLink {
                         IPCheckHomeView()
@@ -119,15 +121,47 @@ struct ServicesHubView: View {
 
                 Section("媒体") {
                     Button {
+                        settings.downloadProjectRaw = DownloadProject.youtube.rawValue
                         selectedTab = .download
                     } label: {
                         hubLabel(
-                            title: "视频下载",
+                            title: "YouTube 下载",
                             subtitle: settings.ytBaseURL,
                             brand: .youtube
                         )
                     }
-                    .accessibilityLabel("打开视频下载")
+                    .accessibilityLabel("打开 YouTube 下载")
+
+                    Button {
+                        settings.downloadProjectRaw = DownloadProject.douyin.rawValue
+                        selectedTab = .download
+                    } label: {
+                        HStack(spacing: 14) {
+                            Image(systemName: "music.note.tv.fill")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 40, height: 40)
+                                .background(
+                                    Color(.secondarySystemBackground),
+                                    in: RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                )
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("抖音下载")
+                                    .font(.body.weight(.semibold))
+                                    .foregroundStyle(.primary)
+                                Text("本机解析 · 无水印优先")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                            }
+                            Spacer(minLength: 0)
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                        }
+                        .padding(.vertical, 2)
+                    }
+                    .accessibilityLabel("打开抖音下载")
                 }
             }
             .scrollContentBackground(.hidden)

@@ -2,6 +2,9 @@ import SwiftUI
 
 /// Sub2API admin console — aligned with [sub2api-mobile](https://github.com/ckken/sub2api-mobile).
 struct MonitorHomeView: View {
+    /// When true (MonitorShellView), hide principal title — shell menu owns it.
+    var hidesChromeTitle: Bool = false
+
     @EnvironmentObject private var settings: AppSettings
     @StateObject private var viewModel = MonitorViewModel()
 
@@ -12,118 +15,118 @@ struct MonitorHomeView: View {
     @State private var detailAccount: AdminAccount?
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if !settings.isAdminConfigured {
-                    EmptyStateView(
-                        symbol: "chart.bar.doc.horizontal",
-                        title: "需要 Admin Token",
-                        message: "在设置中填写 Sub2API Base URL 与 Admin API Key（x-api-key），即可管理账号调度、用户余额与分组。"
-                    )
-                    .padding(.top, 40)
-                    .padding(.horizontal, 16)
-                } else {
-                    VStack(spacing: 0) {
-                        Picker("分区", selection: $viewModel.pane) {
-                            ForEach(MonitorPane.allCases) { p in
-                                Text(p.title).tag(p)
-                            }
+        Group {
+            if !settings.isAdminConfigured {
+                EmptyStateView(
+                    symbol: "chart.bar.doc.horizontal",
+                    title: "需要 Admin Token",
+                    message: "在设置中填写 Sub2API Base URL 与 Admin API Key（x-api-key），即可管理账号调度、用户余额与分组。"
+                )
+                .padding(.top, 40)
+                .padding(.horizontal, 16)
+            } else {
+                VStack(spacing: 0) {
+                    Picker("分区", selection: $viewModel.pane) {
+                        ForEach(MonitorPane.allCases) { p in
+                            Text(p.title).tag(p)
                         }
-                        .pickerStyle(.segmented)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-
-                        content
                     }
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+
+                    content
                 }
             }
-            .background(AppleTheme.canvas)
-            .navigationTitle("Sub2 管理")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
+        }
+        .background(AppleTheme.canvas)
+        .navigationTitle(hidesChromeTitle ? "" : "Sub2 管理")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if !hidesChromeTitle {
                 ToolbarItem(placement: .principal) {
                     ServiceBrandTitle(brand: .sub2, title: "Sub2 管理")
                 }
             }
-            .refreshable { await viewModel.load(settings: settings) }
-            .task { await viewModel.load(settings: settings) }
-            .onChange(of: viewModel.range) { _, _ in
-                Task { await viewModel.load(settings: settings) }
+        }
+        .refreshable { await viewModel.load(settings: settings) }
+        .task { await viewModel.load(settings: settings) }
+        .onChange(of: viewModel.range) { _, _ in
+            Task { await viewModel.load(settings: settings) }
+        }
+        .overlay(alignment: .bottom) {
+            bannerStack
+                .padding(.horizontal, 16)
+                .padding(.bottom, 12)
+        }
+        .sheet(item: $balanceUser) { user in
+            BalanceSheet(user: user, isBusy: viewModel.isMutating) { amount, op, notes in
+                let ok = await viewModel.adjustBalance(
+                    settings: settings,
+                    user: user,
+                    amount: amount,
+                    operation: op,
+                    notes: notes
+                )
+                if ok { balanceUser = nil }
+                return ok
             }
-            .overlay(alignment: .bottom) {
-                bannerStack
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 12)
-            }
-            .sheet(item: $balanceUser) { user in
-                BalanceSheet(user: user, isBusy: viewModel.isMutating) { amount, op, notes in
-                    let ok = await viewModel.adjustBalance(
-                        settings: settings,
-                        user: user,
-                        amount: amount,
-                        operation: op,
-                        notes: notes
-                    )
-                    if ok { balanceUser = nil }
-                    return ok
-                }
-            }
-            .sheet(item: $keysUser) { user in
-                NavigationStack {
-                    List {
-                        if isLoadingKeys {
-                            ProgressView("加载 API Keys…")
-                        } else if loadedKeys.isEmpty {
-                            Text("暂无 API Key").foregroundStyle(.secondary)
-                        } else {
-                            ForEach(loadedKeys) { k in
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(k.displayName).font(.subheadline.weight(.semibold))
-                                    Text(k.maskedKey).font(.caption.monospaced())
-                                    HStack {
-                                        Text(k.status ?? "—")
+        }
+        .sheet(item: $keysUser) { user in
+            NavigationStack {
+                List {
+                    if isLoadingKeys {
+                        ProgressView("加载 API Keys…")
+                    } else if loadedKeys.isEmpty {
+                        Text("暂无 API Key").foregroundStyle(.secondary)
+                    } else {
+                        ForEach(loadedKeys) { k in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(k.displayName).font(.subheadline.weight(.semibold))
+                                Text(k.maskedKey).font(.caption.monospaced())
+                                HStack {
+                                    Text(k.status ?? "—")
+                                        .font(.caption2)
+                                    Spacer()
+                                    if let used = k.quotaUsed, let q = k.quota {
+                                        Text(String(format: "额度 %.0f / %.0f", used, q))
                                             .font(.caption2)
-                                        Spacer()
-                                        if let used = k.quotaUsed, let q = k.quota {
-                                            Text(String(format: "额度 %.0f / %.0f", used, q))
-                                                .font(.caption2)
-                                                .foregroundStyle(.secondary)
-                                        }
+                                            .foregroundStyle(.secondary)
                                     }
                                 }
-                                .padding(.vertical, 2)
                             }
-                        }
-                    }
-                    .navigationTitle(user.displayName)
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button("关闭") { keysUser = nil }
+                            .padding(.vertical, 2)
                         }
                     }
                 }
-                .presentationDetents([.medium, .large])
-            }
-            .sheet(item: $detailAccount) { acc in
-                AccountDetailSheet(
-                    account: acc,
-                    today: viewModel.accountTodayStats[acc.id],
-                    isBusy: viewModel.isMutating,
-                    onTest: {
-                        await viewModel.testAccount(settings: settings, account: acc)
-                    },
-                    onRefresh: {
-                        await viewModel.refreshAccount(settings: settings, account: acc)
-                    },
-                    onToggleSchedulable: {
-                        await viewModel.toggleSchedulable(settings: settings, account: acc)
-                    },
-                    onLoadToday: {
-                        await viewModel.loadTodayStats(settings: settings, accountId: acc.id)
+                .navigationTitle(user.displayName)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("关闭") { keysUser = nil }
                     }
-                )
+                }
             }
+            .presentationDetents([.medium, .large])
+        }
+        .sheet(item: $detailAccount) { acc in
+            AccountDetailSheet(
+                account: acc,
+                today: viewModel.accountTodayStats[acc.id],
+                isBusy: viewModel.isMutating,
+                onTest: {
+                    await viewModel.testAccount(settings: settings, account: acc)
+                },
+                onRefresh: {
+                    await viewModel.refreshAccount(settings: settings, account: acc)
+                },
+                onToggleSchedulable: {
+                    await viewModel.toggleSchedulable(settings: settings, account: acc)
+                },
+                onLoadToday: {
+                    await viewModel.loadTodayStats(settings: settings, accountId: acc.id)
+                }
+            )
         }
     }
 

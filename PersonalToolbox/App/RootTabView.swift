@@ -24,10 +24,10 @@ struct RootTabView: View {
                     .tag(AppTab.chat)
                     .accessibilityLabel("助手")
 
-                MonitorHomeView()
+                MonitorShellView()
                     .tabItem { Label("监控", systemImage: "chart.bar.fill") }
                     .tag(AppTab.monitor)
-                    .accessibilityLabel("Sub2API 监控")
+                    .accessibilityLabel("监控")
 
                 ServicesHubView(selectedTab: $selectedTab)
                     .tabItem { Label("服务", systemImage: "square.grid.2x2.fill") }

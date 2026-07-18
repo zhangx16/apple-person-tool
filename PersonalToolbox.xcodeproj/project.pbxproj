@@ -48,6 +48,8 @@
 		000000000000000000000150 /* SublinkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000014F /* SublinkService.swift */; };
 		000000000000000000000152 /* YTService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000151 /* YTService.swift */; };
 		0000000000000000000001C3 /* DouyinService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000001C2 /* DouyinService.swift */; };
+		0000000000000000000001C5 /* SelectableNavTitle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000001C4 /* SelectableNavTitle.swift */; };
+		0000000000000000000001C7 /* MonitorShellView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000001C6 /* MonitorShellView.swift */; };
 		000000000000000000000154 /* AppleTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000153 /* AppleTheme.swift */; };
 		000000000000000000000156 /* ServiceBrandIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000155 /* ServiceBrandIcon.swift */; };
 		000000000000000000000161 /* AnniversaryModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000160 /* AnniversaryModels.swift */; };
@@ -122,6 +124,8 @@
 		00000000000000000000014F /* SublinkService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SublinkService.swift; sourceTree = "<group>"; };
 		000000000000000000000151 /* YTService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTService.swift; sourceTree = "<group>"; };
 		0000000000000000000001C2 /* DouyinService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DouyinService.swift; sourceTree = "<group>"; };
+		0000000000000000000001C4 /* SelectableNavTitle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectableNavTitle.swift; sourceTree = "<group>"; };
+		0000000000000000000001C6 /* MonitorShellView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitorShellView.swift; sourceTree = "<group>"; };
 		000000000000000000000153 /* AppleTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleTheme.swift; sourceTree = "<group>"; };
 		000000000000000000000155 /* ServiceBrandIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceBrandIcon.swift; sourceTree = "<group>"; };
 		000000000000000000000160 /* AnniversaryModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnniversaryModels.swift; sourceTree = "<group>"; };
@@ -184,6 +188,7 @@
 			isa = PBXGroup;
 			children = (
 				000000000000000000000153 /* AppleTheme.swift */,
+				0000000000000000000001C4 /* SelectableNavTitle.swift */,
 				000000000000000000000155 /* ServiceBrandIcon.swift */,
 			);
 			path = Theme;
@@ -268,6 +273,7 @@
 			isa = PBXGroup;
 			children = (
 				000000000000000000000129 /* MonitorHomeView.swift */,
+				0000000000000000000001C6 /* MonitorShellView.swift */,
 				00000000000000000000012B /* MonitorViewModel.swift */,
 			);
 			path = Monitor;
@@ -503,7 +509,9 @@
 				000000000000000000000152 /* YTService.swift in Sources */,
 				0000000000000000000001C3 /* DouyinService.swift in Sources */,
 				000000000000000000000154 /* AppleTheme.swift in Sources */,
+				0000000000000000000001C5 /* SelectableNavTitle.swift in Sources */,
 				000000000000000000000156 /* ServiceBrandIcon.swift in Sources */,
+				0000000000000000000001C7 /* MonitorShellView.swift in Sources */,
 				000000000000000000000161 /* AnniversaryModels.swift in Sources */,
 				000000000000000000000163 /* AnniversaryDateUtils.swift in Sources */,
 				000000000000000000000165 /* AnniversaryStore.swift in Sources */,

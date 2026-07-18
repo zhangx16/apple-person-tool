@@ -23,6 +23,8 @@ final class DownloadViewModel: ObservableObject {
     /// Live log lines for the current Douyin job (newest last).
     @Published private(set) var douyinLogs: [String] = []
     @Published private(set) var douyinStage: String = ""
+    /// Explicit project selected via nav title menu (YouTube service vs Douyin local).
+    @Published var project: DownloadProject = .youtube
 
     private let settings: AppSettings
     private let service = YTService.shared
@@ -43,17 +45,38 @@ final class DownloadViewModel: ObservableObject {
 
     init(settings: AppSettings = .shared) {
         self.settings = settings
+        if let p = DownloadProject(rawValue: settings.downloadProjectRaw) {
+            project = p
+        }
     }
 
-    /// Detected download backend for the current URL field.
-    var sourceKind: DownloadSourceKind {
-        let raw = urlText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !raw.isEmpty else { return .remoteYT }
-        let candidate = DouyinService.extractURL(from: raw) ?? raw
-        return DouyinService.isDouyinURL(candidate) ? .douyin : .remoteYT
+    /// Manual project mode from title menu. Auto-detect still applies as soft hint only when youtube mode gets a douyin URL.
+    var isDouyinMode: Bool { project == .douyin }
+
+    func setProject(_ newProject: DownloadProject) {
+        guard project != newProject else { return }
+        project = newProject
+        settings.downloadProjectRaw = newProject.rawValue
+        metadata = nil
+        douyinLogs = []
+        douyinStage = ""
+        errorBanner = nil
+        // Soft notice when switching.
+        if newProject == .douyin {
+            infoBanner = "已切换到抖音本机下载"
+        } else {
+            infoBanner = "已切换到 YouTube / yt-dlp 服务下载"
+        }
     }
 
-    var isDouyinMode: Bool { sourceKind == .douyin }
+    func syncProjectFromSettings() {
+        if let p = DownloadProject(rawValue: settings.downloadProjectRaw), p != project {
+            project = p
+            metadata = nil
+            douyinLogs = []
+            douyinStage = ""
+        }
+    }
 
     // MARK: - Lifecycle / polling
 
@@ -163,13 +186,20 @@ final class DownloadViewModel: ObservableObject {
                     self?.appendDouyinLog(line)
                 }
                 metadata = meta
-                infoBanner = "已识别为抖音链接（本机解析，无需下载服务）"
+                infoBanner = "抖音解析完成"
                 Haptics.success()
             } catch {
                 metadata = nil
                 errorBanner = Self.chineseError(error)
                 Haptics.error()
             }
+            return
+        }
+
+        // YouTube / yt-dlp mode: if user pasted a Douyin URL, nudge them to switch.
+        if DouyinService.isDouyinURL(DouyinService.extractURL(from: raw) ?? raw) {
+            errorBanner = "这是抖音链接。请点顶部标题切换到「抖音」后再下载。"
+            Haptics.error()
             return
         }
 
@@ -204,6 +234,12 @@ final class DownloadViewModel: ObservableObject {
 
         if isDouyinMode {
             await startDouyinDownload(raw: raw)
+            return
+        }
+
+        if DouyinService.isDouyinURL(DouyinService.extractURL(from: raw) ?? raw) {
+            errorBanner = "这是抖音链接。请点顶部标题切换到「抖音」后再下载。"
+            Haptics.error()
             return
         }
 

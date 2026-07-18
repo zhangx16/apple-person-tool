@@ -18,30 +18,10 @@ struct RootTabView: View {
 
     var body: some View {
         ZStack {
-            TabView(selection: $selectedTab) {
-                ChatListView(selectedTab: $selectedTab)
-                    .tabItem { Label("助手", systemImage: "sparkles") }
-                    .tag(AppTab.chat)
-                    .accessibilityLabel("助手")
-
-                LiveHomeView(isTabSelected: selectedTab == .live)
-                    .tabItem { Label("直播", systemImage: "play.tv.fill") }
-                    .tag(AppTab.live)
-                    .accessibilityLabel("直播")
-
-                ServicesHubView(selectedTab: $selectedTab)
-                    .tabItem { Label("服务", systemImage: "square.grid.2x2.fill") }
-                    .tag(AppTab.services)
-                    .accessibilityLabel("服务")
-
-                SettingsView()
-                    .tabItem { Label("设置", systemImage: "gearshape") }
-                    .tag(AppTab.settings)
-                    .accessibilityLabel("设置")
-            }
-            .preferredColorScheme(preferredScheme)
-            .allowsHitTesting(isContentInteractive)
-            .accessibilityHidden(!isContentInteractive)
+            tabHost
+                .preferredColorScheme(preferredScheme)
+                .allowsHitTesting(isContentInteractive)
+                .accessibilityHidden(!isContentInteractive)
 
             if hideForSwitcher {
                 PrivacyCoverView()
@@ -56,6 +36,8 @@ struct RootTabView: View {
                 .zIndex(1)
             }
         }
+        // Avoid animating the whole TabView tree (known source of tab-switch crashes).
+        .animation(nil, value: selectedTab)
         .animation(AppleTheme.preferredSnappy, value: hideForSwitcher)
         .animation(AppleTheme.preferredSnappy, value: isUnlocked)
         .sheet(isPresented: $shareInbox.showSheet) {
@@ -91,6 +73,45 @@ struct RootTabView: View {
                 isUnlocked = true
             } else {
                 isUnlocked = true
+            }
+        }
+    }
+
+    /// iOS 18+ `Tab` API is more stable on recent OS builds; fall back for 17.
+    @ViewBuilder
+    private var tabHost: some View {
+        if #available(iOS 18.0, *) {
+            TabView(selection: $selectedTab) {
+                Tab("助手", systemImage: "sparkles", value: AppTab.chat) {
+                    ChatListView(selectedTab: $selectedTab)
+                }
+                Tab("直播", systemImage: "tv", value: AppTab.live) {
+                    LiveHomeView(isTabSelected: selectedTab == .live)
+                }
+                Tab("服务", systemImage: "square.grid.2x2.fill", value: AppTab.services) {
+                    ServicesHubView(selectedTab: $selectedTab)
+                }
+                Tab("设置", systemImage: "gearshape", value: AppTab.settings) {
+                    SettingsView()
+                }
+            }
+        } else {
+            TabView(selection: $selectedTab) {
+                ChatListView(selectedTab: $selectedTab)
+                    .tabItem { Label("助手", systemImage: "sparkles") }
+                    .tag(AppTab.chat)
+
+                LiveHomeView(isTabSelected: selectedTab == .live)
+                    .tabItem { Label("直播", systemImage: "tv") }
+                    .tag(AppTab.live)
+
+                ServicesHubView(selectedTab: $selectedTab)
+                    .tabItem { Label("服务", systemImage: "square.grid.2x2.fill") }
+                    .tag(AppTab.services)
+
+                SettingsView()
+                    .tabItem { Label("设置", systemImage: "gearshape") }
+                    .tag(AppTab.settings)
             }
         }
     }

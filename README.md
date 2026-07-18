@@ -4,9 +4,21 @@
 
 设计文档见 [DESIGN.md](./DESIGN.md)。UI 对齐 [DESIGN_REFERENCE.md](./DESIGN_REFERENCE.md)（Apple Design）。
 
+**打包安装到 iPhone（无 Mac）：** 见 [docs/INSTALL_IPA.md](./docs/INSTALL_IPA.md)。  
+GitHub Actions 会在 `macos-14` 上用你的 **Ad Hoc** 证书打 IPA。
+
+## 签名 / Bundle
+
+| 项 | 值 |
+|----|-----|
+| Bundle ID | `app.parsnip6345.lake8262` |
+| Team | `CTSQLK944L` |
+| 分发 | Ad Hoc（描述文件已含你的 iPhone UDID） |
+
 ## 要求
 
-- macOS + Xcode 15+（iOS 17 SDK）
+- 云打包：GitHub Actions（仓库 Secrets 配置证书）
+- 或本地：macOS + Xcode 15+（iOS 17 SDK）
 - 本机服务可通过 HTTPS 域名访问（默认配置见设置页）
 
 | 服务 | 默认域名 |
@@ -15,16 +27,15 @@
 | 邮件 | `https://mail.996616.xyz` |
 | yt-dlp | `https://yt.996616.xyz` |
 
-## 打开工程
+## 打开工程（有 Mac 时）
 
 ```bash
 open PersonalToolbox.xcodeproj
 ```
 
-选择模拟器或真机，**Signing & Capabilities** 里选你的 Team，然后 Run。
-
 ```bash
-xcodebuild -scheme PersonalToolbox -destination 'platform=iOS Simulator,name=iPhone 16' build
+xcodebuild -project PersonalToolbox.xcodeproj -scheme PersonalToolbox \
+  -destination 'generic/platform=iOS' -configuration Release archive
 ```
 
 ## 功能概览

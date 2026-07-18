@@ -2,7 +2,7 @@ import Foundation
 import Security
 
 enum KeychainStore {
-    private static let service = "xyz.personal.toolbox"
+    private static let service = "app.parsnip6345.lake8262"
 
     static func set(_ value: String, for key: String) {
         let data = Data(value.utf8)

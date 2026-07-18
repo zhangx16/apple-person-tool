@@ -193,7 +193,7 @@ struct ServicesHubView: View {
                 }
 
                 Section("直播") {
-                    Text("底部「直播」Tab：多平台入口（B站可播，其余逐步移植 SimpleLive）。")
+                    Text("底部「直播」Tab：B站 · 虎牙 · 斗鱼 · 抖音 · 快手（SimpleLive v1.12.6）。")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

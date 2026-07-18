@@ -2,7 +2,7 @@ import SwiftUI
 import AVKit
 import AVFoundation
 
-/// Live tab — SimpleLive-inspired multi-site shell; Bilibili fully playable in MVP.
+/// Live tab — multi-site shell ported from SimpleLive v1.12.6 (+ Kuaishou mobile).
 struct LiveHomeView: View {
     @State private var platform: LivePlatform = .bilibili
     @State private var rooms: [LiveRoomItem] = []
@@ -10,8 +10,7 @@ struct LiveHomeView: View {
     @State private var errorMessage: String?
     @State private var searchText = ""
     @State private var path = NavigationPath()
-
-    private let bili = BilibiliLiveService.shared
+    @State private var emptyHint: String?
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -22,7 +21,7 @@ struct LiveHomeView: View {
             .background(AppleTheme.canvas)
             .navigationTitle("直播")
             .navigationBarTitleDisplayMode(.inline)
-            .searchable(text: $searchText, prompt: "搜索直播间 / 主播")
+            .searchable(text: $searchText, prompt: searchPrompt)
             .onSubmit(of: .search) {
                 Task { await search() }
             }
@@ -42,8 +41,18 @@ struct LiveHomeView: View {
             .task { await reload() }
             .onChange(of: platform) { _, _ in
                 rooms = []
+                errorMessage = nil
+                emptyHint = nil
+                searchText = ""
                 Task { await reload() }
             }
+        }
+    }
+
+    private var searchPrompt: String {
+        switch platform {
+        case .kuaishou: return "输入快手主播 ID / 房间号"
+        default: return "搜索直播间 / 主播"
         }
     }
 
@@ -78,16 +87,7 @@ struct LiveHomeView: View {
 
     @ViewBuilder
     private var content: some View {
-        if !platform.isImplemented {
-            ContentUnavailableView {
-                Label(platform.title, systemImage: platform.systemImage)
-            } description: {
-                Text("当前版本优先接入哔哩哔哩（API 参考 SimpleLive）。\(platform.title) 的协议更复杂（签名/Tars/Cookie），后续可按 simple_live_core 继续移植。")
-            } actions: {
-                Link("打开 SimpleLive 项目", destination: URL(string: "https://github.com/June6699/dart_simple_live")!)
-            }
-            .frame(maxHeight: .infinity)
-        } else if let errorMessage, rooms.isEmpty {
+        if let errorMessage, rooms.isEmpty {
             ContentUnavailableView {
                 Label("加载失败", systemImage: "wifi.exclamationmark")
             } description: {
@@ -96,10 +96,17 @@ struct LiveHomeView: View {
                 Button("重试") { Task { await reload() } }
             }
             .frame(maxHeight: .infinity)
+        } else if !isLoading, rooms.isEmpty {
+            ContentUnavailableView {
+                Label(platform.title, systemImage: platform.systemImage)
+            } description: {
+                Text(emptyHint ?? defaultEmptyHint)
+            }
+            .frame(maxHeight: .infinity)
         } else {
             List {
                 if isLoading && rooms.isEmpty {
-                    ProgressView("加载推荐…")
+                    ProgressView("加载中…")
                 }
                 ForEach(rooms) { room in
                     Button {
@@ -112,6 +119,17 @@ struct LiveHomeView: View {
             }
             .listStyle(.plain)
             .refreshable { await reload() }
+        }
+    }
+
+    private var defaultEmptyHint: String {
+        switch platform {
+        case .kuaishou:
+            return "快手推荐列表受限，请在上方搜索框输入主播 ID（如 KPL704668133）后回车。"
+        case .douyin:
+            return "暂无数据。可搜索主播，或稍后下拉刷新（可能触发风控）。"
+        default:
+            return "暂无直播间"
         }
     }
 
@@ -146,15 +164,19 @@ struct LiveHomeView: View {
     }
 
     private func reload() async {
-        guard platform == .bilibili else { return }
         isLoading = true
         errorMessage = nil
+        emptyHint = nil
         defer { isLoading = false }
         do {
-            if searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                rooms = try await bili.getRecommendRooms(page: 1)
+            let kw = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+            if kw.isEmpty {
+                rooms = try await LiveSiteRouter.recommend(platform: platform, page: 1)
+                if rooms.isEmpty {
+                    emptyHint = defaultEmptyHint
+                }
             } else {
-                rooms = try await bili.searchRooms(keyword: searchText)
+                rooms = try await LiveSiteRouter.search(platform: platform, keyword: kw, page: 1)
             }
         } catch {
             errorMessage = error.localizedDescription
@@ -175,14 +197,10 @@ struct LiveRoomView: View {
     let room: LiveRoomItem
     @State private var detail: LiveRoomDetail?
     @State private var qualities: [LivePlayQuality] = []
-    @State private var selectedQN: Int?
-    @State private var playURL: URL?
-    @State private var playHeaders: [String: String] = [:]
+    @State private var selectedId: String?
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var player: AVPlayer?
-
-    private let bili = BilibiliLiveService.shared
 
     var body: some View {
         ScrollView {
@@ -203,7 +221,7 @@ struct LiveRoomView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                if let url = URL(string: detail?.webURL ?? "https://live.bilibili.com/\(room.roomId)") {
+                if let url = URL(string: detail?.webURL ?? webFallback) {
                     Link(destination: url) {
                         Image(systemName: "safari")
                     }
@@ -214,6 +232,16 @@ struct LiveRoomView: View {
         .onDisappear {
             player?.pause()
             player = nil
+        }
+    }
+
+    private var webFallback: String {
+        switch room.platform {
+        case .bilibili: return "https://live.bilibili.com/\(room.roomId)"
+        case .huya: return "https://www.huya.com/\(room.roomId)"
+        case .douyu: return "https://www.douyu.com/\(room.roomId)"
+        case .douyin: return "https://live.douyin.com/\(room.roomId)"
+        case .kuaishou: return "https://live.kuaishou.com/u/\(room.roomId)"
         }
     }
 
@@ -267,16 +295,16 @@ struct LiveRoomView: View {
                 HStack {
                     ForEach(qualities) { q in
                         Button {
-                            selectedQN = q.qn
-                            Task { await play(qn: q.qn) }
+                            selectedId = q.id
+                            Task { await play(quality: q) }
                         } label: {
                             Text(q.name)
                                 .font(.caption.weight(.semibold))
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 8)
-                                .foregroundStyle(selectedQN == q.qn ? Color.white : Color.primary)
+                                .foregroundStyle(selectedId == q.id ? Color.white : Color.primary)
                                 .background(
-                                    selectedQN == q.qn ? Color.accentColor : Color(.tertiarySystemFill),
+                                    selectedId == q.id ? Color.accentColor : Color(.tertiarySystemFill),
                                     in: Capsule()
                                 )
                         }
@@ -292,32 +320,40 @@ struct LiveRoomView: View {
         errorMessage = nil
         defer { isLoading = false }
         do {
-            let d = try await bili.getRoomDetail(roomId: room.roomId)
+            let d = try await LiveSiteRouter.roomDetail(platform: room.platform, roomId: room.roomId)
             detail = d
             guard d.isLive else {
                 errorMessage = "当前未开播"
                 return
             }
-            let qs = try await bili.getPlayQualities(roomId: d.roomId)
+            let qs = try await LiveSiteRouter.playQualities(detail: d)
             qualities = qs
-            let qn = qs.first?.qn ?? 10000
-            selectedQN = qn
-            await play(qn: qn)
+            guard let first = qs.first else {
+                errorMessage = "无可用清晰度"
+                return
+            }
+            selectedId = first.id
+            await play(quality: first)
         } catch {
             errorMessage = error.localizedDescription
         }
     }
 
-    private func play(qn: Int) async {
+    private func play(quality: LivePlayQuality) async {
         guard let detail else { return }
         do {
-            let result = try await bili.getPlayURLs(roomId: detail.roomId, qn: qn)
-            guard let first = result.urls.first, let url = URL(string: first) else {
+            let result = try await LiveSiteRouter.playURLs(detail: detail, quality: quality)
+            // Prefer m3u8 for AVPlayer when available
+            let ordered = result.urls.sorted { a, b in
+                let am = a.contains(".m3u8")
+                let bm = b.contains(".m3u8")
+                if am != bm { return am && !bm }
+                return false
+            }
+            guard let first = ordered.first, let url = URL(string: first) else {
                 errorMessage = "无可用播放地址"
                 return
             }
-            playURL = url
-            playHeaders = result.headers
             let asset = AVURLAsset(url: url, options: [
                 "AVURLAssetHTTPHeaderFieldsKey": result.headers
             ])

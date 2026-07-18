@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 @main
 struct PersonalToolboxApp: App {
@@ -7,6 +8,6 @@ struct PersonalToolboxApp: App {
             RootTabView()
                 .environmentObject(AppSettings.shared)
         }
-        // SwiftData modelContainer is wired in a later PR once entities exist.
+        .modelContainer(for: [ConversationEntity.self, MessageEntity.self])
     }
 }

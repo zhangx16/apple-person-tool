@@ -26,6 +26,8 @@
 		AA0000010000000000000010 /* DownloadHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000010 /* DownloadHomeView.swift */; };
 		AA0000010000000000000011 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000011 /* SettingsView.swift */; };
 		AA0000010000000000000012 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000012 /* Assets.xcassets */; };
+		AA0000010000000000000015 /* ConversationEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000015 /* ConversationEntity.swift */; };
+		AA0000010000000000000016 /* ConversationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000010000000000000016 /* ConversationStore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -49,6 +51,8 @@
 		BB0000010000000000000011 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		BB0000010000000000000012 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		BB0000010000000000000013 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		BB0000010000000000000015 /* ConversationEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationEntity.swift; sourceTree = "<group>"; };
+		BB0000010000000000000016 /* ConversationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationStore.swift; sourceTree = "<group>"; };
 		CC0000010000000000000001 /* PersonalToolbox.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PersonalToolbox.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -128,6 +132,7 @@
 				BB0000010000000000000008 /* ChatModels.swift */,
 				BB0000010000000000000009 /* MailModels.swift */,
 				BB000001000000000000000A /* DownloadModels.swift */,
+				BB0000010000000000000015 /* ConversationEntity.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -138,6 +143,7 @@
 				BB000001000000000000000B /* Sub2APIService.swift */,
 				BB000001000000000000000C /* MailService.swift */,
 				BB000001000000000000000D /* YTService.swift */,
+				BB0000010000000000000016 /* ConversationStore.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -275,9 +281,11 @@
 				AA0000010000000000000008 /* ChatModels.swift in Sources */,
 				AA0000010000000000000009 /* MailModels.swift in Sources */,
 				AA000001000000000000000A /* DownloadModels.swift in Sources */,
+				AA0000010000000000000015 /* ConversationEntity.swift in Sources */,
 				AA000001000000000000000B /* Sub2APIService.swift in Sources */,
 				AA000001000000000000000C /* MailService.swift in Sources */,
 				AA000001000000000000000D /* YTService.swift in Sources */,
+				AA0000010000000000000016 /* ConversationStore.swift in Sources */,
 				AA000001000000000000000E /* ChatListView.swift in Sources */,
 				AA000001000000000000000F /* AccountListView.swift in Sources */,
 				AA0000010000000000000010 /* DownloadHomeView.swift in Sources */,

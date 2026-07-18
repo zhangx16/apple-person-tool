@@ -83,6 +83,16 @@ struct SettingsView: View {
 
                 Section("通用") {
                     NavigationLink {
+                        NotificationSettingsPage()
+                    } label: {
+                        projectRow(
+                            systemImage: "bell.badge.fill",
+                            title: "通知",
+                            subtitle: settings.notifyDownloadCompleted ? "下载完成提醒已开" : "下载完成提醒已关"
+                        )
+                    }
+
+                    NavigationLink {
                         AppearanceSettingsPage()
                     } label: {
                         projectRow(
@@ -510,6 +520,100 @@ struct CloudflareSettingsPage: View {
             ToolbarItem(placement: .principal) {
                 ServiceBrandTitle(brand: .cloudflare, title: "Cloudflare")
             }
+        }
+    }
+}
+
+struct NotificationSettingsPage: View {
+    @EnvironmentObject private var settings: AppSettings
+    @State private var authLabel = "读取中…"
+    @State private var deniedHint: String?
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle(
+                    "下载完成时通知",
+                    isOn: Binding(
+                        get: { settings.notifyDownloadCompleted },
+                        set: { newValue in
+                            if newValue {
+                                Task { await enableDownloadNotify() }
+                            } else {
+                                settings.notifyDownloadCompleted = false
+                            }
+                        }
+                    )
+                )
+            } header: {
+                Text("下载")
+            } footer: {
+                Text("YouTube 队列与抖音本机下载结束时发送本地通知（含失败）。纪念日提醒在「服务 → 纪念日」中单独配置。")
+            }
+
+            Section {
+                LabeledContent("系统权限", value: authLabel)
+                Button("请求通知权限") {
+                    Task {
+                        _ = await LocalNotifier.requestAuthorization()
+                        await refreshAuthLabel()
+                    }
+                }
+                if deniedHint != nil {
+                    Text(deniedHint!)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+            } header: {
+                Text("权限")
+            } footer: {
+                Text("若已拒绝，请到系统设置 → 通知 → Xin tools 中开启。")
+            }
+
+            Section {
+                Button("发送测试通知") {
+                    Task {
+                        let ok = await LocalNotifier.ensureAuthorized()
+                        await refreshAuthLabel()
+                        guard ok else {
+                            deniedHint = "未获得通知权限"
+                            return
+                        }
+                        LocalNotifier.notify(
+                            id: "download.test.\(UUID().uuidString)",
+                            title: "测试通知",
+                            body: "下载完成提醒工作正常。"
+                        )
+                    }
+                }
+            }
+        }
+        .navigationTitle("通知")
+        .navigationBarTitleDisplayMode(.inline)
+        .task { await refreshAuthLabel() }
+    }
+
+    private func enableDownloadNotify() async {
+        let ok = await LocalNotifier.ensureAuthorized()
+        await refreshAuthLabel()
+        if ok {
+            settings.notifyDownloadCompleted = true
+            deniedHint = nil
+        } else {
+            settings.notifyDownloadCompleted = false
+            deniedHint = "未获得通知权限，无法开启下载提醒"
+        }
+    }
+
+    private func refreshAuthLabel() async {
+        let status = await LocalNotifier.authorizationStatus()
+        switch status {
+        case .authorized: authLabel = "已授权"
+        case .provisional: authLabel = "临时授权"
+        case .denied: authLabel = "已拒绝"
+        case .notDetermined: authLabel = "尚未请求"
+        case .ephemeral: authLabel = "临时"
+        @unknown default: authLabel = "未知"
         }
     }
 }

@@ -111,6 +111,13 @@ final class AppSettings: ObservableObject {
         didSet { UserDefaults.standard.set(requireBiometricUnlock, forKey: Keys.requireBiometricUnlock) }
     }
 
+    // MARK: - Notifications
+
+    /// Local notification when a download finishes (YouTube queue or Douyin).
+    @Published var notifyDownloadCompleted: Bool {
+        didSet { UserDefaults.standard.set(notifyDownloadCompleted, forKey: Keys.notifyDownloadCompleted) }
+    }
+
     enum Appearance: String, CaseIterable, Identifiable {
         case system, light, dark
         var id: String { rawValue }
@@ -142,6 +149,7 @@ final class AppSettings: ObservableObject {
         static let appearance = "appearance"
         static let hideSensitiveInAppSwitcher = "hideSensitiveInAppSwitcher"
         static let requireBiometricUnlock = "requireBiometricUnlock"
+        static let notifyDownloadCompleted = "notifyDownloadCompleted"
     }
 
     nonisolated static let defaultTextModel = "grok-4.3"
@@ -197,6 +205,7 @@ final class AppSettings: ObservableObject {
         appearance = d.string(forKey: Keys.appearance) ?? Appearance.system.rawValue
         hideSensitiveInAppSwitcher = d.object(forKey: Keys.hideSensitiveInAppSwitcher) as? Bool ?? false
         requireBiometricUnlock = d.object(forKey: Keys.requireBiometricUnlock) as? Bool ?? false
+        notifyDownloadCompleted = d.object(forKey: Keys.notifyDownloadCompleted) as? Bool ?? true
     }
 
     var isAIConfigured: Bool {

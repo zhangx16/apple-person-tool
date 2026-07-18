@@ -19,7 +19,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>1.2</string>
 	<key>CFBundleVersion</key>
-	<string>3</string>
+	<string>4</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>
@@ -51,7 +51,7 @@
 	<key>NSFaceIDUsageDescription</key>
 	<string>用于在开启「启动时需要面容/触控 ID」时验证身份并解锁 Xin tools。</string>
 	<key>NSUserNotificationsUsageDescription</key>
-	<string>用于在生日、纪念日到来前提醒你，避免错过重要日子。</string>
+	<string>用于纪念日提醒，以及在视频/抖音下载完成或失败时通知你。</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>weixin</string>

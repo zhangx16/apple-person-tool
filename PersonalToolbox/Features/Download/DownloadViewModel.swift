@@ -42,6 +42,9 @@ final class DownloadViewModel: ObservableObject {
     private var remoteTasks: [YTTask] = []
     private var activeDouyinWork: Task<Void, Never>?
     private var cancelledDouyinIds: Set<String> = []
+    /// Previous processStatus by remote task id — detect transitions to completed/failed.
+    private var lastRemoteStatus: [String: Int] = [:]
+    private var hasSeededRemoteStatus = false
 
     init(settings: AppSettings = .shared) {
         self.settings = settings
@@ -350,6 +353,13 @@ final class DownloadViewModel: ObservableObject {
                     self.infoBanner = "抖音下载完成：\(result.fileName)"
                     Haptics.success()
                     self.mergeLocalFilesIntoList()
+                    self.emitDownloadNotificationIfNeeded(
+                        taskId: taskId,
+                        title: result.title,
+                        source: "抖音",
+                        failed: false,
+                        reason: nil
+                    )
                 }
             } catch is CancellationError {
                 await MainActor.run {
@@ -359,6 +369,7 @@ final class DownloadViewModel: ObservableObject {
             } catch {
                 await MainActor.run {
                     guard !self.cancelledDouyinIds.contains(taskId) else { return }
+                    let reason = Self.chineseError(error)
                     self.upsertLocalTask(
                         YTTask.makeLocalDouyin(
                             id: taskId,
@@ -367,11 +378,18 @@ final class DownloadViewModel: ObservableObject {
                             processStatus: 3,
                             progress: 0,
                             stage: "失败",
-                            error: Self.chineseError(error)
+                            error: reason
                         )
                     )
-                    self.errorBanner = Self.chineseError(error)
+                    self.errorBanner = reason
                     Haptics.error()
+                    self.emitDownloadNotificationIfNeeded(
+                        taskId: taskId,
+                        title: self.metadata?.title ?? "抖音下载",
+                        source: "抖音",
+                        failed: true,
+                        reason: reason
+                    )
                 }
             }
         }
@@ -607,6 +625,7 @@ final class DownloadViewModel: ObservableObject {
                 username: username,
                 password: password
             )
+            detectRemoteTaskTransitions(nextTasks)
             remoteTasks = nextTasks
             rebuildTasks()
 
@@ -631,6 +650,75 @@ final class DownloadViewModel: ObservableObject {
                 errorBanner = Self.chineseError(error)
             }
             // Keep polling on transient errors; token refresh is handled inside YTService.
+        }
+    }
+
+    /// Notify when remote queue tasks flip from pending/running → completed/failed.
+    private func detectRemoteTaskTransitions(_ nextTasks: [YTTask]) {
+        if !hasSeededRemoteStatus {
+            // First snapshot only seeds baseline — avoid notifying historical completed jobs.
+            for task in nextTasks {
+                lastRemoteStatus[task.id] = task.processStatus
+            }
+            hasSeededRemoteStatus = true
+            return
+        }
+
+        for task in nextTasks {
+            let prev = lastRemoteStatus[task.id]
+            lastRemoteStatus[task.id] = task.processStatus
+            let wasActive = prev == 0 || prev == 1
+            // Also treat newly-seen active→complete within same session when prev nil after seed? skip
+            guard wasActive else { continue }
+            if task.isCompleted {
+                emitDownloadNotificationIfNeeded(
+                    taskId: task.id,
+                    title: task.title.isEmpty ? task.url : task.title,
+                    source: "YouTube",
+                    failed: false,
+                    reason: nil
+                )
+            } else if task.isFailed {
+                emitDownloadNotificationIfNeeded(
+                    taskId: task.id,
+                    title: task.title.isEmpty ? task.url : task.title,
+                    source: "YouTube",
+                    failed: true,
+                    reason: task.error
+                )
+            }
+        }
+
+        // Drop statuses for tasks no longer in the queue.
+        let live = Set(nextTasks.map(\.id))
+        lastRemoteStatus = lastRemoteStatus.filter { live.contains($0.key) }
+    }
+
+    private func emitDownloadNotificationIfNeeded(
+        taskId: String,
+        title: String,
+        source: String,
+        failed: Bool,
+        reason: String?
+    ) {
+        guard settings.notifyDownloadCompleted else { return }
+        Task {
+            let ok = await LocalNotifier.ensureAuthorized()
+            guard ok else { return }
+            if failed {
+                LocalNotifier.notifyDownloadFailed(
+                    taskId: taskId,
+                    title: title,
+                    source: source,
+                    reason: reason
+                )
+            } else {
+                LocalNotifier.notifyDownloadCompleted(
+                    taskId: taskId,
+                    title: title,
+                    source: source
+                )
+            }
         }
     }
 

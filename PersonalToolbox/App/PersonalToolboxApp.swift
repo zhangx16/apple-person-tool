@@ -8,6 +8,7 @@ struct PersonalToolboxApp: App {
         AnniversaryStore.shared.load()
         QRAssistantStore.shared.load()
         // TranslatorStore needs AppSettings; loaded on first open of 翻译器.
+        LocalNotifier.installForegroundDelegate()
     }
 
     var body: some Scene {

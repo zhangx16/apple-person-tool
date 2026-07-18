@@ -18,6 +18,8 @@ final class ChatViewModel: ObservableObject {
     private var settings: AppSettings
     private let service = Sub2APIService.shared
     private var streamTask: Task<Void, Never>?
+    /// Monotonic generation for the live stream Task. Stale finish/delta must not clear a newer send.
+    private var streamEpoch: UInt = 0
     private var didAttach = false
 
     init(store: ConversationStore? = nil, settings: AppSettings = .shared) {
@@ -255,6 +257,8 @@ final class ChatViewModel: ObservableObject {
         active = conv
         upsertConversationInList(conv)
         errorMessage = nil
+        streamEpoch &+= 1
+        let epoch = streamEpoch
         isStreaming = true
         Haptics.light()
 
@@ -291,7 +295,8 @@ final class ChatViewModel: ObservableObject {
                         conversationID: conversationID,
                         messageID: assistantID,
                         content: assembled,
-                        isStreaming: true
+                        isStreaming: true,
+                        epoch: epoch
                     )
                 }
 
@@ -300,7 +305,8 @@ final class ChatViewModel: ObservableObject {
                     messageID: assistantID,
                     content: assembled,
                     error: nil,
-                    cancelled: Task.isCancelled
+                    cancelled: Task.isCancelled,
+                    epoch: epoch
                 )
             } catch is CancellationError {
                 self.finishStream(
@@ -308,7 +314,8 @@ final class ChatViewModel: ObservableObject {
                     messageID: assistantID,
                     content: assembled,
                     error: nil,
-                    cancelled: true
+                    cancelled: true,
+                    epoch: epoch
                 )
             } catch {
                 self.finishStream(
@@ -316,7 +323,8 @@ final class ChatViewModel: ObservableObject {
                     messageID: assistantID,
                     content: assembled,
                     error: error,
-                    cancelled: false
+                    cancelled: false,
+                    epoch: epoch
                 )
             }
         }
@@ -324,9 +332,14 @@ final class ChatViewModel: ObservableObject {
 
     func stop() {
         streamTask?.cancel()
-        // Move UI to idle immediately (DESIGN interruptibility); finishStream stays idempotent.
+        // Move UI to idle immediately (DESIGN interruptibility).
+        // Bump epoch so a late finishStream from the cancelled task cannot nil a future streamTask
+        // or force isStreaming=false after a quick re-send (Issue 6). Store finalization still runs
+        // for the cancelled messageID when that task reaches finishStream.
         if isStreaming {
+            streamEpoch &+= 1
             isStreaming = false
+            streamTask = nil
             if var conv = active,
                let idx = conv.messages.lastIndex(where: { $0.role == .assistant && $0.isStreaming }) {
                 conv.messages[idx].isStreaming = false
@@ -375,59 +388,69 @@ final class ChatViewModel: ObservableObject {
 
     // MARK: - Private helpers
 
-    /// Persist delta always; update in-memory `active` only when it is the streaming conversation.
+    /// Persist delta always by messageID; live-epoch only may mark `isStreaming` true on UI.
     private func applyAssistantDelta(
         conversationID: UUID,
         messageID: UUID,
         content: String,
-        isStreaming streamingFlag: Bool
+        isStreaming streamingFlag: Bool,
+        epoch: UInt
     ) {
         try? store?.updateMessageContent(messageID: messageID, content: content)
 
         if var conv = active, conv.id == conversationID {
             if let idx = conv.messages.firstIndex(where: { $0.id == messageID }) {
                 conv.messages[idx].content = content
-                conv.messages[idx].isStreaming = streamingFlag
+                // Stale epochs must not re-light a stopped bubble or fight a newer stream.
+                conv.messages[idx].isStreaming = (epoch == streamEpoch) && streamingFlag
             }
             conv.updatedAt = .now
             active = conv
             upsertConversationInList(conv)
-        } else if let idx = conversations.firstIndex(where: { $0.id == conversationID }) {
-            // Touch list row so relative time / ordering stays fresh without requiring active.
+        } else if epoch == streamEpoch, let idx = conversations.firstIndex(where: { $0.id == conversationID }) {
             conversations[idx].updatedAt = .now
             conversations.sort { $0.updatedAt > $1.updatedAt }
         }
     }
 
-    /// Conversation-ID-scoped finalization: always writes/deletes via store, surfaces errors,
-    /// and patches `active` only when it matches the stream target.
+    /// Conversation-ID-scoped finalization: always writes/deletes via store by messageID.
+    /// Clears `isStreaming` / `streamTask` only when this call owns the current `streamEpoch`.
     private func finishStream(
         conversationID: UUID,
         messageID: UUID,
         content: String,
         error: Error?,
-        cancelled: Bool
+        cancelled: Bool,
+        epoch: UInt
     ) {
+        let ownsEpoch = (epoch == streamEpoch)
         defer {
-            isStreaming = false
-            streamTask = nil
+            if ownsEpoch {
+                isStreaming = false
+                streamTask = nil
+            }
         }
 
         let emptyOnError = content.isEmpty && error != nil && !cancelled
 
+        // Always finalize this message in the store (even if a newer epoch is live).
         if emptyOnError {
             try? store?.deleteMessage(messageID: messageID)
-            if let error {
-                errorMessage = Self.chineseError(error)
+            if ownsEpoch {
+                if let error {
+                    errorMessage = Self.chineseError(error)
+                }
+                Haptics.error()
             }
-            Haptics.error()
         } else {
             try? store?.updateMessageContent(messageID: messageID, content: content)
-            if let error, !cancelled {
-                errorMessage = Self.chineseError(error)
-                Haptics.error()
-            } else if !cancelled {
-                Haptics.success()
+            if ownsEpoch {
+                if let error, !cancelled {
+                    errorMessage = Self.chineseError(error)
+                    Haptics.error()
+                } else if !cancelled {
+                    Haptics.success()
+                }
             }
         }
 
@@ -453,16 +476,18 @@ final class ChatViewModel: ObservableObject {
             active = conv
             upsertConversationInList(conv)
         } else if var refreshed = listConv {
-            // Ensure streaming flags off on list snapshot.
-            for i in refreshed.messages.indices {
-                refreshed.messages[i].isStreaming = false
+            // Only force all streaming flags off for live-epoch snapshots; stale finish
+            // must not clear a newer stream's bubble flags when reloading from store.
+            if ownsEpoch {
+                for i in refreshed.messages.indices {
+                    refreshed.messages[i].isStreaming = false
+                }
             }
             if emptyOnError {
                 refreshed.messages.removeAll { $0.id == messageID }
             }
             upsertConversationInList(refreshed)
-        } else {
-            // Conversation may have been deleted mid-stream — still clear streaming via list reload.
+        } else if ownsEpoch {
             reload()
         }
     }

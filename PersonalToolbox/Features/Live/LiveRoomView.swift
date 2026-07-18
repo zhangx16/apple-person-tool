@@ -416,11 +416,21 @@ struct LiveRoomView: View {
                     tipsCard
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 14)
-                .padding(.bottom, 28)
+                .padding(.top, 16)
+                .padding(.bottom, 32)
             }
         }
-        .background(Color(.systemGroupedBackground))
+        .background {
+            ZStack {
+                Color(.systemGroupedBackground)
+                LinearGradient(
+                    colors: [brand.opacity(0.07), .clear],
+                    startPoint: .top,
+                    endPoint: .center
+                )
+            }
+            .ignoresSafeArea()
+        }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {
@@ -657,20 +667,27 @@ struct LiveRoomView: View {
             Button {
                 toggleFollow()
             } label: {
-                Text(isFollowed ? "已关注" : "关注")
+                Text(isFollowed ? "已关注" : "+ 关注")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(isFollowed ? Color.primary : Color.white)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(
-                        isFollowed ? Color(.tertiarySystemFill) : brand,
-                        in: Capsule()
-                    )
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 9)
+                    .background {
+                        if isFollowed {
+                            Capsule().fill(Color(.tertiarySystemFill))
+                        } else {
+                            Capsule().fill(brand.gradient)
+                        }
+                    }
             }
             .buttonStyle(PressableButtonStyle())
         }
-        .padding(14)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .padding(16)
+        .background {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color(.secondarySystemGroupedBackground))
+                .shadow(color: .black.opacity(0.05), radius: 12, y: 4)
+        }
     }
 
     private var avatarView: some View {
@@ -723,8 +740,12 @@ struct LiveRoomView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .padding(16)
+        .background {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color(.secondarySystemGroupedBackground))
+                .shadow(color: .black.opacity(0.04), radius: 10, y: 3)
+        }
     }
 
     // MARK: Quality
@@ -757,7 +778,13 @@ struct LiveRoomView: View {
                                     .foregroundStyle(on ? Color.white : Color.primary)
                                     .padding(.horizontal, 14)
                                     .padding(.vertical, 8)
-                                    .background(on ? brand : Color(.tertiarySystemFill), in: Capsule())
+                                    .background {
+                                        if on {
+                                            Capsule().fill(brand.gradient)
+                                        } else {
+                                            Capsule().fill(Color(.tertiarySystemFill))
+                                        }
+                                    }
                             }
                             .buttonStyle(PressableButtonStyle())
                         }
@@ -765,20 +792,24 @@ struct LiveRoomView: View {
                 }
             }
         }
-        .padding(14)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .padding(16)
+        .background {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color(.secondarySystemGroupedBackground))
+                .shadow(color: .black.opacity(0.04), radius: 10, y: 3)
+        }
     }
 
     // MARK: Engine
 
     private var engineSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             Text("播放方式")
                 .font(.subheadline.weight(.semibold))
             HStack(spacing: 10) {
                 engineButton(
                     title: "应用内",
-                    subtitle: "VLC · 支持 FLV",
+                    subtitle: "VLC · FLV",
                     icon: "play.rectangle.fill",
                     selected: vm.playMode == .native
                 ) {
@@ -798,22 +829,32 @@ struct LiveRoomView: View {
                     vm.retryNative()
                 } label: {
                     Label("重试", systemImage: "arrow.clockwise")
+                        .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
                 }
                 .buttonStyle(.bordered)
+                .tint(brand)
 
                 Button {
                     isPlayerFullscreen = true
                 } label: {
                     Label("全屏", systemImage: "arrow.up.left.and.arrow.down.right")
+                        .font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .foregroundStyle(.white)
+                        .background(brand.opacity(0.95), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(brand)
+                .buttonStyle(PressableButtonStyle())
             }
         }
-        .padding(14)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .padding(16)
+        .background {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color(.secondarySystemGroupedBackground))
+                .shadow(color: .black.opacity(0.04), radius: 10, y: 3)
+        }
     }
 
     private func engineButton(
@@ -871,16 +912,17 @@ struct LiveRoomView: View {
     }
 
     private var tipsCard: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Label("小提示", systemImage: "lightbulb")
-                .font(.caption.weight(.semibold))
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "lightbulb.fill")
+                .foregroundStyle(.yellow.opacity(0.9))
+            Text("点播放器显示控件；锁图标防误触；全屏后点屏幕切换控制条。")
+                .font(.caption)
                 .foregroundStyle(.secondary)
-            Text("点播放器可显示/隐藏控件；锁按钮可锁定防误触；全屏后点屏幕切换控制条。")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
+        .padding(14)
+        .background(Color(.tertiarySystemFill).opacity(0.5), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     private var isFollowed: Bool {
@@ -981,6 +1023,18 @@ struct LivePlatformMark: View {
         }
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous))
+        .shadow(color: .black.opacity(0.08), radius: 2, y: 1)
+    }
+}
+
+extension Color {
+    /// Soft brand gradient for live CTAs.
+    var gradient: LinearGradient {
+        LinearGradient(
+            colors: [self, self.opacity(0.82)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
     }
 }
 

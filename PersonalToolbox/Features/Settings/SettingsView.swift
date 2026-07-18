@@ -543,16 +543,16 @@ struct Kuaidi100SettingsPage: View {
                 TextField("Customer", text: $settings.kuaidi100Customer)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
-                SecureField("Key", text: $settings.kuaidi100Key)
+                SecureField("授权 Key", text: $settings.kuaidi100Key)
                     .textInputAutocapitalization(.never)
                     .privacySensitive()
             } header: {
                 Text("实时查询凭证")
             } footer: {
-                Text("在 https://api.kuaidi100.com 注册后获取 customer 与 key。Key 存于 Keychain。用于 poll/query 实时轨迹与自动识别快递公司。")
+                Text("与官网 Python/Java 示例相同：POST poll/query.do，sign=MD5(param+key+customer)。Customer 与授权 Key 已可预填，Key 存 Keychain。")
             }
             Section("说明") {
-                Text("未配置时仍可保存单号并跳转快递100网页。配置后在「服务 → 快递」点实时查询即可拉轨迹。")
+                Text("「智能单号识别」若提示 key 过期，不影响实时查询：App 会按单号规则与多家公司编码回退尝试。顺丰建议填手机后四位。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

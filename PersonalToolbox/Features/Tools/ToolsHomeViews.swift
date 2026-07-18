@@ -640,32 +640,39 @@ struct ExpressHomeView: View {
     @StateObject private var store = ExpressService.shared
     @State private var number = ""
     @State private var note = ""
+    @State private var phoneTail = ""
 
     var body: some View {
         List {
             Section {
                 if store.hasAPICredentials {
-                    Label("快递100 实时查询已配置", systemImage: "checkmark.seal.fill")
+                    Label("快递100 实时查询已就绪", systemImage: "checkmark.seal.fill")
                         .font(.caption)
                         .foregroundStyle(.green)
                 } else {
-                    Text("未配置快递100密钥：可添加单号并跳转网页；配置后可查实时轨迹。")
+                    Text("未配置快递100密钥：请到设置 → 快递100 填写 customer 与授权 key。")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 TextField("快递单号", text: $number)
                     .textInputAutocapitalization(.characters)
                     .autocorrectionDisabled()
+                TextField("手机后四位（顺丰建议填）", text: $phoneTail)
+                    .keyboardType(.numberPad)
                 TextField("备注（可选）", text: $note)
-                Button("添加") {
-                    store.add(trackingNo: number, note: note)
+                Button("添加并查询") {
+                    store.add(trackingNo: number, note: note, phoneTail: phoneTail)
+                    if let id = store.packages.first?.id {
+                        Task { await store.lookup(id) }
+                    }
                     number = ""
                     note = ""
+                    phoneTail = ""
                     Haptics.success()
                 }
                 .disabled(number.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             } footer: {
-                Text("实时接口：快递100 poll/query（设置 → 快递100）。注册 https://api.kuaidi100.com 获取 customer 与 key。")
+                Text("协议对齐官网 Python/Java：param 紧凑 JSON + MD5(param+key+customer)。顺丰等可能需手机后四位。")
             }
 
             if let msg = store.lastLookupMessage {
@@ -713,6 +720,7 @@ struct ExpressHomeView: View {
 struct ExpressDetailView: View {
     let packageId: String
     @StateObject private var store = ExpressService.shared
+    @State private var phoneDraft = ""
 
     private var package: ExpressRecord? {
         store.packages.first { $0.id == packageId }
@@ -723,8 +731,14 @@ struct ExpressDetailView: View {
             if let p = package {
                 Section("运单") {
                     LabeledContent("单号", value: p.trackingNo)
-                    LabeledContent("承运商", value: p.carrierName)
+                    LabeledContent("承运商", value: "\(p.carrierName) (\(p.carrierCode))")
+                    if let st = p.state {
+                        LabeledContent("状态", value: ExpressService.stateLabel(st) ?? st)
+                    }
                     if !p.note.isEmpty { LabeledContent("备注", value: p.note) }
+                    TextField("手机后四位（顺丰等）", text: $phoneDraft)
+                        .keyboardType(.numberPad)
+                        .onAppear { phoneDraft = p.phoneTail }
                     Text(p.lastStatus).font(.subheadline)
                     if let t = p.updatedAt {
                         Text("更新于 \(t.formatted(date: .abbreviated, time: .shortened))")
@@ -732,6 +746,7 @@ struct ExpressDetailView: View {
                             .foregroundStyle(.secondary)
                     }
                     Button {
+                        store.updatePhoneTail(id: p.id, phoneTail: phoneDraft)
                         Task { await store.lookup(p.id) }
                     } label: {
                         if store.isQuerying {
@@ -751,7 +766,12 @@ struct ExpressDetailView: View {
                     } else {
                         ForEach(p.tracks) { ev in
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(ev.time).font(.caption2).foregroundStyle(.secondary)
+                                HStack {
+                                    Text(ev.time).font(.caption2).foregroundStyle(.secondary)
+                                    if let s = ev.status, !s.isEmpty {
+                                        Text(s).font(.caption2.weight(.semibold)).foregroundStyle(Color.accentColor)
+                                    }
+                                }
                                 Text(ev.context).font(.subheadline)
                                 if let loc = ev.location, !loc.isEmpty {
                                     Text(loc).font(.caption2).foregroundStyle(.secondary)

@@ -145,6 +145,14 @@ jobs:
               tail -n 200 "$RUNNER_TEMP/xcodebuild-archive.log" || true
               echo '```'
             } | tee -a "$GITHUB_STEP_SUMMARY"
+            # Emit public annotations (readable via REST without log download).
+            while IFS= read -r line; do
+              if [[ "$line" =~ ([^[:space:]]+\.swift):([0-9]+):([0-9]+):\ error:\ (.*) ]]; then
+                echo "::error file=${BASH_REMATCH[1]},line=${BASH_REMATCH[2]},col=${BASH_REMATCH[3]}::${BASH_REMATCH[4]}"
+              else
+                echo "::error::${line}"
+              fi
+            done < <(grep -E 'error:|fatal error' "$RUNNER_TEMP/xcodebuild-archive.log" | tail -n 80 || true)
             echo "::group::Swift / xcodebuild errors"
             grep -E 'error:|warning:.*error|❌|fatal error' "$RUNNER_TEMP/xcodebuild-archive.log" | tail -n 80 || true
             echo "::endgroup::"
@@ -182,59 +190,97 @@ jobs:
             ${{ runner.temp }}/xcodebuild-export.log
           if-no-files-found: ignore
 
-      # Public issue with compile errors (readable without PAT / log login).
-      - name: Open issue with archive errors
+      # Publish errors to public branch (readable without PAT / log login).
+      - name: Publish archive errors to ci-errors branch
         if: failure()
         env:
           GH_TOKEN: ${{ github.token }}
+        continue-on-error: true
         run: |
           set -euo pipefail
           python3 <<'PY'
-          import json, os, re, urllib.error, urllib.request
+          import base64, json, os, re, urllib.error, urllib.request
 
           log_path = os.path.join(os.environ["RUNNER_TEMP"], "xcodebuild-archive.log")
-          if not os.path.isfile(log_path):
-              print("No archive log")
-              raise SystemExit(0)
-
-          err = open(log_path, errors="replace").read()
-          greps = "\n".join(re.findall(r".*(?:error:|fatal error).*", err)[-100:])
-          tail = "\n".join(err.splitlines()[-150:])
-          sha = os.environ["GITHUB_SHA"][:7]
+          greps = ""
+          tail = ""
+          if os.path.isfile(log_path):
+              err = open(log_path, errors="replace").read()
+              greps = "\n".join(re.findall(r".*(?:error:|fatal error).*", err)[-100:])
+              tail = "\n".join(err.splitlines()[-150:])
+          sha = os.environ["GITHUB_SHA"]
+          short = sha[:7]
           run = os.environ["GITHUB_RUN_ID"]
           repo = os.environ["GITHUB_REPOSITORY"]
           server = os.environ.get("GITHUB_SERVER_URL", "https://github.com")
-          body = f"""### Archive failed on `{sha}`
+          content = f"""# Archive failed on `{short}`
 
           Run: {server}/{repo}/actions/runs/{run}
+          Commit: `{sha}`
 
-          #### Grep errors
+          ## Grep errors
           ```
           {greps or "(no grep hits)"}
           ```
 
-          #### Tail
+          ## Tail
           ```
           {tail}
           ```
           """
-          data = json.dumps({"title": f"ci: archive failure {sha}", "body": body}).encode()
-          req = urllib.request.Request(
-              f"https://api.github.com/repos/{repo}/issues",
-              data=data,
-              method="POST",
-              headers={
-                  "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
-                  "Accept": "application/vnd.github+json",
-                  "User-Agent": "ci-log-bot",
-                  "Content-Type": "application/json",
-              },
-          )
+          token = os.environ["GH_TOKEN"]
+          headers = {
+              "Authorization": f"Bearer {token}",
+              "Accept": "application/vnd.github+json",
+              "User-Agent": "ci-log-bot",
+              "Content-Type": "application/json",
+          }
+
+          def api(method, url, data=None):
+              req = urllib.request.Request(url, data=data, method=method, headers=headers)
+              try:
+                  with urllib.request.urlopen(req) as resp:
+                      body = resp.read()
+                      return resp.status, json.loads(body) if body else {}
+              except urllib.error.HTTPError as e:
+                  body = e.read().decode(errors="replace")
+                  print(method, url, e.code, body[:800])
+                  raise
+
+          # Ensure branch exists (from current SHA).
+          ref_url = f"https://api.github.com/repos/{repo}/git/ref/heads/ci-errors"
           try:
-              with urllib.request.urlopen(req) as resp:
-                  out = json.load(resp)
-                  print("issue", out.get("html_url"))
+              api("GET", ref_url)
           except urllib.error.HTTPError as e:
-              print("issue create failed:", e.read().decode(errors="replace")[:1000])
-              raise
+              if e.code != 404:
+                  raise
+              api(
+                  "POST",
+                  f"https://api.github.com/repos/{repo}/git/refs",
+                  json.dumps({"ref": "refs/heads/ci-errors", "sha": sha}).encode(),
+              )
+
+          path = "latest-archive-errors.md"
+          file_url = f"https://api.github.com/repos/{repo}/contents/{path}?ref=ci-errors"
+          sha_file = None
+          try:
+              st, existing = api("GET", file_url)
+              sha_file = existing.get("sha")
+          except urllib.error.HTTPError as e:
+              if e.code != 404:
+                  raise
+
+          payload = {
+              "message": f"ci: archive errors {short}",
+              "content": base64.b64encode(content.encode()).decode(),
+              "branch": "ci-errors",
+          }
+          if sha_file:
+              payload["sha"] = sha_file
+          st, out = api(
+              "PUT",
+              f"https://api.github.com/repos/{repo}/contents/{path}",
+              json.dumps(payload).encode(),
+          )
+          print("published", out.get("content", {}).get("html_url") or out)
           PY

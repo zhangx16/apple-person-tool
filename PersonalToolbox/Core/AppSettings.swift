@@ -5,25 +5,28 @@ import Combine
 final class AppSettings: ObservableObject {
     static let shared = AppSettings()
 
-    // Defaults match this server's public domains.
+    // MARK: - Sub2API (chat + admin monitor)
+
     @Published var sub2apiBaseURL: String {
         didSet { UserDefaults.standard.set(sub2apiBaseURL, forKey: Keys.sub2apiBaseURL) }
     }
+    /// User / gateway API key for chat completions.
     @Published var sub2apiAPIKey: String {
         didSet { KeychainStore.set(sub2apiAPIKey, for: Keys.sub2apiAPIKey) }
+    }
+    /// Admin API key for `/api/v1/admin/*` (header `x-api-key`), used by 监控 tab.
+    @Published var sub2apiAdminAPIKey: String {
+        didSet { KeychainStore.set(sub2apiAdminAPIKey, for: Keys.sub2apiAdminAPIKey) }
     }
     @Published var preferredModel: String {
         didSet { UserDefaults.standard.set(preferredModel, forKey: Keys.preferredModel) }
     }
-    /// Default Grok Imagine text-to-image model.
     @Published var preferredImagineImageModel: String {
         didSet { UserDefaults.standard.set(preferredImagineImageModel, forKey: Keys.preferredImagineImageModel) }
     }
-    /// Default Grok Imagine image-edit model.
     @Published var preferredImagineEditModel: String {
         didSet { UserDefaults.standard.set(preferredImagineEditModel, forKey: Keys.preferredImagineEditModel) }
     }
-    /// Default Grok Imagine text-to-video model.
     @Published var preferredImagineVideoModel: String {
         didSet { UserDefaults.standard.set(preferredImagineVideoModel, forKey: Keys.preferredImagineVideoModel) }
     }
@@ -31,26 +34,7 @@ final class AppSettings: ObservableObject {
         didSet { UserDefaults.standard.set(systemPrompt, forKey: Keys.systemPrompt) }
     }
 
-    @Published var mailBaseURL: String {
-        didSet { UserDefaults.standard.set(mailBaseURL, forKey: Keys.mailBaseURL) }
-    }
-    @Published var mailPassword: String {
-        didSet { KeychainStore.set(mailPassword, for: Keys.mailPassword) }
-    }
-    @Published var mailExternalAPIKey: String {
-        didSet { KeychainStore.set(mailExternalAPIKey, for: Keys.mailExternalAPIKey) }
-    }
-    @Published var mailUseExternalAPI: Bool {
-        didSet { UserDefaults.standard.set(mailUseExternalAPI, forKey: Keys.mailUseExternalAPI) }
-    }
-    /// Required when `mailUseExternalAPI` is true (external mode targets a mailbox).
-    @Published var mailDefaultEmail: String {
-        didSet { UserDefaults.standard.set(mailDefaultEmail, forKey: Keys.mailDefaultEmail) }
-    }
-    /// Optional extra mailboxes for external mode (default email is always first).
-    @Published var mailFavoriteEmails: [String] {
-        didSet { UserDefaults.standard.set(mailFavoriteEmails, forKey: Keys.mailFavoriteEmails) }
-    }
+    // MARK: - yt-dlp
 
     @Published var ytBaseURL: String {
         didSet { UserDefaults.standard.set(ytBaseURL, forKey: Keys.ytBaseURL) }
@@ -62,56 +46,67 @@ final class AppSettings: ObservableObject {
         didSet { KeychainStore.set(ytPassword, for: Keys.ytPassword) }
     }
 
-    /// `system` / `light` / `dark` — applied by app shell (PR-4 Settings UI).
+    // MARK: - SublinkX
+
+    @Published var sublinkBaseURL: String {
+        didSet { UserDefaults.standard.set(sublinkBaseURL, forKey: Keys.sublinkBaseURL) }
+    }
+    @Published var sublinkUsername: String {
+        didSet { UserDefaults.standard.set(sublinkUsername, forKey: Keys.sublinkUsername) }
+    }
+    @Published var sublinkPassword: String {
+        didSet { KeychainStore.set(sublinkPassword, for: Keys.sublinkPassword) }
+    }
+
+    // MARK: - Komari
+
+    @Published var komariBaseURL: String {
+        didSet { UserDefaults.standard.set(komariBaseURL, forKey: Keys.komariBaseURL) }
+    }
+
+    // MARK: - Appearance / privacy
+
     @Published var appearance: String {
         didSet { UserDefaults.standard.set(appearance, forKey: Keys.appearance) }
     }
-    /// Hide sensitive UI when app enters switcher / background.
     @Published var hideSensitiveInAppSwitcher: Bool {
         didSet { UserDefaults.standard.set(hideSensitiveInAppSwitcher, forKey: Keys.hideSensitiveInAppSwitcher) }
     }
-    /// Optional Face ID / Touch ID gate. Default OFF (K12).
     @Published var requireBiometricUnlock: Bool {
         didSet { UserDefaults.standard.set(requireBiometricUnlock, forKey: Keys.requireBiometricUnlock) }
     }
 
     enum Appearance: String, CaseIterable, Identifiable {
-        case system
-        case light
-        case dark
+        case system, light, dark
         var id: String { rawValue }
     }
 
     enum Keys {
         static let sub2apiBaseURL = "sub2apiBaseURL"
         static let sub2apiAPIKey = "sub2apiAPIKey"
+        static let sub2apiAdminAPIKey = "sub2apiAdminAPIKey"
         static let preferredModel = "preferredModel"
         static let preferredImagineImageModel = "preferredImagineImageModel"
         static let preferredImagineEditModel = "preferredImagineEditModel"
         static let preferredImagineVideoModel = "preferredImagineVideoModel"
         static let systemPrompt = "systemPrompt"
-        static let mailBaseURL = "mailBaseURL"
-        static let mailPassword = "mailPassword"
-        static let mailExternalAPIKey = "mailExternalAPIKey"
-        static let mailUseExternalAPI = "mailUseExternalAPI"
-        static let mailDefaultEmail = "mailDefaultEmail"
-        static let mailFavoriteEmails = "mailFavoriteEmails"
         static let ytBaseURL = "ytBaseURL"
         static let ytUsername = "ytUsername"
         static let ytPassword = "ytPassword"
+        static let sublinkBaseURL = "sublinkBaseURL"
+        static let sublinkUsername = "sublinkUsername"
+        static let sublinkPassword = "sublinkPassword"
+        static let komariBaseURL = "komariBaseURL"
         static let appearance = "appearance"
         static let hideSensitiveInAppSwitcher = "hideSensitiveInAppSwitcher"
         static let requireBiometricUnlock = "requireBiometricUnlock"
     }
 
-    /// Single source of truth for default chat model (preferredModel + ChatConversation).
     nonisolated static let defaultTextModel = "grok-4.3"
     nonisolated static let defaultImagineImageModel = "grok-imagine-image-quality"
     nonisolated static let defaultImagineEditModel = "grok-imagine-edit"
     nonisolated static let defaultImagineVideoModel = "grok-imagine-video-1.5"
 
-    /// Pure data table; nonisolated so actors (e.g. Sub2APIService) can read without hopping to MainActor.
-    /// Real xAI text model IDs (sub2api `models.go`); imagine models live on separate pickers.
     nonisolated static let defaultModels = [
         defaultTextModel,
         "grok-build-0.1",
@@ -126,36 +121,32 @@ final class AppSettings: ObservableObject {
         "grok-imagine"
     ]
 
-    nonisolated static let defaultImagineEditModels = [
-        defaultImagineEditModel
-    ]
-
+    nonisolated static let defaultImagineEditModels = [defaultImagineEditModel]
     nonisolated static let defaultImagineVideoModels = [
         defaultImagineVideoModel,
         "grok-imagine-video"
     ]
 
     private init() {
-        let defaults = UserDefaults.standard
-        sub2apiBaseURL = defaults.string(forKey: Keys.sub2apiBaseURL) ?? "https://sub2api.996616.xyz"
+        let d = UserDefaults.standard
+        sub2apiBaseURL = d.string(forKey: Keys.sub2apiBaseURL) ?? "https://sub2api.996616.xyz"
         sub2apiAPIKey = KeychainStore.get(Keys.sub2apiAPIKey) ?? ""
-        preferredModel = defaults.string(forKey: Keys.preferredModel) ?? Self.defaultTextModel
-        preferredImagineImageModel = defaults.string(forKey: Keys.preferredImagineImageModel) ?? Self.defaultImagineImageModel
-        preferredImagineEditModel = defaults.string(forKey: Keys.preferredImagineEditModel) ?? Self.defaultImagineEditModel
-        preferredImagineVideoModel = defaults.string(forKey: Keys.preferredImagineVideoModel) ?? Self.defaultImagineVideoModel
-        systemPrompt = defaults.string(forKey: Keys.systemPrompt) ?? "You are a helpful assistant."
-        mailBaseURL = defaults.string(forKey: Keys.mailBaseURL) ?? "https://mail.996616.xyz"
-        mailPassword = KeychainStore.get(Keys.mailPassword) ?? ""
-        mailExternalAPIKey = KeychainStore.get(Keys.mailExternalAPIKey) ?? ""
-        mailUseExternalAPI = defaults.object(forKey: Keys.mailUseExternalAPI) as? Bool ?? false
-        mailDefaultEmail = defaults.string(forKey: Keys.mailDefaultEmail) ?? ""
-        mailFavoriteEmails = defaults.stringArray(forKey: Keys.mailFavoriteEmails) ?? []
-        ytBaseURL = defaults.string(forKey: Keys.ytBaseURL) ?? "https://yt.996616.xyz"
-        ytUsername = defaults.string(forKey: Keys.ytUsername) ?? "admin"
+        sub2apiAdminAPIKey = KeychainStore.get(Keys.sub2apiAdminAPIKey) ?? ""
+        preferredModel = d.string(forKey: Keys.preferredModel) ?? Self.defaultTextModel
+        preferredImagineImageModel = d.string(forKey: Keys.preferredImagineImageModel) ?? Self.defaultImagineImageModel
+        preferredImagineEditModel = d.string(forKey: Keys.preferredImagineEditModel) ?? Self.defaultImagineEditModel
+        preferredImagineVideoModel = d.string(forKey: Keys.preferredImagineVideoModel) ?? Self.defaultImagineVideoModel
+        systemPrompt = d.string(forKey: Keys.systemPrompt) ?? "You are a helpful assistant."
+        ytBaseURL = d.string(forKey: Keys.ytBaseURL) ?? "https://yt.996616.xyz"
+        ytUsername = d.string(forKey: Keys.ytUsername) ?? "admin"
         ytPassword = KeychainStore.get(Keys.ytPassword) ?? ""
-        appearance = defaults.string(forKey: Keys.appearance) ?? Appearance.system.rawValue
-        hideSensitiveInAppSwitcher = defaults.object(forKey: Keys.hideSensitiveInAppSwitcher) as? Bool ?? false
-        requireBiometricUnlock = defaults.object(forKey: Keys.requireBiometricUnlock) as? Bool ?? false
+        sublinkBaseURL = d.string(forKey: Keys.sublinkBaseURL) ?? "https://sub.996616.xyz"
+        sublinkUsername = d.string(forKey: Keys.sublinkUsername) ?? "admin"
+        sublinkPassword = KeychainStore.get(Keys.sublinkPassword) ?? ""
+        komariBaseURL = d.string(forKey: Keys.komariBaseURL) ?? "https://komari.996616.xyz"
+        appearance = d.string(forKey: Keys.appearance) ?? Appearance.system.rawValue
+        hideSensitiveInAppSwitcher = d.object(forKey: Keys.hideSensitiveInAppSwitcher) as? Bool ?? false
+        requireBiometricUnlock = d.object(forKey: Keys.requireBiometricUnlock) as? Bool ?? false
     }
 
     var isAIConfigured: Bool {
@@ -163,85 +154,16 @@ final class AppSettings: ObservableObject {
             && !sub2apiAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    var isMailConfigured: Bool {
-        if mailUseExternalAPI {
-            // External path needs X-API-Key **and** a mailbox (list/detail require `email` query).
-            return !mailExternalAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                && !mailDefaultEmail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        }
-        return !mailPassword.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    var isAdminConfigured: Bool {
+        !sub2apiBaseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !sub2apiAdminAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     var isYTConfigured: Bool {
         !ytUsername.isEmpty && !ytPassword.isEmpty
     }
 
-    // MARK: - External mailbox helpers
-
-    /// Normalized default email (trimmed); empty if unset.
-    var normalizedMailDefaultEmail: String {
-        mailDefaultEmail.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    /// Favorite emails, trimmed, non-empty, de-duplicated (case-insensitive), excluding default.
-    var normalizedMailFavoriteEmails: [String] {
-        let defaultLower = normalizedMailDefaultEmail.lowercased()
-        var seen = Set<String>()
-        if !defaultLower.isEmpty { seen.insert(defaultLower) }
-        var result: [String] = []
-        for raw in mailFavoriteEmails {
-            let email = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !email.isEmpty else { continue }
-            let key = email.lowercased()
-            guard !seen.contains(key) else { continue }
-            seen.insert(key)
-            result.append(email)
-        }
-        return result
-    }
-
-    /// Virtual accounts for external mode: default first, then favorites.
-    var externalMailboxAccounts: [MailAccount] {
-        var accounts: [MailAccount] = []
-        let defaultEmail = normalizedMailDefaultEmail
-        if !defaultEmail.isEmpty {
-            accounts.append(MailAccount(
-                email: defaultEmail,
-                status: "external",
-                provider: "external",
-                remark: "默认邮箱"
-            ))
-        }
-        for email in normalizedMailFavoriteEmails {
-            accounts.append(MailAccount(
-                email: email,
-                status: "external",
-                provider: "external",
-                remark: "收藏"
-            ))
-        }
-        return accounts
-    }
-
-    /// Append a favorite if valid and not already present / equal to default.
-    @discardableResult
-    func addMailFavoriteEmail(_ raw: String) -> Bool {
-        let email = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !email.isEmpty else { return false }
-        let key = email.lowercased()
-        if key == normalizedMailDefaultEmail.lowercased() { return false }
-        let existing = mailFavoriteEmails.map {
-            $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        }
-        if existing.contains(key) { return false }
-        mailFavoriteEmails = mailFavoriteEmails + [email]
-        return true
-    }
-
-    func removeMailFavoriteEmail(_ email: String) {
-        let key = email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        mailFavoriteEmails = mailFavoriteEmails.filter {
-            $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() != key
-        }
+    var isSublinkConfigured: Bool {
+        !sublinkUsername.isEmpty && !sublinkPassword.isEmpty
     }
 }

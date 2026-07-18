@@ -24,23 +24,30 @@
 		000000000000000000000120 /* DownloadViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000011F /* DownloadViewModel.swift */; };
 		000000000000000000000122 /* FilesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000121 /* FilesListView.swift */; };
 		000000000000000000000124 /* TaskRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000123 /* TaskRowView.swift */; };
-		000000000000000000000126 /* AccountListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000125 /* AccountListView.swift */; };
-		000000000000000000000128 /* InboxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000127 /* InboxView.swift */; };
-		00000000000000000000012A /* MailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000129 /* MailViewModel.swift */; };
-		00000000000000000000012C /* MessageDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000012B /* MessageDetailView.swift */; };
-		00000000000000000000012E /* ServiceProbeRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000012D /* ServiceProbeRow.swift */; };
-		000000000000000000000130 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000012F /* SettingsView.swift */; };
-		000000000000000000000132 /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000131 /* SettingsViewModel.swift */; };
-		000000000000000000000134 /* ChatModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000133 /* ChatModels.swift */; };
-		000000000000000000000136 /* ConversationEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000135 /* ConversationEntity.swift */; };
-		000000000000000000000138 /* DownloadModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000137 /* DownloadModels.swift */; };
-		00000000000000000000013A /* MailModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000139 /* MailModels.swift */; };
-		00000000000000000000013C /* ConversationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000013B /* ConversationStore.swift */; };
-		00000000000000000000013E /* ImagineService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000013D /* ImagineService.swift */; };
-		000000000000000000000140 /* MailService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000013F /* MailService.swift */; };
-		000000000000000000000142 /* Sub2APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000141 /* Sub2APIService.swift */; };
-		000000000000000000000144 /* YTService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000143 /* YTService.swift */; };
-		000000000000000000000146 /* AppleTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000145 /* AppleTheme.swift */; };
+		000000000000000000000126 /* KomariHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000125 /* KomariHomeView.swift */; };
+		000000000000000000000128 /* KomariViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000127 /* KomariViewModel.swift */; };
+		00000000000000000000012A /* MonitorHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000129 /* MonitorHomeView.swift */; };
+		00000000000000000000012C /* MonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000012B /* MonitorViewModel.swift */; };
+		00000000000000000000012E /* ServicesHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000012D /* ServicesHubView.swift */; };
+		000000000000000000000130 /* ServiceProbeRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000012F /* ServiceProbeRow.swift */; };
+		000000000000000000000132 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000131 /* SettingsView.swift */; };
+		000000000000000000000134 /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000133 /* SettingsViewModel.swift */; };
+		000000000000000000000136 /* SublinkHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000135 /* SublinkHomeView.swift */; };
+		000000000000000000000138 /* SublinkViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000137 /* SublinkViewModel.swift */; };
+		00000000000000000000013A /* AdminModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000139 /* AdminModels.swift */; };
+		00000000000000000000013C /* ChatModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000013B /* ChatModels.swift */; };
+		00000000000000000000013E /* ConversationEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000013D /* ConversationEntity.swift */; };
+		000000000000000000000140 /* DownloadModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000013F /* DownloadModels.swift */; };
+		000000000000000000000142 /* KomariModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000141 /* KomariModels.swift */; };
+		000000000000000000000144 /* SublinkModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000143 /* SublinkModels.swift */; };
+		000000000000000000000146 /* ConversationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000145 /* ConversationStore.swift */; };
+		000000000000000000000148 /* ImagineService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000147 /* ImagineService.swift */; };
+		00000000000000000000014A /* KomariService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000149 /* KomariService.swift */; };
+		00000000000000000000014C /* Sub2APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000014B /* Sub2APIService.swift */; };
+		00000000000000000000014E /* Sub2AdminService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000014D /* Sub2AdminService.swift */; };
+		000000000000000000000150 /* SublinkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000014F /* SublinkService.swift */; };
+		000000000000000000000152 /* YTService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000151 /* YTService.swift */; };
+		000000000000000000000154 /* AppleTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000153 /* AppleTheme.swift */; };
 		000000000000000000000208 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000200 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -63,23 +70,30 @@
 		00000000000000000000011F /* DownloadViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadViewModel.swift; sourceTree = "<group>"; };
 		000000000000000000000121 /* FilesListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilesListView.swift; sourceTree = "<group>"; };
 		000000000000000000000123 /* TaskRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskRowView.swift; sourceTree = "<group>"; };
-		000000000000000000000125 /* AccountListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountListView.swift; sourceTree = "<group>"; };
-		000000000000000000000127 /* InboxView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InboxView.swift; sourceTree = "<group>"; };
-		000000000000000000000129 /* MailViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailViewModel.swift; sourceTree = "<group>"; };
-		00000000000000000000012B /* MessageDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageDetailView.swift; sourceTree = "<group>"; };
-		00000000000000000000012D /* ServiceProbeRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceProbeRow.swift; sourceTree = "<group>"; };
-		00000000000000000000012F /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
-		000000000000000000000131 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
-		000000000000000000000133 /* ChatModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatModels.swift; sourceTree = "<group>"; };
-		000000000000000000000135 /* ConversationEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationEntity.swift; sourceTree = "<group>"; };
-		000000000000000000000137 /* DownloadModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadModels.swift; sourceTree = "<group>"; };
-		000000000000000000000139 /* MailModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailModels.swift; sourceTree = "<group>"; };
-		00000000000000000000013B /* ConversationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationStore.swift; sourceTree = "<group>"; };
-		00000000000000000000013D /* ImagineService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagineService.swift; sourceTree = "<group>"; };
-		00000000000000000000013F /* MailService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MailService.swift; sourceTree = "<group>"; };
-		000000000000000000000141 /* Sub2APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sub2APIService.swift; sourceTree = "<group>"; };
-		000000000000000000000143 /* YTService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTService.swift; sourceTree = "<group>"; };
-		000000000000000000000145 /* AppleTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleTheme.swift; sourceTree = "<group>"; };
+		000000000000000000000125 /* KomariHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KomariHomeView.swift; sourceTree = "<group>"; };
+		000000000000000000000127 /* KomariViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KomariViewModel.swift; sourceTree = "<group>"; };
+		000000000000000000000129 /* MonitorHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitorHomeView.swift; sourceTree = "<group>"; };
+		00000000000000000000012B /* MonitorViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitorViewModel.swift; sourceTree = "<group>"; };
+		00000000000000000000012D /* ServicesHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServicesHubView.swift; sourceTree = "<group>"; };
+		00000000000000000000012F /* ServiceProbeRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceProbeRow.swift; sourceTree = "<group>"; };
+		000000000000000000000131 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		000000000000000000000133 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
+		000000000000000000000135 /* SublinkHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SublinkHomeView.swift; sourceTree = "<group>"; };
+		000000000000000000000137 /* SublinkViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SublinkViewModel.swift; sourceTree = "<group>"; };
+		000000000000000000000139 /* AdminModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminModels.swift; sourceTree = "<group>"; };
+		00000000000000000000013B /* ChatModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatModels.swift; sourceTree = "<group>"; };
+		00000000000000000000013D /* ConversationEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationEntity.swift; sourceTree = "<group>"; };
+		00000000000000000000013F /* DownloadModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadModels.swift; sourceTree = "<group>"; };
+		000000000000000000000141 /* KomariModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KomariModels.swift; sourceTree = "<group>"; };
+		000000000000000000000143 /* SublinkModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SublinkModels.swift; sourceTree = "<group>"; };
+		000000000000000000000145 /* ConversationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationStore.swift; sourceTree = "<group>"; };
+		000000000000000000000147 /* ImagineService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagineService.swift; sourceTree = "<group>"; };
+		000000000000000000000149 /* KomariService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KomariService.swift; sourceTree = "<group>"; };
+		00000000000000000000014B /* Sub2APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sub2APIService.swift; sourceTree = "<group>"; };
+		00000000000000000000014D /* Sub2AdminService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sub2AdminService.swift; sourceTree = "<group>"; };
+		00000000000000000000014F /* SublinkService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SublinkService.swift; sourceTree = "<group>"; };
+		000000000000000000000151 /* YTService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTService.swift; sourceTree = "<group>"; };
+		000000000000000000000153 /* AppleTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleTheme.swift; sourceTree = "<group>"; };
 		000000000000000000000200 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		000000000000000000000201 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		000000000000000000000202 /* PersonalToolbox.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PersonalToolbox.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -111,7 +125,7 @@
 		000000000000000000000303 /* Theme */ = {
 			isa = PBXGroup;
 			children = (
-				000000000000000000000145 /* AppleTheme.swift */,
+				000000000000000000000153 /* AppleTheme.swift */,
 			);
 			path = Theme;
 			sourceTree = "<group>";
@@ -119,10 +133,12 @@
 		000000000000000000000304 /* Models */ = {
 			isa = PBXGroup;
 			children = (
-				000000000000000000000133 /* ChatModels.swift */,
-				000000000000000000000135 /* ConversationEntity.swift */,
-				000000000000000000000137 /* DownloadModels.swift */,
-				000000000000000000000139 /* MailModels.swift */,
+				000000000000000000000139 /* AdminModels.swift */,
+				00000000000000000000013B /* ChatModels.swift */,
+				00000000000000000000013D /* ConversationEntity.swift */,
+				00000000000000000000013F /* DownloadModels.swift */,
+				000000000000000000000141 /* KomariModels.swift */,
+				000000000000000000000143 /* SublinkModels.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -130,11 +146,13 @@
 		000000000000000000000305 /* Services */ = {
 			isa = PBXGroup;
 			children = (
-				00000000000000000000013B /* ConversationStore.swift */,
-				00000000000000000000013D /* ImagineService.swift */,
-				00000000000000000000013F /* MailService.swift */,
-				000000000000000000000141 /* Sub2APIService.swift */,
-				000000000000000000000143 /* YTService.swift */,
+				000000000000000000000145 /* ConversationStore.swift */,
+				000000000000000000000147 /* ImagineService.swift */,
+				000000000000000000000149 /* KomariService.swift */,
+				00000000000000000000014B /* Sub2APIService.swift */,
+				00000000000000000000014D /* Sub2AdminService.swift */,
+				00000000000000000000014F /* SublinkService.swift */,
+				000000000000000000000151 /* YTService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -152,18 +170,7 @@
 			path = Chat;
 			sourceTree = "<group>";
 		};
-		000000000000000000000308 /* Mail */ = {
-			isa = PBXGroup;
-			children = (
-				000000000000000000000125 /* AccountListView.swift */,
-				000000000000000000000127 /* InboxView.swift */,
-				000000000000000000000129 /* MailViewModel.swift */,
-				00000000000000000000012B /* MessageDetailView.swift */,
-			);
-			path = Mail;
-			sourceTree = "<group>";
-		};
-		000000000000000000000309 /* Download */ = {
+		000000000000000000000308 /* Download */ = {
 			isa = PBXGroup;
 			children = (
 				00000000000000000000011D /* DownloadHomeView.swift */,
@@ -174,28 +181,66 @@
 			path = Download;
 			sourceTree = "<group>";
 		};
-		00000000000000000000030A /* Settings */ = {
+		000000000000000000000309 /* Settings */ = {
 			isa = PBXGroup;
 			children = (
-				00000000000000000000012D /* ServiceProbeRow.swift */,
-				00000000000000000000012F /* SettingsView.swift */,
-				000000000000000000000131 /* SettingsViewModel.swift */,
+				00000000000000000000012F /* ServiceProbeRow.swift */,
+				000000000000000000000131 /* SettingsView.swift */,
+				000000000000000000000133 /* SettingsViewModel.swift */,
 			);
 			path = Settings;
+			sourceTree = "<group>";
+		};
+		00000000000000000000030A /* Monitor */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000129 /* MonitorHomeView.swift */,
+				00000000000000000000012B /* MonitorViewModel.swift */,
+			);
+			path = Monitor;
+			sourceTree = "<group>";
+		};
+		00000000000000000000030B /* ServicesHub */ = {
+			isa = PBXGroup;
+			children = (
+				00000000000000000000012D /* ServicesHubView.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		00000000000000000000030C /* Sublink */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000135 /* SublinkHomeView.swift */,
+				000000000000000000000137 /* SublinkViewModel.swift */,
+			);
+			path = Sublink;
+			sourceTree = "<group>";
+		};
+		00000000000000000000030D /* Komari */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000125 /* KomariHomeView.swift */,
+				000000000000000000000127 /* KomariViewModel.swift */,
+			);
+			path = Komari;
 			sourceTree = "<group>";
 		};
 		000000000000000000000306 /* Features */ = {
 			isa = PBXGroup;
 			children = (
 				000000000000000000000307 /* Chat */,
-				000000000000000000000308 /* Mail */,
-				000000000000000000000309 /* Download */,
-				00000000000000000000030A /* Settings */,
+				00000000000000000000030A /* Monitor */,
+				00000000000000000000030B /* ServicesHub */,
+				00000000000000000000030C /* Sublink */,
+				00000000000000000000030D /* Komari */,
+				000000000000000000000308 /* Download */,
+				000000000000000000000309 /* Settings */,
 			);
 			path = Features;
 			sourceTree = "<group>";
 		};
-		00000000000000000000030B /* Resources */ = {
+		00000000000000000000030E /* Resources */ = {
 			isa = PBXGroup;
 			children = (
 				000000000000000000000200 /* Assets.xcassets */,
@@ -204,7 +249,7 @@
 			path = Resources;
 			sourceTree = "<group>";
 		};
-		00000000000000000000030D /* PersonalToolbox */ = {
+		000000000000000000000310 /* PersonalToolbox */ = {
 			isa = PBXGroup;
 			children = (
 				000000000000000000000301 /* App */,
@@ -213,12 +258,12 @@
 				000000000000000000000304 /* Models */,
 				000000000000000000000305 /* Services */,
 				000000000000000000000306 /* Features */,
-				00000000000000000000030B /* Resources */,
+				00000000000000000000030E /* Resources */,
 			);
 			path = PersonalToolbox;
 			sourceTree = "<group>";
 		};
-		00000000000000000000030C /* Products */ = {
+		00000000000000000000030F /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				000000000000000000000202 /* PersonalToolbox.app */,
@@ -228,8 +273,8 @@
 		000000000000000000000300 /*  */ = {
 			isa = PBXGroup;
 			children = (
-				00000000000000000000030D /* PersonalToolbox */,
-				00000000000000000000030C /* Products */,
+				000000000000000000000310 /* PersonalToolbox */,
+				00000000000000000000030F /* Products */,
 			);
 			sourceTree = "<group>";
 		};
@@ -244,10 +289,8 @@
 				000000000000000000000207 /* Frameworks */,
 				000000000000000000000206 /* Resources */,
 			);
-			buildRules = (
-			);
-			dependencies = (
-			);
+			buildRules = ();
+			dependencies = ();
 			name = PersonalToolbox;
 			productName = PersonalToolbox;
 			productReference = 000000000000000000000202 /* PersonalToolbox.app */;
@@ -258,48 +301,26 @@
 /* Begin PBXProject section */
 		000000000000000000000204 /* Project object */ = {
 			isa = PBXProject;
-			attributes = {
-				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1540;
-				LastUpgradeCheck = 1540;
-			};
+			attributes = { BuildIndependentTargetsInParallel = 1; LastSwiftUpdateCheck = 1540; LastUpgradeCheck = 1540; };
 			buildConfigurationList = 000000000000000000000401 /* Build configuration list for PBXProject "PersonalToolbox" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
-			knownRegions = (
-				en,
-				Base,
-			);
+			knownRegions = ( en, Base, );
 			mainGroup = 000000000000000000000300;
-			productRefGroup = 00000000000000000000030C /* Products */;
+			productRefGroup = 00000000000000000000030F /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
-			targets = (
-				000000000000000000000203 /* PersonalToolbox */,
-			);
+			targets = ( 000000000000000000000203 /* PersonalToolbox */, );
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		000000000000000000000206 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				000000000000000000000208 /* Assets.xcassets in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
+		000000000000000000000206 /* Resources */ = { isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = ( 000000000000000000000208 /* Assets.xcassets in Resources */, ); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		000000000000000000000207 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
+		000000000000000000000207 /* Frameworks */ = { isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = ( ); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -325,23 +346,30 @@
 				000000000000000000000120 /* DownloadViewModel.swift in Sources */,
 				000000000000000000000122 /* FilesListView.swift in Sources */,
 				000000000000000000000124 /* TaskRowView.swift in Sources */,
-				000000000000000000000126 /* AccountListView.swift in Sources */,
-				000000000000000000000128 /* InboxView.swift in Sources */,
-				00000000000000000000012A /* MailViewModel.swift in Sources */,
-				00000000000000000000012C /* MessageDetailView.swift in Sources */,
-				00000000000000000000012E /* ServiceProbeRow.swift in Sources */,
-				000000000000000000000130 /* SettingsView.swift in Sources */,
-				000000000000000000000132 /* SettingsViewModel.swift in Sources */,
-				000000000000000000000134 /* ChatModels.swift in Sources */,
-				000000000000000000000136 /* ConversationEntity.swift in Sources */,
-				000000000000000000000138 /* DownloadModels.swift in Sources */,
-				00000000000000000000013A /* MailModels.swift in Sources */,
-				00000000000000000000013C /* ConversationStore.swift in Sources */,
-				00000000000000000000013E /* ImagineService.swift in Sources */,
-				000000000000000000000140 /* MailService.swift in Sources */,
-				000000000000000000000142 /* Sub2APIService.swift in Sources */,
-				000000000000000000000144 /* YTService.swift in Sources */,
-				000000000000000000000146 /* AppleTheme.swift in Sources */,
+				000000000000000000000126 /* KomariHomeView.swift in Sources */,
+				000000000000000000000128 /* KomariViewModel.swift in Sources */,
+				00000000000000000000012A /* MonitorHomeView.swift in Sources */,
+				00000000000000000000012C /* MonitorViewModel.swift in Sources */,
+				00000000000000000000012E /* ServicesHubView.swift in Sources */,
+				000000000000000000000130 /* ServiceProbeRow.swift in Sources */,
+				000000000000000000000132 /* SettingsView.swift in Sources */,
+				000000000000000000000134 /* SettingsViewModel.swift in Sources */,
+				000000000000000000000136 /* SublinkHomeView.swift in Sources */,
+				000000000000000000000138 /* SublinkViewModel.swift in Sources */,
+				00000000000000000000013A /* AdminModels.swift in Sources */,
+				00000000000000000000013C /* ChatModels.swift in Sources */,
+				00000000000000000000013E /* ConversationEntity.swift in Sources */,
+				000000000000000000000140 /* DownloadModels.swift in Sources */,
+				000000000000000000000142 /* KomariModels.swift in Sources */,
+				000000000000000000000144 /* SublinkModels.swift in Sources */,
+				000000000000000000000146 /* ConversationStore.swift in Sources */,
+				000000000000000000000148 /* ImagineService.swift in Sources */,
+				00000000000000000000014A /* KomariService.swift in Sources */,
+				00000000000000000000014C /* Sub2APIService.swift in Sources */,
+				00000000000000000000014E /* Sub2AdminService.swift in Sources */,
+				000000000000000000000150 /* SublinkService.swift in Sources */,
+				000000000000000000000152 /* YTService.swift in Sources */,
+				000000000000000000000154 /* AppleTheme.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -353,15 +381,11 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ENABLE_MODULES = YES;
-				CLANG_ENABLE_OBJC_ARC = YES;
-				DEBUG_INFORMATION_FORMAT = dwarf;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
-				ONLY_ACTIVE_ARCH = YES;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				SDKROOT = iphoneos;
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 			};
 			name = Debug;
 		};
@@ -370,12 +394,10 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ENABLE_MODULES = YES;
-				CLANG_ENABLE_OBJC_ARC = YES;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				SWIFT_COMPILATION_MODE = wholemodule;
-				VALIDATE_PRODUCT = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
 		};
@@ -383,28 +405,22 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = PersonalToolbox/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
+				LD_RUNPATH_SEARCH_PATHS = ( "$(inherited)", "@executable_path/Frameworks", );
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = app.parsnip6345.lake8262;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "00008150-001A088E148B401C6F01CD";
 				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "00008150-001A088E148B401C6F01CD";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -414,28 +430,22 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = PersonalToolbox/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
+				LD_RUNPATH_SEARCH_PATHS = ( "$(inherited)", "@executable_path/Frameworks", );
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = app.parsnip6345.lake8262;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "00008150-001A088E148B401C6F01CD";
 				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "00008150-001A088E148B401C6F01CD";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -444,24 +454,8 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		000000000000000000000400 /* Build configuration list for PBXNativeTarget "PersonalToolbox" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				000000000000000000000502 /* Debug */,
-				000000000000000000000503 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		000000000000000000000401 /* Build configuration list for PBXProject "PersonalToolbox" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				000000000000000000000500 /* Debug */,
-				000000000000000000000501 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
+		000000000000000000000400 /* Build configuration list for PBXNativeTarget "PersonalToolbox" */ = { isa = XCConfigurationList; buildConfigurations = ( 000000000000000000000502 /* Debug */, 000000000000000000000503 /* Release */, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		000000000000000000000401 /* Build configuration list for PBXProject "PersonalToolbox" */ = { isa = XCConfigurationList; buildConfigurations = ( 000000000000000000000500 /* Debug */, 000000000000000000000501 /* Release */, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 /* End XCConfigurationList section */
 	};
 	rootObject = 000000000000000000000204 /* Project object */;

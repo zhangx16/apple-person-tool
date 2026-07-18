@@ -1,11 +1,9 @@
 import SwiftUI
 
-/// Credentials, connectivity probes, appearance, privacy, and logout-all.
 struct SettingsView: View {
     @EnvironmentObject private var settings: AppSettings
     @StateObject private var viewModel = SettingsViewModel()
     @State private var confirmLogout = false
-    @State private var favoriteDraft = ""
     @State private var biometricAlert: String?
     @State private var isEnablingBiometric = false
 
@@ -13,8 +11,10 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 sub2Section
-                mailSection
+                adminSection
                 ytSection
+                sublinkSection
+                komariSection
                 appearanceSection
                 privacySection
                 aboutSection
@@ -32,7 +32,7 @@ struct SettingsView: View {
                 }
                 Button("取消", role: .cancel) {}
             } message: {
-                Text("将清除本机邮件 Cookie 与下载 Token。服务端账号与密钥不会删除。")
+                Text("将清除下载 Token 与 SublinkX 登录态。密钥不会删除。")
             }
             .alert(
                 "会话",
@@ -59,7 +59,7 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - sub2api
+    // MARK: - Sub2API chat
 
     private var sub2Section: some View {
         Section {
@@ -68,153 +68,64 @@ struct SettingsView: View {
                 .autocorrectionDisabled()
                 .keyboardType(.URL)
 
-            SecureField("API Key", text: $settings.sub2apiAPIKey)
+            SecureField("Chat API Key", text: $settings.sub2apiAPIKey)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .privacySensitive()
 
             Picker("首选文本模型", selection: $settings.preferredModel) {
-                ForEach(viewModel.modelChoices, id: \.self) { model in
-                    Text(model).tag(model)
-                }
+                ForEach(viewModel.modelChoices, id: \.self) { Text($0).tag($0) }
             }
-
             Picker("默认生图模型", selection: $settings.preferredImagineImageModel) {
-                ForEach(viewModel.imagineImageChoices, id: \.self) { model in
-                    Text(model).tag(model)
-                }
+                ForEach(viewModel.imagineImageChoices, id: \.self) { Text($0).tag($0) }
             }
-
             Picker("默认编辑模型", selection: $settings.preferredImagineEditModel) {
-                ForEach(viewModel.imagineEditChoices, id: \.self) { model in
-                    Text(model).tag(model)
-                }
+                ForEach(viewModel.imagineEditChoices, id: \.self) { Text($0).tag($0) }
             }
-
             Picker("默认视频模型", selection: $settings.preferredImagineVideoModel) {
-                ForEach(viewModel.imagineVideoChoices, id: \.self) { model in
-                    Text(model).tag(model)
-                }
+                ForEach(viewModel.imagineVideoChoices, id: \.self) { Text($0).tag($0) }
             }
 
             TextField("系统提示词", text: $settings.systemPrompt, axis: .vertical)
                 .lineLimit(2...5)
 
+            ServiceProbeRow(state: viewModel.sub2Probe)
             Button {
                 Task { await viewModel.testSub2API() }
             } label: {
-                probeButtonLabel(title: "测试连接", busy: viewModel.sub2Probe.isProbing)
+                Label("测试 Chat 连接", systemImage: "bolt.horizontal.circle")
             }
-            .disabled(viewModel.sub2Probe.isProbing)
             .buttonStyle(PressableButtonStyle())
-            .accessibilityHint("探测 sub2api 连通性")
-
-            ServiceProbeRow(state: viewModel.sub2Probe)
+            .disabled(viewModel.sub2Probe.isProbing)
         } header: {
-            Label("AI（sub2api）", systemImage: "sparkles")
+            Text("Sub2API · 助手")
         } footer: {
-            Text("Authorization: Bearer API Key。测试连接会调用 GET /v1/models。文本与 Imagine 模型列表分离。")
+            Text("用于对话与 Imagine。默认 \(settings.sub2apiBaseURL)")
         }
     }
 
-    // MARK: - mail
+    // MARK: - Admin monitor
 
-    private var mailSection: some View {
+    private var adminSection: some View {
         Section {
-            TextField("Base URL", text: $settings.mailBaseURL)
+            SecureField("Admin API Key (x-api-key)", text: $settings.sub2apiAdminAPIKey)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
-                .keyboardType(.URL)
+                .privacySensitive()
 
-            Picker("认证方式", selection: $settings.mailUseExternalAPI) {
-                Text("管理密码登录").tag(false)
-                Text("外部 API Key").tag(true)
-            }
-
-            if settings.mailUseExternalAPI {
-                SecureField("外部 API Key", text: $settings.mailExternalAPIKey)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .privacySensitive()
-                TextField("默认邮箱", text: $settings.mailDefaultEmail)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .keyboardType(.emailAddress)
-                    .textContentType(.emailAddress)
-
-                // Favorite mailboxes (optional; shown as virtual accounts on Mail tab).
-                HStack {
-                    TextField("添加收藏邮箱", text: $favoriteDraft)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .keyboardType(.emailAddress)
-                        .textContentType(.emailAddress)
-                        .submitLabel(.done)
-                        .onSubmit { addFavoriteEmail() }
-                    Button {
-                        addFavoriteEmail()
-                    } label: {
-                        Image(systemName: "plus.circle.fill")
-                    }
-                    .disabled(favoriteDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    .accessibilityLabel("添加收藏邮箱")
-                }
-
-                ForEach(settings.normalizedMailFavoriteEmails, id: \.self) { email in
-                    HStack {
-                        Image(systemName: "star.fill")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Text(email)
-                            .lineLimit(1)
-                        Spacer(minLength: 8)
-                        Button(role: .destructive) {
-                            settings.removeMailFavoriteEmail(email)
-                            Haptics.light()
-                        } label: {
-                            Image(systemName: "minus.circle.fill")
-                                .foregroundStyle(.red.opacity(0.85))
-                        }
-                        .buttonStyle(.borderless)
-                        .accessibilityLabel("移除 \(email)")
-                    }
-                }
-            } else {
-                SecureField("管理密码", text: $settings.mailPassword)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .privacySensitive()
-            }
-
+            ServiceProbeRow(state: viewModel.adminProbe)
             Button {
-                Task { await viewModel.testMail() }
+                Task { await viewModel.testAdmin() }
             } label: {
-                probeButtonLabel(title: "测试连接", busy: viewModel.mailProbe.isProbing)
+                Label("测试监控接口", systemImage: "chart.bar")
             }
-            .disabled(viewModel.mailProbe.isProbing)
             .buttonStyle(PressableButtonStyle())
-            .accessibilityHint("探测邮件服务连通性")
-
-            ServiceProbeRow(state: viewModel.mailProbe)
+            .disabled(viewModel.adminProbe.isProbing)
         } header: {
-            Label("邮件", systemImage: "envelope")
+            Text("Sub2API · 监控")
         } footer: {
-            Text(
-                settings.mailUseExternalAPI
-                    ? "外部模式走 X-API-Key，列表/详情均带 email；默认邮箱必填，收藏邮箱可选。探测 /api/external/health。"
-                    : "会话登录：探测 ensureSession 并列出账号。Cookie 存于 App 隔离存储。"
-            )
+            Text("对应 sub2api-mobile 的 Admin Token，访问 /api/v1/admin/dashboard/*。可与 Chat Key 不同。")
         }
-    }
-
-    private func addFavoriteEmail() {
-        let draft = favoriteDraft
-        guard settings.addMailFavoriteEmail(draft) else {
-            Haptics.error()
-            return
-        }
-        favoriteDraft = ""
-        Haptics.light()
     }
 
     // MARK: - yt-dlp
@@ -225,154 +136,128 @@ struct SettingsView: View {
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .keyboardType(.URL)
-
             TextField("用户名", text: $settings.ytUsername)
                 .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .textContentType(.username)
-
             SecureField("密码", text: $settings.ytPassword)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .textContentType(.password)
                 .privacySensitive()
-
+            ServiceProbeRow(state: viewModel.ytProbe)
             Button {
                 Task { await viewModel.testYT() }
             } label: {
-                probeButtonLabel(title: "测试连接", busy: viewModel.ytProbe.isProbing)
+                Label("测试下载服务", systemImage: "arrow.down.circle")
             }
-            .disabled(viewModel.ytProbe.isProbing)
             .buttonStyle(PressableButtonStyle())
-            .accessibilityHint("探测下载服务连通性")
-
-            ServiceProbeRow(state: viewModel.ytProbe)
         } header: {
-            Label("下载（yt-dlp）", systemImage: "arrow.down.circle")
-        } footer: {
-            Text("测试连接会登录并请求 /api/v1/version。")
+            Text("yt-dlp Web UI")
         }
     }
 
-    // MARK: - Appearance
+    // MARK: - SublinkX
+
+    private var sublinkSection: some View {
+        Section {
+            TextField("Base URL", text: $settings.sublinkBaseURL)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .keyboardType(.URL)
+            TextField("用户名", text: $settings.sublinkUsername)
+                .textInputAutocapitalization(.never)
+            SecureField("密码", text: $settings.sublinkPassword)
+                .privacySensitive()
+            ServiceProbeRow(state: viewModel.sublinkProbe)
+            Button {
+                Task { await viewModel.testSublink() }
+            } label: {
+                Label("测试 SublinkX", systemImage: "link")
+            }
+            .buttonStyle(PressableButtonStyle())
+        } header: {
+            Text("SublinkX")
+        } footer: {
+            Text("默认 https://sub.996616.xyz · 登录需验证码（在服务页完成）")
+        }
+    }
+
+    // MARK: - Komari
+
+    private var komariSection: some View {
+        Section {
+            TextField("Base URL", text: $settings.komariBaseURL)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .keyboardType(.URL)
+            ServiceProbeRow(state: viewModel.komariProbe)
+            Button {
+                Task { await viewModel.testKomari() }
+            } label: {
+                Label("测试 Komari", systemImage: "server.rack")
+            }
+            .buttonStyle(PressableButtonStyle())
+        } header: {
+            Text("Komari 探针")
+        } footer: {
+            Text("默认 https://komari.996616.xyz · 使用公开 /api/nodes 接口")
+        }
+    }
+
+    // MARK: - Appearance / privacy
 
     private var appearanceSection: some View {
-        Section {
-            Picker("外观", selection: $settings.appearance) {
+        Section("外观") {
+            Picker("主题", selection: $settings.appearance) {
                 Text("跟随系统").tag(AppSettings.Appearance.system.rawValue)
                 Text("浅色").tag(AppSettings.Appearance.light.rawValue)
                 Text("深色").tag(AppSettings.Appearance.dark.rawValue)
             }
-            .pickerStyle(.segmented)
-        } header: {
-            Label("外观", systemImage: "circle.lefthalf.filled")
         }
     }
-
-    // MARK: - Privacy
 
     private var privacySection: some View {
-        Section {
+        Section("隐私与安全") {
             Toggle("应用切换时隐藏敏感内容", isOn: $settings.hideSensitiveInAppSwitcher)
-                .accessibilityHint("切到后台或应用切换器时用遮罩隐藏界面")
-
-            Toggle("启动时需要面容/触控 ID", isOn: biometricUnlockBinding)
-                .disabled(isEnablingBiometric || (!BiometricAuth.canAuthenticate && !settings.requireBiometricUnlock))
-                .accessibilityHint(
-                    BiometricAuth.canAuthenticate || settings.requireBiometricUnlock
-                        ? "每次进入应用需验证设备所有者身份；开启前会先验证一次"
-                        : "设备未设置面容 ID、触控 ID 或密码，无法开启"
+            Toggle(
+                "启动时需要面容/触控 ID",
+                isOn: Binding(
+                    get: { settings.requireBiometricUnlock },
+                    set: { newValue in
+                        if newValue {
+                            Task { await enableBiometric() }
+                        } else {
+                            settings.requireBiometricUnlock = false
+                        }
+                    }
                 )
+            )
+            .disabled(!BiometricAuth.canAuthenticate && !settings.requireBiometricUnlock)
 
-            Button(role: .destructive) {
+            Button("注销全部会话", role: .destructive) {
                 confirmLogout = true
-            } label: {
-                Label("注销全部会话", systemImage: "rectangle.portrait.and.arrow.right")
-                    .frame(minHeight: 44)
             }
-            .buttonStyle(PressableButtonStyle())
-            .accessibilityHint("清除本机邮件 Cookie 与下载 Token")
-        } header: {
-            Label("隐私与会话", systemImage: "lock.shield")
-        } footer: {
-            Text(privacyFooterText)
         }
     }
-
-    private var privacyFooterText: String {
-        if !BiometricAuth.canAuthenticate && !settings.requireBiometricUnlock {
-            return "生物识别锁默认关闭。此设备未设置面容 ID、触控 ID 或设备密码，无法开启应用锁。注销仅清除本机 Cookie 与 Token，不会删除已保存的密钥。"
-        }
-        return "生物识别锁默认关闭。开启前会先验证身份；之后从后台返回也需重新验证。注销仅清除本机 Cookie 与 Token，不会删除已保存的密钥。"
-    }
-
-    /// Binding that only commits `true` after a successful auth preflight (review Issue 3).
-    private var biometricUnlockBinding: Binding<Bool> {
-        Binding(
-            get: { settings.requireBiometricUnlock },
-            set: { newValue in
-                if newValue {
-                    Task { await enableBiometricUnlock() }
-                } else {
-                    settings.requireBiometricUnlock = false
-                }
-            }
-        )
-    }
-
-    @MainActor
-    private func enableBiometricUnlock() async {
-        guard !isEnablingBiometric else { return }
-        guard BiometricAuth.canAuthenticate else {
-            biometricAlert = "此设备未设置面容 ID、触控 ID 或设备密码，无法开启应用锁。"
-            Haptics.error()
-            return
-        }
-        isEnablingBiometric = true
-        defer { isEnablingBiometric = false }
-        let ok = await BiometricAuth.authenticate(reason: "验证身份以开启应用锁")
-        if ok {
-            settings.requireBiometricUnlock = true
-            Haptics.success()
-        } else {
-            // Keep setting off so user is never locked out without a successful enable.
-            settings.requireBiometricUnlock = false
-            biometricAlert = "验证失败或已取消，未开启应用锁。"
-            Haptics.error()
-        }
-    }
-
-    // MARK: - About
 
     private var aboutSection: some View {
-        Section {
+        Section("关于") {
             LabeledContent("应用", value: "PersonalToolbox")
-            LabeledContent("平台", value: "iOS 17+")
-        } header: {
-            Text("关于")
-        } footer: {
-            Text("公网 HTTPS 服务请配合 VPN/白名单与定期轮换密钥使用。")
+            LabeledContent("版本", value: "1.1")
+            Text("助手 · Sub2API 监控 · SublinkX · Komari · yt-dlp")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
 
-    // MARK: - Helpers
-
-    @ViewBuilder
-    private func probeButtonLabel(title: String, busy: Bool) -> some View {
-        HStack {
-            if busy {
-                ProgressView()
-                    .controlSize(.small)
-            } else {
-                Image(systemName: "antenna.radiowaves.left.and.right")
-            }
-            Text(title)
-            Spacer()
+    private func enableBiometric() async {
+        isEnablingBiometric = true
+        defer { isEnablingBiometric = false }
+        guard BiometricAuth.canAuthenticate else {
+            biometricAlert = "设备未设置面容/触控 ID 或密码"
+            return
+        }
+        let ok = await BiometricAuth.authenticate(reason: "开启应用锁")
+        if ok {
+            settings.requireBiometricUnlock = true
+        } else {
+            biometricAlert = "验证未通过，未开启应用锁"
         }
     }
-}
-
-#Preview {
-    SettingsView()
-        .environmentObject(AppSettings.shared)
 }

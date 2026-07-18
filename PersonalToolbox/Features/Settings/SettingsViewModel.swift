@@ -1,98 +1,73 @@
 import Foundation
 import Combine
 
-/// Drives connectivity probes and logout-all for the Settings tab.
 @MainActor
 final class SettingsViewModel: ObservableObject {
     @Published private(set) var sub2Probe: ServiceProbeState = .unknown
-    @Published private(set) var mailProbe: ServiceProbeState = .unknown
+    @Published private(set) var adminProbe: ServiceProbeState = .unknown
     @Published private(set) var ytProbe: ServiceProbeState = .unknown
-    /// Models discovered by the last successful sub2api probe (merged into preferred-model picker).
+    @Published private(set) var sublinkProbe: ServiceProbeState = .unknown
+    @Published private(set) var komariProbe: ServiceProbeState = .unknown
     @Published private(set) var discoveredModels: [String] = []
     @Published var logoutNotice: String?
 
     private let settings: AppSettings
     private let sub2 = Sub2APIService.shared
-    private let mail = MailService.shared
+    private let admin = Sub2AdminService.shared
     private let yt = YTService.shared
+    private let sublink = SublinkService.shared
+    private let komari = KomariService.shared
     private let network = NetworkClient.shared
 
     init(settings: AppSettings = .shared) {
         self.settings = settings
     }
 
-    /// Text models for the preferred-model picker: discovered ∪ defaults, **excluding** Imagine.
     var modelChoices: [String] {
         var set = Set(AppSettings.defaultModels)
         discoveredModels.filter { Sub2APIService.isTextModel($0) }.forEach { set.insert($0) }
         let preferred = settings.preferredModel.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !preferred.isEmpty, Sub2APIService.isTextModel(preferred) {
-            set.insert(preferred)
-        }
+        if !preferred.isEmpty, Sub2APIService.isTextModel(preferred) { set.insert(preferred) }
         return set.sorted()
     }
 
-    /// Imagine image models for settings picker.
     var imagineImageChoices: [String] {
         var set = Set(AppSettings.defaultImagineImageModels)
-        discoveredModels.filter { Sub2APIService.isImagineImageModel($0) || ($0.lowercased() == "grok-imagine") }
+        discoveredModels.filter { Sub2APIService.isImagineImageModel($0) || $0.lowercased() == "grok-imagine" }
             .forEach { set.insert($0) }
-        let preferred = settings.preferredImagineImageModel
-        if !preferred.isEmpty { set.insert(preferred) }
+        if !settings.preferredImagineImageModel.isEmpty { set.insert(settings.preferredImagineImageModel) }
         return set.sorted()
     }
 
     var imagineEditChoices: [String] {
         var set = Set(AppSettings.defaultImagineEditModels)
         discoveredModels.filter { Sub2APIService.isImagineEditModel($0) }.forEach { set.insert($0) }
-        let preferred = settings.preferredImagineEditModel
-        if !preferred.isEmpty { set.insert(preferred) }
+        if !settings.preferredImagineEditModel.isEmpty { set.insert(settings.preferredImagineEditModel) }
         return set.sorted()
     }
 
     var imagineVideoChoices: [String] {
         var set = Set(AppSettings.defaultImagineVideoModels)
         discoveredModels.filter { Sub2APIService.isImagineVideoModel($0) }.forEach { set.insert($0) }
-        let preferred = settings.preferredImagineVideoModel
-        if !preferred.isEmpty { set.insert(preferred) }
+        if !settings.preferredImagineVideoModel.isEmpty { set.insert(settings.preferredImagineVideoModel) }
         return set.sorted()
     }
-
-    // MARK: - Probes
 
     func testSub2API() async {
         guard !sub2Probe.isProbing else { return }
         let base = settings.sub2apiBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
         let key = settings.sub2apiAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !base.isEmpty else {
-            sub2Probe = .failure("请填写 Base URL")
+        guard !base.isEmpty, !key.isEmpty else {
+            sub2Probe = .failure("请填写 Base URL 与 Chat API Key")
             Haptics.error()
             return
         }
-        guard !key.isEmpty else {
-            sub2Probe = .failure("请填写 API Key")
-            Haptics.error()
-            return
-        }
-
         sub2Probe = .probing
         let start = ContinuousClock.now
         do {
             let models = try await sub2.listModels(baseURL: base, apiKey: key)
-            let ms = elapsedMs(since: start)
             discoveredModels = models
-            let detail: String
-            if models.isEmpty {
-                detail = "已连通"
-            } else {
-                detail = "\(models.count) 个模型"
-            }
-            sub2Probe = .success(latencyMs: ms, detail: detail)
-            // Prefer first remote **text** model only if current preferred is empty.
-            if settings.preferredModel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-               let first = models.first(where: { Sub2APIService.isTextModel($0) }) {
-                settings.preferredModel = first
-            }
+            sub2Probe = .success(latencyMs: elapsedMs(since: start), detail: "\(models.count) 个模型")
             Haptics.success()
         } catch {
             sub2Probe = .failure(Self.chineseError(error))
@@ -100,61 +75,23 @@ final class SettingsViewModel: ObservableObject {
         }
     }
 
-    func testMail() async {
-        guard !mailProbe.isProbing else { return }
-        let base = settings.mailBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !base.isEmpty else {
-            mailProbe = .failure("请填写 Base URL")
+    func testAdmin() async {
+        guard !adminProbe.isProbing else { return }
+        let base = settings.sub2apiBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        let key = settings.sub2apiAdminAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !base.isEmpty, !key.isEmpty else {
+            adminProbe = .failure("请填写 Admin API Key")
             Haptics.error()
             return
         }
-
-        mailProbe = .probing
+        adminProbe = .probing
         let start = ContinuousClock.now
         do {
-            if settings.mailUseExternalAPI {
-                let key = settings.mailExternalAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !key.isEmpty else {
-                    mailProbe = .failure("请填写外部 API Key")
-                    Haptics.error()
-                    return
-                }
-                // List/detail require email; keep configured-check aligned with isMailConfigured.
-                let email = settings.mailDefaultEmail.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !email.isEmpty else {
-                    mailProbe = .failure("请填写默认邮箱")
-                    Haptics.error()
-                    return
-                }
-                let ok = try await mail.externalHealth(baseURL: base, apiKey: key)
-                let ms = elapsedMs(since: start)
-                if ok {
-                    let favorites = settings.normalizedMailFavoriteEmails.count
-                    let detail = favorites > 0
-                        ? "外部 API 健康 · \(email) + \(favorites) 收藏"
-                        : "外部 API 健康 · \(email)"
-                    mailProbe = .success(latencyMs: ms, detail: detail)
-                    Haptics.success()
-                } else {
-                    mailProbe = .failure("健康检查未通过")
-                    Haptics.error()
-                }
-            } else {
-                let password = settings.mailPassword
-                guard !password.isEmpty else {
-                    mailProbe = .failure("请填写管理密码")
-                    Haptics.error()
-                    return
-                }
-                // Shared ensureSession; then list accounts to verify cookie path end-to-end.
-                let page = try await mail.listAccounts(baseURL: base, password: password)
-                let ms = elapsedMs(since: start)
-                let total = page.totalCount ?? page.accounts.count
-                mailProbe = .success(latencyMs: ms, detail: "\(total) 个邮箱账号")
-                Haptics.success()
-            }
+            let detail = try await admin.probe(baseURL: base, adminKey: key)
+            adminProbe = .success(latencyMs: elapsedMs(since: start), detail: detail)
+            Haptics.success()
         } catch {
-            mailProbe = .failure(Self.chineseError(error))
+            adminProbe = .failure(Self.chineseError(error))
             Haptics.error()
         }
     }
@@ -162,34 +99,21 @@ final class SettingsViewModel: ObservableObject {
     func testYT() async {
         guard !ytProbe.isProbing else { return }
         let base = settings.ytBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        let user = settings.ytUsername.trimmingCharacters(in: .whitespacesAndNewlines)
-        let password = settings.ytPassword
-        guard !base.isEmpty else {
-            ytProbe = .failure("请填写 Base URL")
+        guard !base.isEmpty, settings.isYTConfigured else {
+            ytProbe = .failure("请填写下载服务账号")
             Haptics.error()
             return
         }
-        guard !user.isEmpty else {
-            ytProbe = .failure("请填写用户名")
-            Haptics.error()
-            return
-        }
-        guard !password.isEmpty else {
-            ytProbe = .failure("请填写密码")
-            Haptics.error()
-            return
-        }
-
         ytProbe = .probing
         let start = ContinuousClock.now
         do {
-            // Force a fresh login for the probe so credential changes are exercised.
             await yt.logout()
-            try await yt.login(baseURL: base, username: user, password: password)
-            let version = try await yt.version(baseURL: base, username: user, password: password)
-            let ms = elapsedMs(since: start)
-            let detail = version.isEmpty || version == "ok" ? "yt-dlp 已连通" : "yt-dlp \(version)"
-            ytProbe = .success(latencyMs: ms, detail: detail)
+            let ver = try await yt.version(
+                baseURL: base,
+                username: settings.ytUsername,
+                password: settings.ytPassword
+            )
+            ytProbe = .success(latencyMs: elapsedMs(since: start), detail: "yt-dlp \(ver)")
             Haptics.success()
         } catch {
             ytProbe = .failure(Self.chineseError(error))
@@ -197,44 +121,67 @@ final class SettingsViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Logout all
+    func testSublink() async {
+        guard !sublinkProbe.isProbing else { return }
+        let base = settings.sublinkBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !base.isEmpty else {
+            sublinkProbe = .failure("请填写 Base URL")
+            Haptics.error()
+            return
+        }
+        sublinkProbe = .probing
+        let start = ContinuousClock.now
+        do {
+            // Captcha endpoint is unauthenticated health-ish signal.
+            _ = try await sublink.fetchCaptcha(baseURL: base)
+            // If already logged in, try overview.
+            await sublink.restoreToken()
+            if await sublink.hasToken {
+                let detail = try await sublink.probe(baseURL: base)
+                sublinkProbe = .success(latencyMs: elapsedMs(since: start), detail: detail)
+            } else {
+                sublinkProbe = .success(latencyMs: elapsedMs(since: start), detail: "验证码接口可用（需在服务页登录）")
+            }
+            Haptics.success()
+        } catch {
+            sublinkProbe = .failure(Self.chineseError(error))
+            Haptics.error()
+        }
+    }
 
-    /// Clears mail cookies, mail session flag, and in-memory YT token.
+    func testKomari() async {
+        guard !komariProbe.isProbing else { return }
+        let base = settings.komariBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !base.isEmpty else {
+            komariProbe = .failure("请填写 Base URL")
+            Haptics.error()
+            return
+        }
+        komariProbe = .probing
+        let start = ContinuousClock.now
+        do {
+            let detail = try await komari.probe(baseURL: base)
+            komariProbe = .success(latencyMs: elapsedMs(since: start), detail: detail)
+            Haptics.success()
+        } catch {
+            komariProbe = .failure(Self.chineseError(error))
+            Haptics.error()
+        }
+    }
+
     func logoutAllSessions() async {
         network.clearCookies()
-        await mail.logout()
         await yt.logout()
-        sub2Probe = .unknown
-        mailProbe = .unknown
-        ytProbe = .unknown
-        logoutNotice = "已注销全部本地会话（邮件 Cookie 与下载 Token）"
+        await sublink.logout()
+        logoutNotice = "已清除下载 Token、SublinkX 会话与 Cookie。"
         Haptics.success()
     }
 
-    // MARK: - Helpers
-
     private func elapsedMs(since start: ContinuousClock.Instant) -> Int {
-        let duration = start.duration(to: .now)
-        let ms = Double(duration.components.seconds) * 1000
-            + Double(duration.components.attoseconds) / 1e15
-        return max(0, Int(ms.rounded()))
+        Int(start.duration(to: .now) / .milliseconds(1))
     }
 
-    static func chineseError(_ error: Error) -> String {
-        if let net = error as? NetworkError {
-            return net.errorDescription ?? "网络错误"
-        }
-        let ns = error as NSError
-        if ns.domain == NSURLErrorDomain {
-            switch ns.code {
-            case NSURLErrorNotConnectedToInternet: return "无网络连接"
-            case NSURLErrorTimedOut: return "请求超时"
-            case NSURLErrorCannotFindHost, NSURLErrorCannotConnectToHost: return "无法连接服务器"
-            case NSURLErrorSecureConnectionFailed: return "安全连接失败"
-            default: break
-            }
-        }
-        let text = error.localizedDescription.trimmingCharacters(in: .whitespacesAndNewlines)
-        return text.isEmpty ? "未知错误" : text
+    private static func chineseError(_ error: Error) -> String {
+        (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
     }
 }

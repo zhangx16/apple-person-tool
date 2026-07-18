@@ -217,18 +217,9 @@ final class AppSettings: ObservableObject {
         hideSensitiveInAppSwitcher = d.object(forKey: Keys.hideSensitiveInAppSwitcher) as? Bool ?? false
         requireBiometricUnlock = d.object(forKey: Keys.requireBiometricUnlock) as? Bool ?? false
         notifyDownloadCompleted = d.object(forKey: Keys.notifyDownloadCompleted) as? Bool ?? true
-        // 快递100 实时查询：用户授权的 customer / key（可在设置中修改）
-        kuaidi100Customer = d.string(forKey: Keys.kuaidi100Customer)
-            ?? "5B12BD69389A8F0C68EA98481D7353EC"
-        kuaidi100Key = KeychainStore.get(Keys.kuaidi100Key)
-            ?? "PsnqZQFz6450"
-        // 首次写入，便于后续设置页可见且可改
-        if d.string(forKey: Keys.kuaidi100Customer) == nil {
-            UserDefaults.standard.set(kuaidi100Customer, forKey: Keys.kuaidi100Customer)
-        }
-        if KeychainStore.get(Keys.kuaidi100Key) == nil {
-            KeychainStore.set(kuaidi100Key, for: Keys.kuaidi100Key)
-        }
+        // 快递100：仅从本机 UserDefaults / Keychain 读取，不在仓库中预置密钥
+        kuaidi100Customer = d.string(forKey: Keys.kuaidi100Customer) ?? ""
+        kuaidi100Key = KeychainStore.get(Keys.kuaidi100Key) ?? ""
     }
 
     var isAIConfigured: Bool {

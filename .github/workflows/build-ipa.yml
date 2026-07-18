@@ -11,6 +11,7 @@ on:
 permissions:
   contents: write
   actions: read
+  issues: write
 
 jobs:
   build:
@@ -181,40 +182,59 @@ jobs:
             ${{ runner.temp }}/xcodebuild-export.log
           if-no-files-found: ignore
 
-      # GITHUB_TOKEN can push logs to a branch so we can read them without a PAT.
-      - name: Publish build log to ci-logs branch
+      # Public issue with compile errors (readable without PAT / log login).
+      - name: Open issue with archive errors
         if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          LOG="$RUNNER_TEMP/xcodebuild-archive.log"
-          if [ ! -f "$LOG" ]; then
-            echo "No archive log present"
-            exit 0
-          fi
-          WORK=/tmp/ci-logs-publish
-          rm -rf "$WORK"
-          git clone --depth 1 --branch main "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$WORK"
-          cd "$WORK"
-          mkdir -p ci-logs
-          {
-            echo "# Archive failure log"
-            echo
-            echo "- run: ${GITHUB_RUN_ID}"
-            echo "- sha: ${GITHUB_SHA}"
-            echo "- time: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-            echo
-            echo '## Grep errors'
-            echo '```'
-            grep -E 'error:|fatal error|❌' "$LOG" | tail -n 100 || true
-            echo '```'
-            echo
-            echo '## Tail'
-            echo '```'
-            tail -n 200 "$LOG" || true
-            echo '```'
-          } > ci-logs/latest-archive-failure.md
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add ci-logs/latest-archive-failure.md
-          git commit -m "ci: archive failure log for ${GITHUB_SHA:0:7}" || exit 0
-          git push origin HEAD:main
+          python3 <<'PY'
+          import json, os, re, urllib.error, urllib.request
+
+          log_path = os.path.join(os.environ["RUNNER_TEMP"], "xcodebuild-archive.log")
+          if not os.path.isfile(log_path):
+              print("No archive log")
+              raise SystemExit(0)
+
+          err = open(log_path, errors="replace").read()
+          greps = "\n".join(re.findall(r".*(?:error:|fatal error).*", err)[-100:])
+          tail = "\n".join(err.splitlines()[-150:])
+          sha = os.environ["GITHUB_SHA"][:7]
+          run = os.environ["GITHUB_RUN_ID"]
+          repo = os.environ["GITHUB_REPOSITORY"]
+          server = os.environ.get("GITHUB_SERVER_URL", "https://github.com")
+          body = f"""### Archive failed on `{sha}`
+
+          Run: {server}/{repo}/actions/runs/{run}
+
+          #### Grep errors
+          ```
+          {greps or "(no grep hits)"}
+          ```
+
+          #### Tail
+          ```
+          {tail}
+          ```
+          """
+          data = json.dumps({"title": f"ci: archive failure {sha}", "body": body}).encode()
+          req = urllib.request.Request(
+              f"https://api.github.com/repos/{repo}/issues",
+              data=data,
+              method="POST",
+              headers={
+                  "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
+                  "Accept": "application/vnd.github+json",
+                  "User-Agent": "ci-log-bot",
+                  "Content-Type": "application/json",
+              },
+          )
+          try:
+              with urllib.request.urlopen(req) as resp:
+                  out = json.load(resp)
+                  print("issue", out.get("html_url"))
+          except urllib.error.HTTPError as e:
+              print("issue create failed:", e.read().decode(errors="replace")[:1000])
+              raise
+          PY

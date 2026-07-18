@@ -32,6 +32,9 @@ struct DownloadHomeView: View {
                 if let meta = viewModel.metadata {
                     metadataSection(meta)
                 }
+                if viewModel.isDouyinMode, !viewModel.douyinLogs.isEmpty || !viewModel.douyinStage.isEmpty {
+                    douyinLogSection
+                }
                 tasksSection
                 filesSection
             }
@@ -99,11 +102,22 @@ struct DownloadHomeView: View {
                 .accessibilityLabel("粘贴")
             }
 
-            FormatChipBar(
-                presets: YTFormatOption.presets,
-                selection: $viewModel.selectedPreset
-            )
-            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+            // Route badge when URL field looks like Douyin.
+            if viewModel.isDouyinMode {
+                Label("抖音链接 · 本机解析（无需下载服务）", systemImage: "play.rectangle.fill")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.accentColor)
+                    .accessibilityLabel("当前为抖音本机解析模式")
+            }
+
+            // Quality presets only apply to remote yt-dlp backend.
+            if !viewModel.isDouyinMode {
+                FormatChipBar(
+                    presets: YTFormatOption.presets,
+                    selection: $viewModel.selectedPreset
+                )
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+            }
 
             HStack(spacing: 12) {
                 Button {
@@ -130,7 +144,7 @@ struct DownloadHomeView: View {
                 .buttonStyle(PressableButtonStyle())
                 .disabled(viewModel.isParsing || viewModel.isEnqueueing)
                 .accessibilityLabel("解析链接")
-                .accessibilityHint("获取视频标题与格式信息")
+                .accessibilityHint(viewModel.isDouyinMode ? "本机解析抖音标题" : "获取视频标题与格式信息")
 
                 Button {
                     Task { await viewModel.startDownload() }
@@ -143,7 +157,7 @@ struct DownloadHomeView: View {
                         } else {
                             Image(systemName: "arrow.down.circle.fill")
                         }
-                        Text("开始下载")
+                        Text(viewModel.isDouyinMode ? "本机下载" : "开始下载")
                             .font(.subheadline.weight(.semibold))
                     }
                     .frame(maxWidth: .infinity)
@@ -157,16 +171,47 @@ struct DownloadHomeView: View {
                 }
                 .buttonStyle(PressableButtonStyle())
                 .disabled(viewModel.isParsing || viewModel.isEnqueueing)
-                .accessibilityLabel("开始下载")
-                .accessibilityHint("按所选画质加入下载队列")
+                .accessibilityLabel(viewModel.isDouyinMode ? "本机下载抖音" : "开始下载")
+                .accessibilityHint(
+                    viewModel.isDouyinMode
+                        ? "使用 WebView 解析并下载到本机"
+                        : "按所选画质加入下载队列"
+                )
             }
             .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 12, trailing: 16))
         } header: {
             Text("新建下载")
         } footer: {
-            if !settings.isYTConfigured {
-                Text("请先在「设置」中填写下载服务账号密码。")
+            if viewModel.isDouyinMode {
+                Text("支持 v.douyin.com / douyin.com 分享链接与含链接的分享文案。优先尝试无水印地址，文件保存在本机 Documents/douyin-downloader。")
+            } else if !settings.isYTConfigured {
+                Text("请先在「设置」中填写下载服务账号密码。抖音链接可直接粘贴，无需服务端。")
+            } else {
+                Text("通用视频走 yt-dlp 服务；抖音分享链接自动切换为本机解析。")
             }
+        }
+    }
+
+    private var douyinLogSection: some View {
+        Section {
+            if !viewModel.douyinStage.isEmpty {
+                Text(viewModel.douyinStage)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.accentColor)
+            }
+            if !viewModel.douyinLogs.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(Array(viewModel.douyinLogs.suffix(12).enumerated()), id: \.offset) { _, line in
+                        Text(line)
+                            .font(.caption2.monospaced())
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+        } header: {
+            Text("抖音解析日志")
         }
     }
 

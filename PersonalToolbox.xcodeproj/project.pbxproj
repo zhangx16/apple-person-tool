@@ -47,6 +47,7 @@
 		00000000000000000000014E /* Sub2AdminService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000014D /* Sub2AdminService.swift */; };
 		000000000000000000000150 /* SublinkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000014F /* SublinkService.swift */; };
 		000000000000000000000152 /* YTService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000151 /* YTService.swift */; };
+		0000000000000000000001C3 /* DouyinService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000001C2 /* DouyinService.swift */; };
 		000000000000000000000154 /* AppleTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000153 /* AppleTheme.swift */; };
 		000000000000000000000156 /* ServiceBrandIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000155 /* ServiceBrandIcon.swift */; };
 		000000000000000000000161 /* AnniversaryModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000160 /* AnniversaryModels.swift */; };
@@ -120,6 +121,7 @@
 		00000000000000000000014D /* Sub2AdminService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sub2AdminService.swift; sourceTree = "<group>"; };
 		00000000000000000000014F /* SublinkService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SublinkService.swift; sourceTree = "<group>"; };
 		000000000000000000000151 /* YTService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTService.swift; sourceTree = "<group>"; };
+		0000000000000000000001C2 /* DouyinService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DouyinService.swift; sourceTree = "<group>"; };
 		000000000000000000000153 /* AppleTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleTheme.swift; sourceTree = "<group>"; };
 		000000000000000000000155 /* ServiceBrandIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceBrandIcon.swift; sourceTree = "<group>"; };
 		000000000000000000000160 /* AnniversaryModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnniversaryModels.swift; sourceTree = "<group>"; };
@@ -216,6 +218,7 @@
 				00000000000000000000014D /* Sub2AdminService.swift */,
 				00000000000000000000014F /* SublinkService.swift */,
 				000000000000000000000151 /* YTService.swift */,
+				0000000000000000000001C2 /* DouyinService.swift */,
 				000000000000000000000164 /* AnniversaryStore.swift */,
 				000000000000000000000174 /* QRAssistantStore.swift */,
 				000000000000000000000182 /* TranslatorService.swift */,
@@ -498,6 +501,7 @@
 				00000000000000000000014E /* Sub2AdminService.swift in Sources */,
 				000000000000000000000150 /* SublinkService.swift in Sources */,
 				000000000000000000000152 /* YTService.swift in Sources */,
+				0000000000000000000001C3 /* DouyinService.swift in Sources */,
 				000000000000000000000154 /* AppleTheme.swift in Sources */,
 				000000000000000000000156 /* ServiceBrandIcon.swift in Sources */,
 				000000000000000000000161 /* AnniversaryModels.swift in Sources */,

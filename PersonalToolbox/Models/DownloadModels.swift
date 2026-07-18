@@ -114,3 +114,58 @@ struct VideoMetadata: Hashable {
     var thumbnail: String?
     var uploader: String?
 }
+
+// MARK: - Local media helpers (Douyin)
+
+enum DownloadSourceKind: String, Hashable {
+    case remoteYT
+    case douyin
+
+    var label: String {
+        switch self {
+        case .remoteYT: return "yt-dlp 服务"
+        case .douyin: return "抖音（本机解析）"
+        }
+    }
+}
+
+extension YTTask {
+    /// Local Douyin task id prefix.
+    static let localDouyinPrefix = "local-douyin-"
+
+    var isLocalDouyin: Bool {
+        id.hasPrefix(Self.localDouyinPrefix)
+    }
+
+    static func makeLocalDouyin(
+        id: String = UUID().uuidString,
+        url: String,
+        title: String,
+        processStatus: Int,
+        progress: Double,
+        stage: String,
+        filepath: String? = nil,
+        error: String? = nil
+    ) -> YTTask {
+        YTTask(
+            id: localDouyinPrefix + id,
+            url: url,
+            title: title.isEmpty ? url : title,
+            status: stage,
+            processStatus: processStatus,
+            percentageRaw: processStatus == 2 ? "-1" : String(format: "%.1f%%", progress * 100),
+            progress: progress,
+            speed: "",
+            eta: "",
+            filepath: filepath,
+            error: error,
+            thumbnail: nil
+        )
+    }
+}
+
+extension YTFileItem {
+    var isLocalFile: Bool {
+        id.hasPrefix("local:") || (path.hasPrefix("/") && FileManager.default.fileExists(atPath: path))
+    }
+}

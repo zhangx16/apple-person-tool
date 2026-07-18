@@ -1,136 +1,483 @@
 import Foundation
 
-/// Kuaishou live via `live.kuaishou.com/live_api` (home/hot list) + mobile page fallback.
+/// 快手直播 — 移植自 SimpleLive master `kuaishou_site.dart`（晚于 v1.12.6 合入）。
 actor KuaishouLiveService {
     static let shared = KuaishouLiveService()
 
     private let ua =
-        "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1"
-    private let did = "web_d563dca728d28b00336877723e0359ed"
-    private var homeListCache: [String: Any]?
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    private var cookie = ""
+    private var cookieObj: [String: String] = [:]
+    /// 可选用户 Cookie（日后可挂设置项）
+    private var customCookie = ""
+    private var customKww = ""
 
-    // MARK: - Public
+    private static let imageExts: Set<String> = [
+        "png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "avif", "ico", "tif", "tiff"
+    ]
 
-    func getRecommendRooms(page: Int = 1) async throws -> [LiveRoomItem] {
-        if page == 1 {
-            if let hot = try? await hotList(), !hot.isEmpty { return hot }
-        }
-        let home = try await homeList()
-        let labels = LiveJSON.array(LiveJSON.object(home["data"])?["list"]) ?? []
-        var items: [LiveRoomItem] = []
-        for label in labels {
-            for game in LiveJSON.array(label["gameLiveInfo"]) ?? [] {
-                for live in LiveJSON.array(game["liveInfo"]) ?? [] {
-                    if let room = mapHomeLive(live) { items.append(room) }
-                }
-            }
-        }
-        // page is client-side slice (API often single page)
-        let size = 30
-        let start = (page - 1) * size
-        guard start < items.count else { return [] }
-        return Array(items[start..<min(start + size, items.count)])
+    // MARK: - Headers
+
+    private var baseHeaders: [String: String] {
+        [
+            "User-Agent": ua,
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+            "connection": "keep-alive",
+            "sec-ch-ua": "\"Google Chrome\";v=\"120\", \"Chromium\";v=\"120\", \"Not=A?Brand\";v=\"24\"",
+            "sec-ch-ua-platform": "\"Windows\"",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "same-origin",
+            "Sec-Fetch-User": "?1"
+        ]
     }
 
+    private var headersWithCookie: [String: String] {
+        var h = baseHeaders
+        let c = currentCookieHeader()
+        if !c.isEmpty { h["cookie"] = c }
+        return h
+    }
+
+    private func searchHeaders(keyword: String) -> [String: String] {
+        var h = headersWithCookie
+        h["accept"] = "application/json, text/plain, */*"
+        h["referer"] = "https://live.kuaishou.com/search?keyword=\(keyword.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? keyword)"
+        h["Sec-Fetch-Dest"] = "empty"
+        h["Sec-Fetch-Mode"] = "cors"
+        return h
+    }
+
+    // MARK: - Categories
+
     func getCategories() async throws -> [LiveCategory] {
-        let home = try await homeList()
-        let labels = LiveJSON.array(LiveJSON.object(home["data"])?["list"]) ?? []
-        let children = labels.compactMap { label -> LiveSubCategory? in
-            let id = LiveJSON.string(label["labelId"])
-            let name = LiveJSON.string(label["labelName"])
-            guard !id.isEmpty else { return nil }
-            return LiveSubCategory(
-                id: id,
-                name: name.isEmpty ? "分类\(id)" : name,
-                parentId: "ks",
-                pic: LiveJSON.string(label["labelIcon"])
+        let parents: [(String, String)] = [
+            ("1", "热门"), ("2", "网游"), ("3", "单机"), ("4", "手游"),
+            ("5", "棋牌"), ("6", "娱乐"), ("7", "综合"), ("8", "文化")
+        ]
+        var result: [LiveCategory] = []
+        for (id, name) in parents {
+            let subs = (try? await allSubCategories(parentId: id)) ?? []
+            result.append(LiveCategory(id: id, name: name, children: subs))
+        }
+        return result
+    }
+
+    private func allSubCategories(parentId: String) async throws -> [LiveSubCategory] {
+        var all: [LiveSubCategory] = []
+        var page = 1
+        let pageSize = 30
+        while true {
+            let batch = try await subCategories(parentId: parentId, page: page, size: pageSize)
+            all.append(contentsOf: batch)
+            if batch.count < pageSize { break }
+            page += 1
+            if page > 20 { break }
+        }
+        return all
+    }
+
+    private func subCategories(parentId: String, page: Int, size: Int) async throws -> [LiveSubCategory] {
+        let json = try await getJSON(
+            "https://live.kuaishou.com/live_api/category/data",
+            query: ["type": parentId, "page": "\(page)", "size": "\(size)"],
+            headers: baseHeaders
+        )
+        let list = LiveJSON.array(LiveJSON.object(json["data"])?["list"]) ?? []
+        return list.map { item in
+            LiveSubCategory(
+                id: LiveJSON.string(item["id"]),
+                name: LiveJSON.string(item["name"]),
+                parentId: parentId,
+                pic: LiveJSON.string(item["poster"])
             )
         }
-        return [LiveCategory(id: "ks", name: "快手", children: children)]
     }
 
     func getCategoryRooms(category: LiveSubCategory, page: Int = 1) async throws -> [LiveRoomItem] {
-        let home = try await homeList()
-        let labels = LiveJSON.array(LiveJSON.object(home["data"])?["list"]) ?? []
+        let api = category.id.count < 7
+            ? "https://live.kuaishou.com/live_api/gameboard/list"
+            : "https://live.kuaishou.com/live_api/non-gameboard/list"
+        let json = try await getJSON(
+            api,
+            query: [
+                "filterType": "0",
+                "pageSize": "20",
+                "gameId": category.id,
+                "page": "\(page)"
+            ],
+            headers: baseHeaders
+        )
+        let list = LiveJSON.array(LiveJSON.object(json["data"])?["list"]) ?? []
+        return list.compactMap { item in
+            let author = LiveJSON.object(item["author"]) ?? [:]
+            let roomId = LiveJSON.string(author["id"])
+            guard !roomId.isEmpty else { return nil }
+            var cover = LiveJSON.string(item["poster"])
+            if !cover.isEmpty, !isImageURL(cover) { cover += ".jpg" }
+            return LiveRoomItem(
+                platform: .kuaishou,
+                roomId: roomId,
+                title: LiveJSON.string(item["caption"]),
+                cover: cover,
+                userName: LiveJSON.string(author["name"]),
+                online: LiveJSON.int(item["watchingCount"])
+            )
+        }
+    }
+
+    // MARK: - Recommend
+
+    func getRecommendRooms(page: Int = 1) async throws -> [LiveRoomItem] {
+        // Official home/list; page>1 often empty
+        if page > 1 { return [] }
+        let json = try await getJSON(
+            "https://live.kuaishou.com/live_api/home/list",
+            headers: baseHeaders
+        )
+        let labels = LiveJSON.array(LiveJSON.object(json["data"])?["list"]) ?? []
         var items: [LiveRoomItem] = []
         for label in labels {
-            guard LiveJSON.string(label["labelId"]) == category.id else { continue }
-            for game in LiveJSON.array(label["gameLiveInfo"]) ?? [] {
-                for live in LiveJSON.array(game["liveInfo"]) ?? [] {
-                    if let room = mapHomeLive(live) { items.append(room) }
+            for sitem in LiveJSON.array(label["gameLiveInfo"]) ?? [] {
+                for titem in LiveJSON.array(sitem["liveInfo"]) ?? [] {
+                    let author = LiveJSON.object(titem["author"]) ?? [:]
+                    let gameInfo = LiveJSON.object(titem["gameInfo"]) ?? [:]
+                    let roomId = LiveJSON.string(author["id"])
+                    guard !roomId.isEmpty else { continue }
+                    var cover = LiveJSON.string(gameInfo["poster"])
+                    if cover.isEmpty { cover = LiveJSON.string(titem["poster"]) }
+                    items.append(LiveRoomItem(
+                        platform: .kuaishou,
+                        roomId: roomId,
+                        title: resolveRoomTitle(titem),
+                        cover: cover,
+                        userName: LiveJSON.string(author["name"]),
+                        online: LiveJSON.int(titem["watchingCount"])
+                    ))
                 }
             }
         }
-        let size = 30
-        let start = (page - 1) * size
-        guard start < items.count else { return [] }
-        return Array(items[start..<min(start + size, items.count)])
+        if items.contains(where: { $0.online > 0 }) {
+            items.sort { $0.online > $1.online }
+        }
+        // Fallback hot list
+        if items.isEmpty, let hot = try? await hotList() {
+            return hot
+        }
+        return items
     }
+
+    private func hotList() async throws -> [LiveRoomItem] {
+        let json = try await getJSON(
+            "https://live.kuaishou.com/live_api/hot/list?page=1",
+            headers: baseHeaders
+        )
+        let list = LiveJSON.array(LiveJSON.object(json["data"])?["list"]) ?? []
+        return list.compactMap { live in
+            let author = LiveJSON.object(live["author"]) ?? [:]
+            let roomId = LiveJSON.string(author["id"]).ifEmpty(LiveJSON.string(live["id"]))
+            guard !roomId.isEmpty else { return nil }
+            return LiveRoomItem(
+                platform: .kuaishou,
+                roomId: roomId,
+                title: LiveJSON.string(live["caption"]).ifEmpty(LiveJSON.string(live["id"])),
+                cover: LiveJSON.string(live["poster"]),
+                userName: LiveJSON.string(author["name"]).ifEmpty(roomId),
+                online: LiveJSON.int(live["watchingCount"])
+            )
+        }
+    }
+
+    // MARK: - Search
 
     func searchRooms(keyword: String, page: Int = 1) async throws -> [LiveRoomItem] {
         let kw = keyword.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !kw.isEmpty else { return [] }
-        // Filter recommend by keyword
-        let all = (try? await getRecommendRooms(page: 1)) ?? []
-        let filtered = all.filter {
-            $0.userName.localizedCaseInsensitiveContains(kw)
-                || $0.title.localizedCaseInsensitiveContains(kw)
-                || $0.roomId.localizedCaseInsensitiveContains(kw)
+        if let direct = try? await searchLiveStreams(keyword: kw, page: page), !direct.isEmpty {
+            return direct
         }
-        if !filtered.isEmpty { return filtered }
-        if page == 1 {
-            if let detail = try? await getRoomDetail(roomId: kw), detail.isLive || !detail.title.isEmpty {
-                return [
-                    LiveRoomItem(
-                        platform: .kuaishou,
-                        roomId: detail.roomId,
-                        title: detail.title.isEmpty ? kw : detail.title,
-                        cover: detail.cover,
-                        userName: detail.userName.isEmpty ? kw : detail.userName,
-                        online: detail.online
-                    )
-                ]
-            }
-            throw NetworkError.message("未找到「\(kw)」。可输入主播 ID，或从推荐/分类进入。")
+        if page > 1 { return [] }
+        // overview fallback
+        if let overview = try? await searchOverview(keyword: kw) {
+            let streams = findOverviewSection(overview, type: "liveStreams")
+            let items = streams.compactMap { parseSearchRoom($0) }
+            if !items.isEmpty { return items }
+        }
+        // room id open
+        if let detail = try? await getRoomDetail(roomId: kw), detail.isLive || !detail.title.isEmpty {
+            return [
+                LiveRoomItem(
+                    platform: .kuaishou,
+                    roomId: detail.roomId,
+                    title: detail.title.isEmpty ? kw : detail.title,
+                    cover: detail.cover,
+                    userName: detail.userName.isEmpty ? kw : detail.userName,
+                    online: detail.online
+                )
+            ]
         }
         return []
     }
 
+    private func searchLiveStreams(keyword: String, page: Int) async throws -> [LiveRoomItem] {
+        let json = try await getJSON(
+            "https://live.kuaishou.com/live_api/search/liveStream",
+            query: ["keyword": keyword, "page": "\(page)", "ussid": ""],
+            headers: searchHeaders(keyword: keyword)
+        )
+        guard let data = LiveJSON.object(json["data"]), LiveJSON.int(data["result"]) == 1 else {
+            return []
+        }
+        let list = LiveJSON.array(data["list"]) ?? []
+        return list.compactMap { parseSearchRoom($0) }
+    }
+
+    private func searchOverview(keyword: String) async throws -> [String: Any] {
+        let json = try await getJSON(
+            "https://live.kuaishou.com/live_api/search/overview",
+            query: ["keyword": keyword, "ussid": ""],
+            headers: searchHeaders(keyword: keyword)
+        )
+        return LiveJSON.object(json["data"]) ?? [:]
+    }
+
+    private func findOverviewSection(_ overview: [String: Any], type: String) -> [[String: Any]] {
+        let sections = LiveJSON.array(overview["list"]) ?? []
+        for section in sections {
+            if LiveJSON.string(section["type"]) == type {
+                return LiveJSON.array(section["list"]) ?? []
+            }
+        }
+        return []
+    }
+
+    private func parseSearchRoom(_ item: [String: Any]) -> LiveRoomItem? {
+        let author = LiveJSON.object(item["author"]) ?? [:]
+        let gameInfo = LiveJSON.object(item["gameInfo"]) ?? [:]
+        let roomId = LiveJSON.string(author["id"])
+            .ifEmpty(LiveJSON.string(item["authorId"]))
+            .ifEmpty(LiveJSON.string(item["userId"]))
+        guard !roomId.isEmpty else { return nil }
+        var cover = LiveJSON.string(item["poster"])
+            .ifEmpty(LiveJSON.string(item["coverUrl"]))
+            .ifEmpty(LiveJSON.string(gameInfo["poster"]))
+        if !cover.isEmpty, !isImageURL(cover) { cover += ".jpg" }
+        return LiveRoomItem(
+            platform: .kuaishou,
+            roomId: roomId,
+            title: LiveJSON.string(item["caption"])
+                .ifEmpty(LiveJSON.string(item["title"]))
+                .ifEmpty(LiveJSON.string(author["name"])),
+            cover: cover,
+            userName: LiveJSON.string(author["name"]).ifEmpty(LiveJSON.string(item["userName"])),
+            online: LiveJSON.int(item["watchingCount"])
+        )
+    }
+
+    // MARK: - Room detail
+
     func getRoomDetail(roomId: String) async throws -> LiveRoomDetail {
         let rid = roomId.trimmingCharacters(in: .whitespacesAndNewlines)
-        // Prefer embedded play URLs from home/hot cache
-        if let fromList = findInHomeCache(rid) {
-            return fromList
+        let url = "https://live.kuaishou.com/u/\(rid)"
+        await refreshCookie(url: url)
+        await registerDid()
+
+        if let anon = try? await loadRoomDetail(url: url, roomId: rid, withCookie: false),
+           anon.isLive {
+            return anon
         }
-        if let d = try? await parseMobilePage(rid) { return d }
-        if let d = try? await parseDesktopPage(rid) { return d }
-        throw NetworkError.message("快手直播间不存在、未开播或需要 Cookie")
+        if !currentCookieHeader().isEmpty,
+           let withC = try? await loadRoomDetail(url: url, roomId: rid, withCookie: true) {
+            return withC
+        }
+        if let anon = try? await loadRoomDetail(url: url, roomId: rid, withCookie: false) {
+            return anon
+        }
+        // Fallback mobile page
+        if let m = try? await parseMobileFallback(rid) { return m }
+        throw NetworkError.message("快手直播间不存在、未开播或需要 Cookie/登录")
     }
+
+    private func loadRoomDetail(url: String, roomId: String, withCookie: Bool) async throws -> LiveRoomDetail {
+        let html = try await getText(url, headers: withCookie ? headersWithCookie : baseHeaders)
+        guard let detail = try await parseRoomDetail(html: html, roomId: roomId) else {
+            throw NetworkError.message("快手页面解析失败")
+        }
+        return detail
+    }
+
+    private func parseRoomDetail(html: String, roomId: String) async throws -> LiveRoomDetail? {
+        guard let re = try? NSRegularExpression(pattern: #"window\.__INITIAL_STATE__=(.*?);"#),
+              let m = re.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
+              m.numberOfRanges > 1,
+              let r = Range(m.range(at: 1), in: html) else {
+            return nil
+        }
+        var text = String(html[r]).replacingOccurrences(of: "undefined", with: "null")
+        guard let data = text.data(using: .utf8),
+              let jsonObj = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let liveroom = LiveJSON.object(jsonObj["liveroom"]),
+              let playList = LiveJSON.array(liveroom["playList"]),
+              let first = playList.first else {
+            return nil
+        }
+
+        let liveStream = LiveJSON.object(first["liveStream"]) ?? [:]
+        let author = LiveJSON.object(first["author"]) ?? [:]
+        let gameInfo = LiveJSON.object(first["gameInfo"]) ?? [:]
+        let isLiving = resolveLiveStatus(first)
+        let liveStreamId = LiveJSON.string(liveStream["id"])
+        var websocketUrls: [String] = []
+        if let arr = liveroom["websocketUrls"] as? [Any] {
+            websocketUrls = arr.map { LiveJSON.string($0) }.filter { !$0.isEmpty }
+        }
+        var danmakuToken = LiveJSON.string(liveroom["token"])
+        let websocketInfo = LiveJSON.object(first["websocketInfo"]) ?? [:]
+        if danmakuToken.isEmpty {
+            danmakuToken = LiveJSON.string(websocketInfo["token"])
+        }
+        if websocketUrls.isEmpty {
+            let extra = (websocketInfo["websocketUrls"] as? [Any])
+                ?? (websocketInfo["webSocketAddresses"] as? [Any])
+                ?? []
+            websocketUrls = extra.map { LiveJSON.string($0) }.filter { !$0.isEmpty }
+        }
+        let authorId = LiveJSON.string(author["id"]).ifEmpty(roomId)
+        if isLiving, !liveStreamId.isEmpty, (danmakuToken.isEmpty || websocketUrls.isEmpty) {
+            let info = await fetchWebsocketInfo(roomId: authorId, liveStreamId: liveStreamId)
+            if !info.token.isEmpty { danmakuToken = info.token }
+            if websocketUrls.isEmpty { websocketUrls = info.urls }
+        }
+
+        var cover = LiveJSON.string(liveStream["poster"])
+        if !cover.isEmpty, !isImageURL(cover) { cover += ".jpg" }
+
+        // playUrls for qualities — keep full object as JSON
+        let playUrls = liveStream["playUrls"] ?? [:]
+        let playCtx: [String: Any]
+        if let map = playUrls as? [String: Any] {
+            playCtx = map
+        } else {
+            playCtx = ["raw": LiveJSON.string(playUrls)]
+        }
+
+        return LiveRoomDetail(
+            platform: .kuaishou,
+            roomId: authorId,
+            title: resolveRoomTitle(first),
+            cover: cover,
+            userName: LiveJSON.string(author["name"]),
+            userAvatar: LiveJSON.string(author["avatar"]),
+            online: isLiving ? LiveJSON.int(gameInfo["watchingCount"]) : 0,
+            isLive: isLiving,
+            webURL: "https://live.kuaishou.com/u/\(authorId)",
+            introduction: LiveJSON.string(author["description"]),
+            playContextJSON: LiveJSON.encode(playCtx),
+            danmakuJSON: LiveJSON.encode([
+                "roomId": authorId,
+                "liveStreamId": liveStreamId,
+                "token": danmakuToken,
+                "websocketUrls": websocketUrls,
+                "pageId": generatePageId(),
+                "expTag": LiveJSON.string(liveStream["expTag"]),
+                "attach": LiveJSON.string(first["expTag"]),
+                "cookie": currentCookieHeader(),
+                "userAgent": ua
+            ])
+        )
+    }
+
+    private func fetchWebsocketInfo(roomId: String, liveStreamId: String) async -> (token: String, urls: [String]) {
+        do {
+            let kww = resolveServerKww(currentCookieHeader(), fallback: customKww)
+            var headers = headersWithCookie
+            headers["accept"] = "application/json, text/plain, */*"
+            headers["referer"] = "https://live.kuaishou.com/u/\(roomId)"
+            headers["Sec-Fetch-Dest"] = "empty"
+            headers["Sec-Fetch-Mode"] = "cors"
+            if !kww.isEmpty { headers["Kww"] = kww }
+            let json = try await getJSON(
+                "https://live.kuaishou.com/live_api/liveroom/websocketinfo",
+                query: ["liveStreamId": liveStreamId],
+                headers: headers
+            )
+            guard let data = LiveJSON.object(json["data"]) else { return ("", []) }
+            let token = LiveJSON.string(data["token"])
+            let arr = (data["websocketUrls"] as? [Any])
+                ?? (data["webSocketAddresses"] as? [Any])
+                ?? []
+            let urls = arr.map { LiveJSON.string($0) }.filter { !$0.isEmpty }
+            return (token, urls)
+        } catch {
+            return ("", [])
+        }
+    }
+
+    // MARK: - Play
 
     func getPlayQualities(detail: LiveRoomDetail) async throws -> [LivePlayQuality] {
         let ctx = LiveJSON.decodeObject(detail.playContextJSON)
-        let quals = LiveJSON.array(ctx["qualities"]) ?? []
-        if !quals.isEmpty {
-            return quals.enumerated().map { idx, q in
-                let urls: [String]
-                if let arr = q["urls"] as? [String] {
-                    urls = arr
-                } else if let arr = q["urls"] as? [Any] {
-                    urls = arr.map { LiveJSON.string($0) }.filter { !$0.isEmpty }
-                } else {
-                    urls = []
-                }
-                return LivePlayQuality(
-                    id: "ks-\(idx)-\(LiveJSON.string(q["name"]))",
-                    name: LiveJSON.string(q["name"]).isEmpty ? "线路\(idx + 1)" : LiveJSON.string(q["name"]),
-                    qn: LiveJSON.int(q["level"]),
-                    readyURLs: urls
-                )
+        var qualities: [LivePlayQuality] = []
+
+        // Official path: playUrls.h264.adaptationSet.representation
+        if let h264 = LiveJSON.object(ctx["h264"]),
+           let adapt = LiveJSON.object(h264["adaptationSet"]),
+           let reps = adapt["representation"] as? [[String: Any]] {
+            for (idx, rep) in reps.enumerated() {
+                let url = LiveJSON.string(rep["url"])
+                guard !url.isEmpty else { continue }
+                qualities.append(LivePlayQuality(
+                    id: "ks-h264-\(idx)",
+                    name: LiveJSON.string(rep["name"]).ifEmpty("画质\(idx + 1)"),
+                    qn: LiveJSON.int(rep["level"]),
+                    readyURLs: [url]
+                ))
             }
         }
-        let urls = (ctx["urls"] as? [String]) ?? []
-        if urls.isEmpty { return [] }
-        return [LivePlayQuality(id: "ks-default", name: "默认", qn: 0, readyURLs: urls)]
+
+        // Also try freeTrafficCdn / hevc etc.
+        if qualities.isEmpty {
+            for (codecKey, codecVal) in ctx {
+                guard let codec = codecVal as? [String: Any],
+                      let adapt = LiveJSON.object(codec["adaptationSet"]),
+                      let reps = adapt["representation"] as? [[String: Any]] else { continue }
+                for (idx, rep) in reps.enumerated() {
+                    let url = LiveJSON.string(rep["url"])
+                    guard !url.isEmpty else { continue }
+                    qualities.append(LivePlayQuality(
+                        id: "ks-\(codecKey)-\(idx)",
+                        name: "\(LiveJSON.string(rep["name"]).ifEmpty(codecKey))",
+                        qn: LiveJSON.int(rep["level"]),
+                        readyURLs: [url]
+                    ))
+                }
+            }
+        }
+
+        // Nested list style from earlier home/list cache
+        if qualities.isEmpty, let quals = LiveJSON.array(ctx["qualities"]) {
+            for (idx, q) in quals.enumerated() {
+                let urls: [String]
+                if let a = q["urls"] as? [String] { urls = a }
+                else if let a = q["urls"] as? [Any] { urls = a.map { LiveJSON.string($0) }.filter { !$0.isEmpty } }
+                else { urls = [] }
+                if !urls.isEmpty {
+                    qualities.append(LivePlayQuality(
+                        id: "ks-q-\(idx)",
+                        name: LiveJSON.string(q["name"]).ifEmpty("线路\(idx + 1)"),
+                        qn: LiveJSON.int(q["level"]),
+                        readyURLs: urls
+                    ))
+                }
+            }
+        }
+
+        if qualities.isEmpty, let urls = ctx["urls"] as? [String], !urls.isEmpty {
+            qualities = [LivePlayQuality(id: "ks-default", name: "默认", qn: 0, readyURLs: urls)]
+        }
+
+        qualities.sort { $0.qn > $1.qn }
+        return qualities
     }
 
     func getPlayURLs(detail: LiveRoomDetail, quality: LivePlayQuality) async throws -> LivePlayResult {
@@ -138,152 +485,104 @@ actor KuaishouLiveService {
         return LivePlayResult(urls: quality.readyURLs, headers: [
             "User-Agent": ua,
             "Referer": "https://live.kuaishou.com/",
-            "Cookie": "did=\(did)"
+            "Cookie": currentCookieHeader()
         ])
     }
 
-    // MARK: - Home / Hot APIs
+    // MARK: - Cookie / DID
 
-    private func hotList() async throws -> [LiveRoomItem] {
-        let json = try await getJSON("https://live.kuaishou.com/live_api/hot/list?page=1")
-        let list = LiveJSON.array(LiveJSON.object(json["data"])?["list"]) ?? []
-        return list.compactMap { mapHomeLive($0) }
-    }
-
-    private func homeList() async throws -> [String: Any] {
-        if let homeListCache { return homeListCache }
-        let json = try await getJSON("https://live.kuaishou.com/live_api/home/list?page=1")
-        homeListCache = json
-        return json
-    }
-
-    private func mapHomeLive(_ live: [String: Any]) -> LiveRoomItem? {
-        let author = LiveJSON.object(live["author"]) ?? [:]
-        let roomId = LiveJSON.string(author["id"])
-            .ifEmpty(LiveJSON.string(live["id"]))
-        guard !roomId.isEmpty else { return nil }
-        return LiveRoomItem(
-            platform: .kuaishou,
-            roomId: roomId,
-            title: LiveJSON.string(live["caption"]).ifEmpty(LiveJSON.string(live["id"])),
-            cover: LiveJSON.string(live["poster"]),
-            userName: LiveJSON.string(author["name"]).ifEmpty(roomId),
-            online: LiveJSON.int(LiveJSON.object(author["counts"])?["fan"]) // may be 0
-        )
-    }
-
-    private func findInHomeCache(_ rid: String) -> LiveRoomDetail? {
-        guard let home = homeListCache else { return nil }
-        let labels = LiveJSON.array(LiveJSON.object(home["data"])?["list"]) ?? []
-        for label in labels {
-            for game in LiveJSON.array(label["gameLiveInfo"]) ?? [] {
-                for live in LiveJSON.array(game["liveInfo"]) ?? [] {
-                    let author = LiveJSON.object(live["author"]) ?? [:]
-                    let id = LiveJSON.string(author["id"]).ifEmpty(LiveJSON.string(live["id"]))
-                    if id == rid || LiveJSON.string(live["id"]) == rid {
-                        return detailFromHomeLive(live, roomId: id)
-                    }
+    private func refreshCookie(url: String) async {
+        do {
+            guard let u = URL(string: url) else { return }
+            var req = URLRequest(url: u)
+            req.timeoutInterval = 20
+            for (k, v) in headersWithCookie { req.setValue(v, forHTTPHeaderField: k) }
+            let (_, resp) = try await URLSession.shared.data(for: req)
+            var values = parseCookieHeader(customCookie)
+            if let cookies = HTTPCookieStorage.shared.cookies(for: u) {
+                for c in cookies { values[c.name] = c.value }
+            }
+            if let http = resp as? HTTPURLResponse {
+                // URLSession may set cookies automatically; also parse Set-Cookie if present
+                _ = http
+            }
+            if let cookies = HTTPCookieStorage.shared.cookies {
+                for c in cookies where c.domain.contains("kuaishou") || c.domain.contains("gifshow") {
+                    values[c.name] = c.value
                 }
             }
+            cookieObj = values
+            cookie = formatCookieHeader(values)
+        } catch {
+            cookieObj = parseCookieHeader(customCookie)
+            cookie = formatCookieHeader(cookieObj)
         }
-        return nil
     }
 
-    private func detailFromHomeLive(_ live: [String: Any], roomId: String) -> LiveRoomDetail {
-        let author = LiveJSON.object(live["author"]) ?? [:]
-        var qualities: [[String: Any]] = []
-        // playUrls structure: [{type, adaptationSet: {representation: [{name,url,level}]}}]
-        if let playUrls = live["playUrls"] as? [Any] {
-            for block in playUrls {
-                guard let map = block as? [String: Any] else { continue }
-                if let adapt = LiveJSON.object(map["adaptationSet"]),
-                   let reps = adapt["representation"] as? [[String: Any]] {
-                    for rep in reps {
-                        let url = LiveJSON.string(rep["url"])
-                        guard !url.isEmpty else { continue }
-                        qualities.append([
-                            "name": LiveJSON.string(rep["name"]).ifEmpty(LiveJSON.string(rep["shortName"])).ifEmpty("默认"),
-                            "level": LiveJSON.int(rep["level"]),
-                            "urls": [url]
-                        ])
-                    }
-                }
-                if let arr = map["urls"] as? [[String: Any]] {
-                    for u in arr {
-                        let url = LiveJSON.string(u["url"])
-                        if !url.isEmpty {
-                            qualities.append(["name": "默认", "level": 0, "urls": [url]])
-                        }
-                    }
-                }
-            }
+    private func registerDid() async {
+        let did = cookieObj["did"] ?? ""
+        guard !did.isEmpty else { return }
+        // Best-effort; ignore errors
+        let body: [String: Any] = [
+            "common": [
+                "identity_package": ["device_id": did, "global_id": ""],
+                "app_package": [
+                    "language": "zh-CN",
+                    "platform": 10,
+                    "container": "WEB",
+                    "product_name": "KS_GAME_LIVE_PC"
+                ],
+                "device_package": [
+                    "os_version": "NT 10.0",
+                    "model": "Windows",
+                    "ua": ua
+                ],
+                "need_encrypt": "false",
+                "network_package": ["type": 3],
+                "h5_extra_attr":
+                    "{\"sdk_name\":\"webLogger\",\"sdk_version\":\"3.9.49\",\"domain\":\"https://live.kuaishou.com\"}",
+                "global_attr": "{}"
+            ],
+            "logs": [[
+                "client_timestamp": Int(Date().timeIntervalSince1970 * 1000),
+                "session_id": uuidLike(),
+                "event_package": ["task_event": ["type": 1, "status": 0]]
+            ]]
+        ]
+        guard let data = try? JSONSerialization.data(withJSONObject: body),
+              let u = URL(string: "https://log-sdk.ksapisrv.com/rest/wd/common/log/collect/misc2?v=3.9.49&kpn=KS_GAME_LIVE_PC") else {
+            return
         }
-        qualities.sort { LiveJSON.int($0["level"]) > LiveJSON.int($1["level"]) }
-        return LiveRoomDetail(
-            platform: .kuaishou,
-            roomId: roomId,
-            title: LiveJSON.string(live["caption"]),
-            cover: LiveJSON.string(live["poster"]),
-            userName: LiveJSON.string(author["name"]),
-            userAvatar: LiveJSON.string(author["avatar"]),
-            online: 0,
-            isLive: !qualities.isEmpty || LiveJSON.int(author["living"]) == 1,
-            webURL: "https://live.kuaishou.com/u/\(roomId)",
-            introduction: LiveJSON.string(author["description"]),
-            playContextJSON: LiveJSON.encode(["qualities": qualities])
+        var req = URLRequest(url: u)
+        req.httpMethod = "POST"
+        req.httpBody = data
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue(ua, forHTTPHeaderField: "User-Agent")
+        _ = try? await URLSession.shared.data(for: req)
+    }
+
+    // MARK: - Mobile fallback
+
+    private func parseMobileFallback(_ rid: String) async throws -> LiveRoomDetail {
+        let html = try await getText(
+            "https://m.gifshow.com/fw/live/\(rid)",
+            headers: [
+                "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15",
+                "Cookie": currentCookieHeader().ifEmpty("did=web_d563dca728d28b00336877723e0359ed")
+            ]
         )
-    }
-
-    // MARK: - Page parse fallbacks
-
-    private func parseMobilePage(_ rid: String) async throws -> LiveRoomDetail {
-        let html = try await getText("https://m.gifshow.com/fw/live/\(rid)")
-        if let re = try? NSRegularExpression(pattern: #"liveStream":(\{.*?\}),"obfuseData"#, options: .dotMatchesLineSeparators),
-           let m = re.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
-           m.numberOfRanges > 1,
-           let r = Range(m.range(at: 1), in: html) {
-            return try detailFromLiveStreamJSON(String(html[r]), roomId: rid)
-        }
-        throw NetworkError.message("快手移动页无流信息")
-    }
-
-    private func parseDesktopPage(_ rid: String) async throws -> LiveRoomDetail {
-        let html = try await getText("https://live.kuaishou.com/u/\(rid)")
-        var urls: [String] = []
-        if let re = try? NSRegularExpression(pattern: #"https://[^"']+\.m3u8[^"']*"#) {
-            for m in re.matches(in: html, range: NSRange(html.startIndex..., in: html)).prefix(6) {
-                if let rr = Range(m.range, in: html) {
-                    let u = String(html[rr]).replacingOccurrences(of: "\\u002F", with: "/")
-                    if !urls.contains(u) { urls.append(u) }
-                }
-            }
-        }
-        if urls.isEmpty { throw NetworkError.message("快手桌面页解析失败") }
-        return LiveRoomDetail(
-            platform: .kuaishou,
-            roomId: rid,
-            title: rid,
-            cover: "",
-            userName: rid,
-            userAvatar: "",
-            online: 0,
-            isLive: true,
-            webURL: "https://live.kuaishou.com/u/\(rid)",
-            introduction: "",
-            playContextJSON: LiveJSON.encode(["urls": urls])
-        )
-    }
-
-    private func detailFromLiveStreamJSON(_ jsonText: String, roomId: String) throws -> LiveRoomDetail {
-        guard let data = jsonText.data(using: .utf8),
+        guard let re = try? NSRegularExpression(pattern: #"liveStream":(\{.*?\}),"obfuseData"#, options: .dotMatchesLineSeparators),
+              let m = re.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
+              m.numberOfRanges > 1,
+              let r = Range(m.range(at: 1), in: html),
+              let data = String(html[r]).data(using: .utf8),
               let stream = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            throw NetworkError.message("快手流 JSON 解析失败")
+            throw NetworkError.message("快手移动页无流信息")
         }
         var qualities: [[String: Any]] = []
         if let multi = stream["multiResolutionHlsPlayUrls"] as? [Any] {
             for (idx, item) in multi.enumerated() {
                 guard let map = item as? [String: Any] else { continue }
-                let name = LiveJSON.string(map["type"]).ifEmpty("画质\(idx + 1)")
                 var urls: [String] = []
                 if let arr = map["urls"] as? [[String: Any]] {
                     for u in arr {
@@ -292,30 +591,135 @@ actor KuaishouLiveService {
                     }
                 }
                 if !urls.isEmpty {
-                    qualities.append(["name": name, "level": 100 - idx, "urls": urls])
+                    qualities.append([
+                        "name": LiveJSON.string(map["type"]).ifEmpty("画质\(idx + 1)"),
+                        "level": 100 - idx,
+                        "urls": urls
+                    ])
                 }
             }
         }
-        let nick = LiveJSON.string(LiveJSON.object(stream["user"])?["user_name"])
-            .ifEmpty(LiveJSON.string(LiveJSON.object(stream["user"])?["name"]))
-            .ifEmpty(roomId)
         return LiveRoomDetail(
             platform: .kuaishou,
-            roomId: roomId,
-            title: LiveJSON.string(stream["caption"]).ifEmpty(roomId),
+            roomId: rid,
+            title: LiveJSON.string(stream["caption"]).ifEmpty(rid),
             cover: LiveJSON.string(stream["coverUrl"]),
-            userName: nick,
+            userName: LiveJSON.string(LiveJSON.object(stream["user"])?["user_name"]).ifEmpty(rid),
             userAvatar: "",
             online: LiveJSON.int(stream["watchingCount"]),
             isLive: !qualities.isEmpty,
-            webURL: "https://live.kuaishou.com/u/\(roomId)",
+            webURL: "https://live.kuaishou.com/u/\(rid)",
             introduction: "",
-            playContextJSON: LiveJSON.encode(["qualities": qualities])
+            playContextJSON: LiveJSON.encode(["qualities": qualities]),
+            danmakuJSON: "{}"
         )
     }
 
-    private func getJSON(_ url: String) async throws -> [String: Any] {
-        let text = try await getText(url)
+    // MARK: - Helpers
+
+    private func resolveRoomTitle(_ room: [String: Any]) -> String {
+        let liveStream = LiveJSON.object(room["liveStream"]) ?? [:]
+        let gameInfo = LiveJSON.object(room["gameInfo"]) ?? [:]
+        let author = LiveJSON.object(room["author"]) ?? [:]
+        for v in [
+            room["caption"], room["title"],
+            liveStream["caption"], liveStream["title"],
+            gameInfo["name"], author["name"]
+        ] {
+            let t = LiveJSON.string(v).trimmingCharacters(in: .whitespacesAndNewlines)
+            if !t.isEmpty { return t }
+        }
+        return ""
+    }
+
+    private func resolveLiveStatus(_ room: [String: Any]) -> Bool {
+        if isLiveFlag(room["isLiving"]) || isLiveFlag(room["living"]) { return true }
+        let liveStream = LiveJSON.object(room["liveStream"]) ?? room
+        let id = LiveJSON.string(liveStream["id"])
+        return !id.isEmpty && containsPlayableURL(liveStream["playUrls"])
+    }
+
+    private func isLiveFlag(_ v: Any?) -> Bool {
+        if let b = v as? Bool { return b }
+        if LiveJSON.int(v) == 1 { return true }
+        return LiveJSON.string(v).lowercased() == "true"
+    }
+
+    private func containsPlayableURL(_ value: Any?) -> Bool {
+        if let s = value as? String {
+            let u = s.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            return u.hasPrefix("http://") || u.hasPrefix("https://") || u.hasPrefix("rtmp://")
+        }
+        if let m = value as? [String: Any] {
+            return m.values.contains { containsPlayableURL($0) }
+        }
+        if let a = value as? [Any] {
+            return a.contains { containsPlayableURL($0) }
+        }
+        return false
+    }
+
+    private func isImageURL(_ url: String) -> Bool {
+        let ext = (url as NSString).pathExtension.lowercased()
+        return Self.imageExts.contains(ext)
+    }
+
+    private func currentCookieHeader() -> String {
+        if !customCookie.isEmpty {
+            return mergeCookie(customCookie, cookie)
+        }
+        return cookie
+    }
+
+    private func resolveServerKww(_ cookie: String, fallback: String) -> String {
+        for part in cookie.split(separator: ";") {
+            let item = part.trimmingCharacters(in: .whitespaces)
+            guard item.hasPrefix("kwfv1=") else { continue }
+            let value = String(item.dropFirst("kwfv1=".count)).trimmingCharacters(in: .whitespaces)
+            guard !value.isEmpty else { continue }
+            let decoded = value.removingPercentEncoding ?? value
+            return "\(decoded)###ssrc"
+        }
+        return fallback.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func parseCookieHeader(_ cookie: String) -> [String: String] {
+        var result: [String: String] = [:]
+        for part in cookie.split(separator: ";") {
+            let item = part.trimmingCharacters(in: .whitespaces)
+            guard let eq = item.firstIndex(of: "=") else { continue }
+            let k = String(item[..<eq]).trimmingCharacters(in: .whitespaces)
+            let v = String(item[item.index(after: eq)...]).trimmingCharacters(in: .whitespaces)
+            if !k.isEmpty, !v.isEmpty { result[k] = v }
+        }
+        return result
+    }
+
+    private func formatCookieHeader(_ values: [String: String]) -> String {
+        values.map { "\($0.key)=\($0.value)" }.joined(separator: "; ")
+    }
+
+    private func mergeCookie(_ base: String, _ extra: String) -> String {
+        var values = parseCookieHeader(base)
+        values.merge(parseCookieHeader(extra)) { _, new in new }
+        return formatCookieHeader(values)
+    }
+
+    private func generatePageId() -> String {
+        let chars = Array("useandom-26T198340PX75pxJACKVERYMINDBUSHWOLF_GQZbfghjklqvwyzrict")
+        return String((0..<16).map { _ in chars.randomElement()! })
+    }
+
+    private func uuidLike() -> String {
+        UUID().uuidString.lowercased()
+    }
+
+    private func getJSON(
+        _ url: String,
+        query: [String: String] = [:],
+        headers: [String: String]
+    ) async throws -> [String: Any] {
+        let text = try await getText(url, query: query, headers: headers)
         guard let data = text.data(using: .utf8),
               let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw NetworkError.message("快手 JSON 解析失败")
@@ -323,13 +727,19 @@ actor KuaishouLiveService {
         return obj
     }
 
-    private func getText(_ url: String) async throws -> String {
-        guard let u = URL(string: url) else { throw NetworkError.invalidURL }
-        var req = URLRequest(url: u)
+    private func getText(
+        _ url: String,
+        query: [String: String] = [:],
+        headers: [String: String]
+    ) async throws -> String {
+        var comps = URLComponents(string: url)!
+        if !query.isEmpty {
+            comps.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) }
+        }
+        guard let final = comps.url else { throw NetworkError.invalidURL }
+        var req = URLRequest(url: final)
         req.timeoutInterval = 25
-        req.setValue(ua, forHTTPHeaderField: "User-Agent")
-        req.setValue("did=\(did)", forHTTPHeaderField: "Cookie")
-        req.setValue("https://live.kuaishou.com/", forHTTPHeaderField: "Referer")
+        for (k, v) in headers { req.setValue(v, forHTTPHeaderField: k) }
         let (data, resp) = try await URLSession.shared.data(for: req)
         guard let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw NetworkError.http((resp as? HTTPURLResponse)?.statusCode ?? -1, String(data: data, encoding: .utf8) ?? "")

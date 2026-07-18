@@ -1,7 +1,7 @@
 import Foundation
 import Compression
 
-/// Live chat: Bilibili / Douyu / Huya / Douyin (SimpleLive protocols).
+/// Live chat: Bilibili / Douyu / Huya / Douyin / Kuaishou (SimpleLive protocols).
 @MainActor
 final class LiveDanmakuService: ObservableObject {
     @Published private(set) var messages: [LiveChatMessage] = []
@@ -36,7 +36,7 @@ final class LiveDanmakuService: ObservableObject {
         case .douyin:
             Task { await connectDouyin(ctx: ctx, webRid: roomId) }
         case .kuaishou:
-            statusText = "快手弹幕暂未接入"
+            connectKuaishou(ctx: ctx)
         }
     }
 
@@ -490,6 +490,208 @@ final class LiveDanmakuService: ObservableObject {
 
     private func randomDigits(_ n: Int) -> String {
         String((0..<n).map { _ in String(Int.random(in: 0...9)) }.joined())
+    }
+
+    // MARK: - Kuaishou (SimpleLive kuaishou_danmaku.dart)
+
+    private func connectKuaishou(ctx: [String: Any]) {
+        let token = LiveJSON.string(ctx["token"])
+        let liveStreamId = LiveJSON.string(ctx["liveStreamId"])
+        var urls: [String] = []
+        if let a = ctx["websocketUrls"] as? [String] {
+            urls = a
+        } else if let a = ctx["websocketUrls"] as? [Any] {
+            urls = a.map { LiveJSON.string($0) }.filter { !$0.isEmpty }
+        }
+        guard !token.isEmpty, !liveStreamId.isEmpty, let first = urls.first, let url = URL(string: first) else {
+            statusText = "快手弹幕凭证无效（可能需 Cookie/登录）"
+            return
+        }
+        let roomId = LiveJSON.string(ctx["roomId"])
+        let pageId = LiveJSON.string(ctx["pageId"]).ifEmpty(randomPageId())
+        let expTag = LiveJSON.string(ctx["expTag"])
+        let attach = LiveJSON.string(ctx["attach"])
+        let cookie = LiveJSON.string(ctx["cookie"])
+        let ua = LiveJSON.string(ctx["userAgent"]).ifEmpty(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        )
+
+        session = URLSession(configuration: .default)
+        var req = URLRequest(url: url)
+        req.setValue(ua, forHTTPHeaderField: "User-Agent")
+        req.setValue("https://live.kuaishou.com", forHTTPHeaderField: "Origin")
+        req.setValue("https://live.kuaishou.com/u/\(roomId)", forHTTPHeaderField: "Referer")
+        if !cookie.isEmpty { req.setValue(cookie, forHTTPHeaderField: "Cookie") }
+        let ws = session!.webSocketTask(with: req)
+        webSocket = ws
+        ws.resume()
+        statusText = "弹幕连接中…"
+
+        // join payload type 200
+        var joinPayload = Data()
+        joinPayload.append(LiveProtoWire.encodeString(token, field: 1))
+        joinPayload.append(LiveProtoWire.encodeString(liveStreamId, field: 2))
+        joinPayload.append(LiveProtoWire.encodeVarintField(0, field: 3))
+        joinPayload.append(LiveProtoWire.encodeVarintField(0, field: 4))
+        if !expTag.isEmpty { joinPayload.append(LiveProtoWire.encodeString(expTag, field: 5)) }
+        if !attach.isEmpty { joinPayload.append(LiveProtoWire.encodeString(attach, field: 6)) }
+        joinPayload.append(LiveProtoWire.encodeString(pageId, field: 7))
+        sendBinary(ksSocketMessage(payloadType: 200, payload: joinPayload))
+
+        heartbeat = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 20_000_000_000)
+                var hb = Data()
+                hb.append(LiveProtoWire.encodeVarintField(UInt64(Date().timeIntervalSince1970 * 1000), field: 1))
+                self?.sendBinary(self?.ksSocketMessage(payloadType: 1, payload: hb) ?? Data())
+            }
+        }
+        task = Task { [weak self] in
+            await self?.receiveLoopKuaishou()
+        }
+        statusText = "弹幕已连接"
+    }
+
+    private func ksSocketMessage(payloadType: Int, payload: Data) -> Data {
+        var d = Data()
+        d.append(LiveProtoWire.encodeVarintField(UInt64(payloadType), field: 1))
+        d.append(LiveProtoWire.encodeBytes(payload, field: 3))
+        return d
+    }
+
+    private func receiveLoopKuaishou() async {
+        while !Task.isCancelled {
+            guard let ws = webSocket else { break }
+            do {
+                let msg = try await ws.receive()
+                let data: Data
+                switch msg {
+                case .data(let d): data = d
+                case .string(let s): data = Data(s.utf8)
+                @unknown default: continue
+                }
+                handleKuaishouPacket(data)
+            } catch {
+                if !Task.isCancelled { statusText = "弹幕断开" }
+                break
+            }
+        }
+    }
+
+    private func handleKuaishouPacket(_ data: Data) {
+        let fields = LiveProtoWire.parseFields(data)
+        let payloadType = Int(LiveProtoWire.varintField(fields, 1) ?? 0)
+        let compressionType = Int(LiveProtoWire.varintField(fields, 2) ?? 0)
+        guard var payload = LiveProtoWire.bytesField(fields, 3), !payload.isEmpty else { return }
+        if compressionType == 2 {
+            payload = gunzipKS(payload) ?? payload
+        } else if compressionType == 3 {
+            return // AES not supported
+        }
+        switch payloadType {
+        case 103:
+            let errFields = LiveProtoWire.parseFields(payload)
+            let code = LiveProtoWire.varintField(errFields, 1) ?? 0
+            let message = LiveProtoWire.stringField(errFields, 2) ?? ""
+            if !message.isEmpty || code != 0 {
+                statusText = message.isEmpty ? "快手弹幕错误：\(code)" : "快手弹幕错误：\(message)"
+            }
+        case 310:
+            decodeKSFeedPush(payload)
+        default:
+            break
+        }
+    }
+
+    private func decodeKSFeedPush(_ payload: Data) {
+        let fields = LiveProtoWire.parseFields(payload)
+        for f in fields where f.number == 5 && f.wire == 2 {
+            if let chat = decodeKSComment(f.data) {
+                append(chat)
+            }
+        }
+    }
+
+    private func decodeKSComment(_ payload: Data) -> LiveChatMessage? {
+        let fields = LiveProtoWire.parseFields(payload)
+        var userName = ""
+        var content = ""
+        var color: UInt32 = 0xFFFFFF
+        var hidden = false
+        for f in fields {
+            switch (f.number, f.wire) {
+            case (2, 2):
+                // SimpleUserInfo: nick field 2
+                let u = LiveProtoWire.parseFields(f.data)
+                userName = LiveProtoWire.stringField(u, 2) ?? ""
+            case (3, 2):
+                content = String(data: f.data, encoding: .utf8) ?? ""
+            case (6, 2):
+                let hex = (String(data: f.data, encoding: .utf8) ?? "")
+                    .trimmingCharacters(in: .whitespaces)
+                    .replacingOccurrences(of: "#", with: "")
+                if hex.count == 6, let v = UInt32(hex, radix: 16) { color = v }
+            case (7, 0):
+                hidden = f.varint == 2
+            default:
+                break
+            }
+        }
+        if hidden || content.isEmpty { return nil }
+        return LiveChatMessage(userName: userName, text: content, colorHex: color)
+    }
+
+    private func gunzipKS(_ data: Data) -> Data? {
+        // Reuse same approach as LiveProtoWire gzip inflate via Compression
+        guard data.count > 10 else { return nil }
+        return data.withUnsafeBytes { (src: UnsafeRawBufferPointer) -> Data? in
+            guard src.baseAddress != nil else { return nil }
+            var offset = 10
+            if data.count > 3 {
+                let flags = data[3]
+                if flags & 0x04 != 0, data.count > offset + 2 {
+                    let xlen = Int(data[offset]) | (Int(data[offset + 1]) << 8)
+                    offset += 2 + xlen
+                }
+                if flags & 0x08 != 0 {
+                    while offset < data.count && data[offset] != 0 { offset += 1 }
+                    offset += 1
+                }
+                if flags & 0x10 != 0 {
+                    while offset < data.count && data[offset] != 0 { offset += 1 }
+                    offset += 1
+                }
+                if flags & 0x02 != 0 { offset += 2 }
+            }
+            let end = max(offset, data.count - 8)
+            guard end > offset else { return nil }
+            var deflate = Data([0x78, 0x9C])
+            deflate.append(data.subdata(in: offset..<end))
+            let dstSize = deflate.count * 20 + 4096
+            var dst = Data(count: dstSize)
+            let n = dst.withUnsafeMutableBytes { dstBuf -> Int in
+                guard let dstBase = dstBuf.baseAddress else { return 0 }
+                return deflate.withUnsafeBytes { srcBuf -> Int in
+                    guard let srcBase = srcBuf.baseAddress else { return 0 }
+                    return compression_decode_buffer(
+                        dstBase.assumingMemoryBound(to: UInt8.self),
+                        dstSize,
+                        srcBase.assumingMemoryBound(to: UInt8.self),
+                        deflate.count,
+                        nil,
+                        COMPRESSION_ZLIB
+                    )
+                }
+            }
+            guard n > 0 else { return nil }
+            dst.count = n
+            return dst
+        }
+    }
+
+    private func randomPageId() -> String {
+        let chars = Array("useandom-26T198340PX75pxJACKVERYMINDBUSHWOLF_GQZbfghjklqvwyzrict")
+        return String((0..<16).map { _ in chars.randomElement()! })
     }
 
     // MARK: - Shared

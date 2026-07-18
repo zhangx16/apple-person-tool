@@ -193,7 +193,7 @@ struct ServicesHubView: View {
                 }
 
                 Section("直播") {
-                    Text("底部「直播」Tab：B站 · 虎牙 · 斗鱼 · 抖音 · 快手：分区 · 弹幕(B站/虎牙/斗鱼/抖音) · 快手推荐。")
+                    Text("底部「直播」Tab：B站 · 虎牙 · 斗鱼 · 抖音 · 快手（SimpleLive master 协议 · 含快手弹幕）。")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>PersonalToolbox</string>
+	<string>Xin tools</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -19,7 +19,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>2</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>
@@ -47,6 +47,6 @@
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>如通过系统分享将生成的图片或视频保存到相册，需要相册写入权限。</string>
 	<key>NSFaceIDUsageDescription</key>
-	<string>用于在开启「启动时需要面容/触控 ID」时验证身份并解锁 PersonalToolbox。</string>
+	<string>用于在开启「启动时需要面容/触控 ID」时验证身份并解锁 Xin tools。</string>
 </dict>
 </plist>

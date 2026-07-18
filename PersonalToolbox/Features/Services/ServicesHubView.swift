@@ -15,8 +15,7 @@ struct ServicesHubView: View {
                         hubLabel(
                             title: "SublinkX",
                             subtitle: settings.sublinkBaseURL,
-                            systemImage: "link.circle.fill",
-                            color: .blue
+                            brand: .sublink
                         )
                     }
                     .accessibilityLabel("SublinkX 订阅管理")
@@ -27,11 +26,23 @@ struct ServicesHubView: View {
                         hubLabel(
                             title: "Komari",
                             subtitle: settings.komariBaseURL,
-                            systemImage: "server.rack",
-                            color: .teal
+                            brand: .komari
                         )
                     }
-                    .accessibilityLabel("Komari 服务器探针")
+                    .accessibilityLabel("Komari 服务器监控")
+                }
+
+                Section("Sub2API") {
+                    Button {
+                        selectedTab = .monitor
+                    } label: {
+                        hubLabel(
+                            title: "Sub2 管理",
+                            subtitle: "账号调度 · 用户余额 · 分组",
+                            brand: .sub2
+                        )
+                    }
+                    .accessibilityLabel("打开 Sub2API 管理")
                 }
 
                 Section("媒体") {
@@ -41,8 +52,7 @@ struct ServicesHubView: View {
                         hubLabel(
                             title: "视频下载",
                             subtitle: settings.ytBaseURL,
-                            systemImage: "arrow.down.circle.fill",
-                            color: .orange
+                            brand: .youtube
                         )
                     }
                     .accessibilityLabel("打开视频下载")
@@ -54,12 +64,9 @@ struct ServicesHubView: View {
         }
     }
 
-    private func hubLabel(title: String, subtitle: String, systemImage: String, color: Color) -> some View {
+    private func hubLabel(title: String, subtitle: String, brand: ServiceBrand) -> some View {
         HStack(spacing: 14) {
-            Image(systemName: systemImage)
-                .font(.title2)
-                .foregroundStyle(color)
-                .frame(width: 36)
+            ServiceBrandIcon(brand: brand, size: 40)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.body.weight(.semibold))
@@ -69,6 +76,7 @@ struct ServicesHubView: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
+            Spacer(minLength: 0)
         }
         .padding(.vertical, 4)
     }

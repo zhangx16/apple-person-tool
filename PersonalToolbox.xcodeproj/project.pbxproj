@@ -48,6 +48,7 @@
 		000000000000000000000150 /* SublinkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000014F /* SublinkService.swift */; };
 		000000000000000000000152 /* YTService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000151 /* YTService.swift */; };
 		000000000000000000000154 /* AppleTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000153 /* AppleTheme.swift */; };
+		000000000000000000000156 /* ServiceBrandIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000155 /* ServiceBrandIcon.swift */; };
 		000000000000000000000208 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000200 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -94,6 +95,7 @@
 		00000000000000000000014F /* SublinkService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SublinkService.swift; sourceTree = "<group>"; };
 		000000000000000000000151 /* YTService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTService.swift; sourceTree = "<group>"; };
 		000000000000000000000153 /* AppleTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleTheme.swift; sourceTree = "<group>"; };
+		000000000000000000000155 /* ServiceBrandIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceBrandIcon.swift; sourceTree = "<group>"; };
 		000000000000000000000200 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		000000000000000000000201 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		000000000000000000000202 /* PersonalToolbox.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PersonalToolbox.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -126,6 +128,7 @@
 			isa = PBXGroup;
 			children = (
 				000000000000000000000153 /* AppleTheme.swift */,
+				000000000000000000000155 /* ServiceBrandIcon.swift */,
 			);
 			path = Theme;
 			sourceTree = "<group>";
@@ -370,6 +373,7 @@
 				000000000000000000000150 /* SublinkService.swift in Sources */,
 				000000000000000000000152 /* YTService.swift in Sources */,
 				000000000000000000000154 /* AppleTheme.swift in Sources */,
+				000000000000000000000156 /* ServiceBrandIcon.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

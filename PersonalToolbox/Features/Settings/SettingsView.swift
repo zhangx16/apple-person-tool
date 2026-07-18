@@ -98,7 +98,7 @@ struct SettingsView: View {
             .buttonStyle(PressableButtonStyle())
             .disabled(viewModel.sub2Probe.isProbing)
         } header: {
-            Text("Sub2API · 助手")
+            settingsHeader(brand: .sub2, title: "Sub2API · 助手")
         } footer: {
             Text("用于对话与 Imagine。默认 \(settings.sub2apiBaseURL)")
         }
@@ -122,7 +122,7 @@ struct SettingsView: View {
             .buttonStyle(PressableButtonStyle())
             .disabled(viewModel.adminProbe.isProbing)
         } header: {
-            Text("Sub2API · 监控")
+            settingsHeader(brand: .sub2, title: "Sub2API · 监控")
         } footer: {
             Text("对应 sub2api-mobile 的 Admin Token，访问 /api/v1/admin/dashboard/*。可与 Chat Key 不同。")
         }
@@ -148,7 +148,7 @@ struct SettingsView: View {
             }
             .buttonStyle(PressableButtonStyle())
         } header: {
-            Text("yt-dlp Web UI")
+            settingsHeader(brand: .youtube, title: "视频下载 · yt-dlp")
         }
     }
 
@@ -172,7 +172,7 @@ struct SettingsView: View {
             }
             .buttonStyle(PressableButtonStyle())
         } header: {
-            Text("SublinkX")
+            settingsHeader(brand: .sublink, title: "SublinkX")
         } footer: {
             Text("默认 https://sub.996616.xyz · 登录需验证码（在服务页完成）")
         }
@@ -194,9 +194,16 @@ struct SettingsView: View {
             }
             .buttonStyle(PressableButtonStyle())
         } header: {
-            Text("Komari 探针")
+            settingsHeader(brand: .komari, title: "Komari 探针")
         } footer: {
             Text("默认 https://komari.996616.xyz · 使用公开 /api/nodes 接口")
+        }
+    }
+
+    private func settingsHeader(brand: ServiceBrand, title: String) -> some View {
+        HStack(spacing: 8) {
+            ServiceBrandIcon(brand: brand, size: 18, showsBackground: false)
+            Text(title)
         }
     }
 

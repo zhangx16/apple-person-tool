@@ -38,7 +38,11 @@ struct DownloadHomeView: View {
             .listStyle(.insetGrouped)
             .background(AppleTheme.canvas)
             .navigationTitle("下载")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    ServiceBrandTitle(brand: .youtube, title: "视频下载")
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         Task { await viewModel.refreshNow() }

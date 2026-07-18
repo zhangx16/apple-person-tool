@@ -167,7 +167,7 @@ struct TranslatorEngineEditorView: View {
             }
 
             if !isGoogle {
-                Section("接口") {
+                Section {
                     if kind == .aiApi || engine?.kind == .aiApi {
                         Picker("兼容模式", selection: $mode) {
                             ForEach(TranslatorAiMode.allCases) { m in
@@ -192,6 +192,8 @@ struct TranslatorEngineEditorView: View {
                             model = appSettings.preferredModel
                         }
                     }
+                } header: {
+                    Text("接口")
                 } footer: {
                     Text("Sub2API / NewAPI 一般使用 /v1/chat/completions。留空时 Sub2API 引擎会回落到全局设置。")
                 }

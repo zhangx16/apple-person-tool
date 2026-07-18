@@ -317,6 +317,11 @@ struct TranslatorHomeView: View {
             sourceLanguageCode: store.sourceLanguageCode,
             targetLanguageCode: store.targetLanguageCode
         )
+        let sub2Fallback = TranslatorService.Sub2Fallback(
+            baseURL: appSettings.sub2apiBaseURL,
+            apiKey: appSettings.sub2apiAPIKey,
+            model: appSettings.preferredModel
+        )
 
         await withTaskGroup(of: (String, Result<String, Error>).self) { group in
             for engine in engines {
@@ -325,7 +330,7 @@ struct TranslatorHomeView: View {
                         let out = try await TranslatorService.translate(
                             engine: engine,
                             request: request,
-                            appSettings: appSettings
+                            sub2Fallback: sub2Fallback
                         )
                         return (engine.id, .success(out))
                     } catch {
@@ -379,11 +384,16 @@ struct TranslatorHomeView: View {
             sourceLanguageCode: store.sourceLanguageCode,
             targetLanguageCode: store.targetLanguageCode
         )
+        let sub2Fallback = TranslatorService.Sub2Fallback(
+            baseURL: appSettings.sub2apiBaseURL,
+            apiKey: appSettings.sub2apiAPIKey,
+            model: appSettings.preferredModel
+        )
         do {
             let out = try await TranslatorService.translate(
                 engine: engine,
                 request: request,
-                appSettings: appSettings
+                sub2Fallback: sub2Fallback
             )
             results = results.map { item in
                 guard item.engineId == engineId else { return item }

@@ -15,9 +15,20 @@ enum TranslatorService {
         "Do not wrap the output in JSON or markdown fences."
     ].joined(separator: " ")
 
+    /// Non-isolated Sub2 fallbacks extracted on the main actor before concurrent work.
+    struct Sub2Fallback: Sendable {
+        var baseURL: String
+        var apiKey: String
+        var model: String
+    }
+
     // MARK: - Public
 
-    static func translate(engine: TranslatorEngine, request: TranslatorRequest, appSettings: AppSettings) async throws -> String {
+    static func translate(
+        engine: TranslatorEngine,
+        request: TranslatorRequest,
+        sub2Fallback: Sub2Fallback
+    ) async throws -> String {
         let text = request.sourceText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { throw NetworkError.message("请输入要翻译的文本") }
 
@@ -25,7 +36,7 @@ enum TranslatorService {
         case .google:
             return try await translateGoogle(request: request)
         case .sub2api, .aiApi:
-            return try await translateAI(engine: engine, request: request, appSettings: appSettings)
+            return try await translateAI(engine: engine, request: request, sub2Fallback: sub2Fallback)
         }
     }
 
@@ -82,9 +93,9 @@ enum TranslatorService {
     private static func translateAI(
         engine: TranslatorEngine,
         request: TranslatorRequest,
-        appSettings: AppSettings
+        sub2Fallback: Sub2Fallback
     ) async throws -> String {
-        let resolved = resolveAIConfig(engine: engine, app: appSettings)
+        let resolved = resolveAIConfig(engine: engine, sub2Fallback: sub2Fallback)
         let chunks = splitIntoChunks(request.sourceText, maxLength: 700)
         var outputs: [String] = []
         outputs.reserveCapacity(chunks.count)
@@ -106,23 +117,23 @@ enum TranslatorService {
         return outputs.joined()
     }
 
-    private struct AIConfig {
+    private struct AIConfig: Sendable {
         var baseURL: String
         var apiKey: String
         var model: String
         var mode: TranslatorAiMode
     }
 
-    private static func resolveAIConfig(engine: TranslatorEngine, app: AppSettings) -> AIConfig {
+    private static func resolveAIConfig(engine: TranslatorEngine, sub2Fallback: Sub2Fallback) -> AIConfig {
         let mode = engine.compatibilityMode ?? .newapi
         var base = (engine.baseURL ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         var key = (engine.apiKey ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         var model = (engine.model ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
 
         if engine.kind == .sub2api {
-            if base.isEmpty { base = app.sub2apiBaseURL }
-            if key.isEmpty { key = app.sub2apiAPIKey }
-            if model.isEmpty { model = app.preferredModel }
+            if base.isEmpty { base = sub2Fallback.baseURL }
+            if key.isEmpty { key = sub2Fallback.apiKey }
+            if model.isEmpty { model = sub2Fallback.model }
         }
 
         if base.isEmpty {

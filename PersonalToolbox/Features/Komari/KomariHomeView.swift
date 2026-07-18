@@ -147,7 +147,7 @@ struct KomariHomeView: View {
                 Spacer()
                 Text(String(format: "CPU %.0f%%", row.cpuUsage))
                     .font(.caption.monospacedDigit())
-                    .foregroundStyle(row.cpuUsage > 80 ? .red : .secondary)
+                    .foregroundStyle(row.cpuUsage > 80 ? Color.red : Color.secondary)
             }
 
             if let os = n.os {

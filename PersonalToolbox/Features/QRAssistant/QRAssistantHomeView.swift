@@ -262,7 +262,7 @@ struct QRAssistantHomeView: View {
                         HStack(spacing: 10) {
                             if selectionMode {
                                 Image(systemName: selectedIds.contains(record.id) ? "checkmark.circle.fill" : "circle")
-                                    .foregroundStyle(selectedIds.contains(record.id) ? accent : .secondary)
+                                    .foregroundStyle(selectedIds.contains(record.id) ? accent : Color.secondary)
                             }
                             QRRecordRow(record: record) {
                                 if selectionMode {

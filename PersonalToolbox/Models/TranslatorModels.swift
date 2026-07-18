@@ -103,12 +103,12 @@ struct TranslatorSettings: Codable, Sendable {
     var sourceLanguageCode: String
     var targetLanguageCode: String
 
-    static func `default`(app: AppSettings) -> TranslatorSettings {
+    static func makeDefault(sub2Base: String, sub2Key: String, model: String) -> TranslatorSettings {
         TranslatorSettings(
             engines: TranslatorEngine.defaults(
-                sub2Base: app.sub2apiBaseURL,
-                sub2Key: app.sub2apiAPIKey,
-                model: app.preferredModel
+                sub2Base: sub2Base,
+                sub2Key: sub2Key,
+                model: model
             ),
             sourceLanguageCode: TranslatorLanguage.auto.code,
             targetLanguageCode: "zh-Hans"

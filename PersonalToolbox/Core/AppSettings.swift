@@ -177,7 +177,8 @@ final class AppSettings: ObservableObject {
         cloudflareEmail = d.string(forKey: Keys.cloudflareEmail) ?? ""
         cloudflareAccountId = d.string(forKey: Keys.cloudflareAccountId) ?? ""
         cloudflareAccountName = d.string(forKey: Keys.cloudflareAccountName) ?? ""
-        clsFeedURL = d.string(forKey: Keys.clsFeedURL) ?? CLSNewsParsing.defaultFeedURL
+        clsFeedURL = d.string(forKey: Keys.clsFeedURL)
+            ?? "https://pyrsshub.vercel.app/cls/telegraph/"
         appearance = d.string(forKey: Keys.appearance) ?? Appearance.system.rawValue
         hideSensitiveInAppSwitcher = d.object(forKey: Keys.hideSensitiveInAppSwitcher) as? Bool ?? false
         requireBiometricUnlock = d.object(forKey: Keys.requireBiometricUnlock) as? Bool ?? false

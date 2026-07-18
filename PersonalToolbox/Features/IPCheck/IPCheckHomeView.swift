@@ -93,7 +93,7 @@ struct IPCheckHomeView: View {
         return HStack(spacing: 12) {
             Image(systemName: vpnOn ? "lock.shield.fill" : "globe")
                 .font(.title2)
-                .foregroundStyle(vpnOn ? Color.green : .secondary)
+                .foregroundStyle(vpnOn ? Color.green : Color.secondary)
             VStack(alignment: .leading, spacing: 4) {
                 Text(vpnOn ? result.vpnStatus : "VPN \(result.vpnStatus)")
                     .font(.headline)
@@ -105,7 +105,7 @@ struct IPCheckHomeView: View {
             VStack(alignment: .trailing, spacing: 2) {
                 Text(result.isNative)
                     .font(.caption.weight(.bold))
-                    .foregroundStyle(result.isNative == "原生" ? .green : .orange)
+                    .foregroundStyle(result.isNative == "原生" ? Color.green : Color.orange)
                 Text(result.isHomeBroadband)
                     .font(.caption2)
                     .foregroundStyle(.secondary)

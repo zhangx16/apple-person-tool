@@ -38,7 +38,11 @@ final class TranslatorStore: ObservableObject {
     }
 
     private func applyDefaults(app: AppSettings) {
-        let d = TranslatorSettings.default(app: app)
+        let d = TranslatorSettings.makeDefault(
+            sub2Base: app.sub2apiBaseURL,
+            sub2Key: app.sub2apiAPIKey,
+            model: app.preferredModel
+        )
         engines = d.engines
         sourceLanguageCode = d.sourceLanguageCode
         targetLanguageCode = d.targetLanguageCode

@@ -948,7 +948,7 @@ private struct SubEditorSheet: View {
                                 } label: {
                                     HStack {
                                         Image(systemName: selected.contains(n) ? "checkmark.circle.fill" : "circle")
-                                            .foregroundStyle(selected.contains(n) ? Color.accentColor : .secondary)
+                                            .foregroundStyle(selected.contains(n) ? Color.accentColor : Color.secondary)
                                         VStack(alignment: .leading, spacing: 2) {
                                             Text(n).foregroundStyle(.primary)
                                             if let link = node.link {

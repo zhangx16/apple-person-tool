@@ -31,6 +31,8 @@ final class LiveRoomViewModel: ObservableObject {
     @Published var streamHeaders: [String: String] = [:]
     /// True when current stream is FLV (must use VLC).
     @Published private(set) var streamIsFLV = false
+    /// Locks player chrome (no accidental hide/show / quality taps). SimpleLive-style.
+    @Published var isControlsLocked = false
 
     private var loadTask: Task<Void, Never>?
     private var failWatchTask: Task<Void, Never>?
@@ -45,6 +47,14 @@ final class LiveRoomViewModel: ObservableObject {
         webURL = URL(string: defaultWebURL)
         // With VLC, FLV sites use in-app player by default.
         playMode = .native
+    }
+
+    func toggleControlsLock() {
+        isControlsLocked.toggle()
+    }
+
+    func unlockControls() {
+        isControlsLocked = false
     }
 
     private var defaultWebURL: String {
@@ -66,6 +76,7 @@ final class LiveRoomViewModel: ObservableObject {
         loadTask = nil
         failWatchTask?.cancel()
         failWatchTask = nil
+        isControlsLocked = false
         clearStream()
     }
 
@@ -447,17 +458,21 @@ struct LiveRoomView: View {
 
     private var playerHero: some View {
         GeometryReader { geo in
-            let h = geo.size.width * 9 / 16
             ZStack {
                 LivePlayerSurface(vm: vm)
-                if showPlayerChrome {
+
+                // Locked: only side unlock (ignore other taps on chrome).
+                if vm.isControlsLocked {
+                    lockOnlyOverlay(compact: true)
+                } else if showPlayerChrome {
                     playerOverlay
                 }
             }
-            .frame(width: geo.size.width, height: h)
+            .frame(width: geo.size.width, height: geo.size.width * 9 / 16)
             .clipped()
             .contentShape(Rectangle())
             .onTapGesture {
+                guard !vm.isControlsLocked else { return }
                 withAnimation(.easeInOut(duration: 0.18)) {
                     showPlayerChrome.toggle()
                 }
@@ -465,6 +480,34 @@ struct LiveRoomView: View {
         }
         .aspectRatio(16 / 9, contentMode: .fit)
         .background(Color.black)
+    }
+
+    /// Side lock / unlock control (SimpleLive-style).
+    private func lockOnlyOverlay(compact: Bool) -> some View {
+        HStack {
+            Spacer()
+            Button {
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    vm.unlockControls()
+                    showPlayerChrome = true
+                }
+            } label: {
+                VStack(spacing: 4) {
+                    Image(systemName: "lock.fill")
+                        .font(compact ? .body.weight(.semibold) : .title3.weight(.semibold))
+                    if !compact {
+                        Text("解锁")
+                            .font(.caption2.weight(.semibold))
+                    }
+                }
+                .foregroundStyle(.white)
+                .frame(width: compact ? 40 : 48, height: compact ? 40 : 56)
+                .background(Color.black.opacity(0.45), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("解锁控件")
+            .padding(.trailing, compact ? 10 : 16)
+        }
     }
 
     private var playerOverlay: some View {
@@ -547,6 +590,22 @@ struct LiveRoomView: View {
                     }
 
                     Spacer()
+
+                    // Lock controls
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            vm.isControlsLocked = true
+                            showPlayerChrome = false
+                        }
+                    } label: {
+                        Image(systemName: "lock.open")
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 36, height: 36)
+                            .background(Color.white.opacity(0.18), in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("锁定控件")
 
                     Button {
                         isPlayerFullscreen = true
@@ -815,7 +874,7 @@ struct LiveRoomView: View {
             Label("小提示", systemImage: "lightbulb")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
-            Text("点播放器可显示/隐藏控件；全屏后点屏幕切换控制条。虎牙/斗鱼/快手应用内走 VLC 播 FLV。")
+            Text("点播放器可显示/隐藏控件；锁按钮可锁定防误触；全屏后点屏幕切换控制条。")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
         }
@@ -949,7 +1008,7 @@ struct LivePlayerSurface: View {
     }
 }
 
-/// Fullscreen player — SimpleLive / 主流直播风格控制条
+/// Fullscreen player — SimpleLive / 主流直播风格控制条 + 锁定
 struct LiveRoomFullscreenView: View {
     @ObservedObject var vm: LiveRoomViewModel
     @Environment(\.dismiss) private var dismiss
@@ -965,12 +1024,21 @@ struct LiveRoomFullscreenView: View {
                 .ignoresSafeArea()
                 .contentShape(Rectangle())
                 .onTapGesture {
+                    guard !vm.isControlsLocked else { return }
                     withAnimation(.easeInOut(duration: 0.2)) {
                         showChrome.toggle()
                     }
                 }
 
-            if showChrome {
+            if vm.isControlsLocked {
+                // Only unlock affordances on both sides (anti mis-touch).
+                HStack {
+                    unlockSideButton
+                    Spacer()
+                    unlockSideButton
+                }
+                .padding(.horizontal, 12)
+            } else if showChrome {
                 VStack(spacing: 0) {
                     HStack(spacing: 12) {
                         Button { dismiss() } label: {
@@ -994,6 +1062,19 @@ struct LiveRoomFullscreenView: View {
                                 .lineLimit(1)
                         }
                         Spacer()
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                vm.isControlsLocked = true
+                                showChrome = false
+                            }
+                        } label: {
+                            Image(systemName: "lock.open")
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .frame(width: 40, height: 40)
+                                .background(Color.white.opacity(0.15), in: Circle())
+                        }
+                        .accessibilityLabel("锁定控件")
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
@@ -1054,6 +1135,30 @@ struct LiveRoomFullscreenView: View {
         }
         .statusBarHidden(true)
         .persistentSystemOverlays(.hidden)
+        .onDisappear {
+            // Leaving fullscreen keeps lock state so inline player stays locked if user wants.
+        }
+    }
+
+    private var unlockSideButton: some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.15)) {
+                vm.unlockControls()
+                showChrome = true
+            }
+        } label: {
+            VStack(spacing: 6) {
+                Image(systemName: "lock.fill")
+                    .font(.title3.weight(.semibold))
+                Text("解锁")
+                    .font(.caption2.weight(.semibold))
+            }
+            .foregroundStyle(.white)
+            .frame(width: 52, height: 64)
+            .background(Color.black.opacity(0.45), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("解锁控件")
     }
 }
 

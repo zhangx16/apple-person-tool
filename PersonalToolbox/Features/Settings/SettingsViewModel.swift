@@ -91,10 +91,21 @@ final class SettingsViewModel: ObservableObject {
                     Haptics.error()
                     return
                 }
+                // List/detail require email; keep configured-check aligned with isMailConfigured.
+                let email = settings.mailDefaultEmail.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !email.isEmpty else {
+                    mailProbe = .failure("请填写默认邮箱")
+                    Haptics.error()
+                    return
+                }
                 let ok = try await mail.externalHealth(baseURL: base, apiKey: key)
                 let ms = elapsedMs(since: start)
                 if ok {
-                    mailProbe = .success(latencyMs: ms, detail: "外部 API 健康")
+                    let favorites = settings.normalizedMailFavoriteEmails.count
+                    let detail = favorites > 0
+                        ? "外部 API 健康 · \(email) + \(favorites) 收藏"
+                        : "外部 API 健康 · \(email)"
+                    mailProbe = .success(latencyMs: ms, detail: detail)
                     Haptics.success()
                 } else {
                     mailProbe = .failure("健康检查未通过")

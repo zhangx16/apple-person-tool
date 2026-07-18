@@ -165,6 +165,8 @@ final class MailViewModel: ObservableObject {
         }
     }
 
+    /// External mode has no `/api/accounts`: synthesize virtual mailboxes from
+    /// `mailDefaultEmail` + `mailFavoriteEmails`.
     private func loadExternalAccountStub() async {
         accountsLoadID += 1
         let loadID = accountsLoadID
@@ -177,19 +179,21 @@ final class MailViewModel: ObservableObject {
             }
         }
 
-        let email = settings.mailDefaultEmail.trimmingCharacters(in: .whitespacesAndNewlines)
         let key = settings.mailExternalAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !key.isEmpty else {
             isUnconfigured = true
             accounts = []
+            accountsHasMore = false
             return
         }
-        guard !email.isEmpty else {
+        let virtual = settings.externalMailboxAccounts
+        guard !virtual.isEmpty else {
             accounts = []
+            accountsHasMore = false
             accountsError = "外部 API 模式需在设置中填写默认邮箱"
             return
         }
-        accounts = [MailAccount(email: email, status: "external", provider: "external", remark: "默认邮箱")]
+        accounts = virtual
         accountsHasMore = false
         accountPage = 1
     }

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Mail tab root: lists mailbox accounts (session) or default email (external stub).
+/// Mail tab root: session account pool, or external virtual mailboxes (default + favorites).
 struct AccountListView: View {
     @EnvironmentObject private var settings: AppSettings
     @StateObject private var viewModel = MailViewModel()
@@ -18,8 +18,10 @@ struct AccountListView: View {
                 } else if viewModel.accounts.isEmpty {
                     EmptyStateView(
                         symbol: "tray",
-                        title: "邮箱池为空",
-                        message: "服务端尚未添加任何邮箱账号。"
+                        title: settings.mailUseExternalAPI ? "未配置邮箱" : "邮箱池为空",
+                        message: settings.mailUseExternalAPI
+                            ? "请在设置中填写默认邮箱，可选添加收藏邮箱。"
+                            : "服务端尚未添加任何邮箱账号。"
                     )
                 } else {
                     accountList
@@ -44,7 +46,13 @@ struct AccountListView: View {
             .onChange(of: settings.mailPassword) { _, _ in
                 Task { await viewModel.loadAccounts(force: true) }
             }
+            .onChange(of: settings.mailExternalAPIKey) { _, _ in
+                Task { await viewModel.loadAccounts(force: true) }
+            }
             .onChange(of: settings.mailDefaultEmail) { _, _ in
+                Task { await viewModel.loadAccounts(force: true) }
+            }
+            .onChange(of: settings.mailFavoriteEmails) { _, _ in
                 Task { await viewModel.loadAccounts(force: true) }
             }
         }
@@ -56,7 +64,7 @@ struct AccountListView: View {
         List {
             if settings.mailUseExternalAPI {
                 Section {
-                    Text("当前为外部 API 模式，仅显示默认邮箱。完整外部能力见后续版本。")
+                    Text("外部 API 模式：列表与详情均携带邮箱参数；默认邮箱与收藏邮箱如下。")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -93,6 +101,10 @@ struct AccountListView: View {
                         .padding(.vertical, 6)
                     }
                     .disabled(viewModel.isLoadingMoreAccounts)
+                }
+            } header: {
+                if settings.mailUseExternalAPI {
+                    Text("邮箱")
                 }
             }
 

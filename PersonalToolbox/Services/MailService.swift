@@ -181,8 +181,10 @@ actor MailService {
         }
     }
 
-    // MARK: - External API (X-API-Key) — partial; full UX in PR-5b
+    // MARK: - External API (X-API-Key)
+    // List/detail require `email` (or claim_token; we always send email). No session cookies.
 
+    /// GET `/api/external/messages?email=&folder=&skip=&top=`
     func externalMessages(
         baseURL: String,
         apiKey: String,
@@ -191,15 +193,23 @@ actor MailService {
         skip: Int = 0,
         top: Int = 30
     ) async throws -> MailMessagesPage {
+        let mailbox = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !mailbox.isEmpty else {
+            throw NetworkError.message("外部 API 需要指定邮箱地址")
+        }
+        let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !key.isEmpty else {
+            throw NetworkError.message("请填写外部 API Key")
+        }
         let (data, http) = try await client.data(
             base: baseURL,
             path: "/api/external/messages",
             headers: [
-                "X-API-Key": apiKey,
+                "X-API-Key": key,
                 "Accept": "application/json"
             ],
             query: [
-                .init(name: "email", value: email),
+                .init(name: "email", value: mailbox),
                 .init(name: "folder", value: folder),
                 .init(name: "skip", value: String(max(0, skip))),
                 .init(name: "top", value: String(max(1, min(50, top))))
@@ -213,6 +223,7 @@ actor MailService {
         return MailJSONHelper.parseMessagesPage(root, requestedTop: top)
     }
 
+    /// GET `/api/external/messages/{id}?email=&folder=` — **email is required** by the server.
     func externalMessageDetail(
         baseURL: String,
         apiKey: String,
@@ -220,16 +231,24 @@ actor MailService {
         messageID: String,
         folder: String = "inbox"
     ) async throws -> MailMessage {
+        let mailbox = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !mailbox.isEmpty else {
+            throw NetworkError.message("外部 API 需要指定邮箱地址")
+        }
+        let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !key.isEmpty else {
+            throw NetworkError.message("请填写外部 API Key")
+        }
         let idEnc = messageID.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? messageID
         let (data, http) = try await client.data(
             base: baseURL,
             path: "/api/external/messages/\(idEnc)",
             headers: [
-                "X-API-Key": apiKey,
+                "X-API-Key": key,
                 "Accept": "application/json"
             ],
             query: [
-                .init(name: "email", value: email),
+                .init(name: "email", value: mailbox),
                 .init(name: "folder", value: folder)
             ]
         )
@@ -242,11 +261,16 @@ actor MailService {
         throw NetworkError.message("无法解析邮件详情")
     }
 
+    /// GET `/api/external/health` with `X-API-Key`.
     func externalHealth(baseURL: String, apiKey: String) async throws -> Bool {
+        let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !key.isEmpty else {
+            throw NetworkError.message("请填写外部 API Key")
+        }
         let (data, http) = try await client.data(
             base: baseURL,
             path: "/api/external/health",
-            headers: ["X-API-Key": apiKey]
+            headers: ["X-API-Key": key]
         )
         return (200..<300).contains(http.statusCode) && !data.isEmpty
     }

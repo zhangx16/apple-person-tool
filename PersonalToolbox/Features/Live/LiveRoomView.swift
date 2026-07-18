@@ -371,134 +371,456 @@ final class LiveHeaderResourceLoader: NSObject, AVAssetResourceLoaderDelegate {
     }
 }
 
-// MARK: - Room UI (full page; optional true fullscreen player)
+// MARK: - Room UI (mainstream live layout: player chrome + anchor card)
 
 struct LiveRoomView: View {
     let room: LiveRoomItem
     @StateObject private var vm: LiveRoomViewModel
     @ObservedObject private var follows = LiveFollowStore.shared
     @State private var isPlayerFullscreen = false
+    @State private var showPlayerChrome = true
 
     init(room: LiveRoomItem) {
         self.room = room
         _vm = StateObject(wrappedValue: LiveRoomViewModel(room: room))
     }
 
+    private var platform: LivePlatform { vm.detail?.platform ?? room.platform }
+    private var brand: Color { LiveUI.brand(platform) }
+
     var body: some View {
-        VStack(spacing: 0) {
-            playerArea
-                .frame(minHeight: 240, maxHeight: 320)
-                .background(Color.black)
-                .overlay(alignment: .bottomTrailing) {
-                    Button {
-                        isPlayerFullscreen = true
-                    } label: {
-                        Label("全屏", systemImage: "arrow.up.left.and.arrow.down.right")
-                            .font(.caption.weight(.semibold))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(.ultraThinMaterial, in: Capsule())
-                    }
-                    .buttonStyle(.plain)
-                    .padding(10)
-                    .disabled(vm.streamURL == nil && vm.playMode == .native && vm.webURL == nil)
-                }
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    Picker("播放方式", selection: $vm.playMode) {
-                        ForEach(LiveRoomViewModel.PlayMode.allCases) { m in
-                            Text(m.rawValue).tag(m)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .onChange(of: vm.playMode) { _, mode in
-                        if mode == .web {
-                            vm.switchToWeb()
-                        } else {
-                            vm.retryNative()
-                        }
-                    }
-
-                    infoArea
+        ScrollView {
+            VStack(spacing: 0) {
+                playerHero
+                VStack(spacing: 12) {
+                    anchorCard
+                    titleBlock
                     if vm.playMode == .native {
-                        qualityPicker
+                        qualitySection
                     }
-
-                    Text(vm.statusText)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    #if canImport(MobileVLCKit)
-                    Text("应用内：VLC 可播 FLV · 点播放器右下角全屏")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                    #else
-                    Text("未链接 VLC，FLV 将回退网页")
-                        .font(.caption2)
-                        .foregroundStyle(.orange)
-                    #endif
-
-                    if let errorMessage = vm.errorMessage {
-                        Text(errorMessage)
-                            .font(.footnote)
-                            .foregroundStyle(.red)
+                    engineSection
+                    if let err = vm.errorMessage, !err.isEmpty {
+                        errorBanner(err)
                     }
-
-                    HStack {
-                        Button("重试应用内") { vm.retryNative() }
-                            .buttonStyle(.bordered)
-                        Button("网页") { vm.switchToWeb() }
-                            .buttonStyle(.bordered)
-                        Button {
-                            isPlayerFullscreen = true
-                        } label: {
-                            Label("全屏播放", systemImage: "arrow.up.left.and.arrow.down.right")
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
+                    tipsCard
                 }
-                .padding()
+                .padding(.horizontal, 16)
+                .padding(.top, 14)
+                .padding(.bottom, 28)
             }
         }
         .background(Color(.systemGroupedBackground))
-        .navigationTitle(navTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                HStack(spacing: 12) {
-                    Button {
-                        isPlayerFullscreen = true
-                    } label: {
-                        Image(systemName: "arrow.up.left.and.arrow.down.right")
-                    }
-                    .accessibilityLabel("全屏播放")
-
-                    Button {
-                        toggleFollow()
-                    } label: {
-                        Image(systemName: isFollowed ? "star.fill" : "star")
-                            .foregroundStyle(isFollowed ? Color.yellow : Color.primary)
-                    }
+            ToolbarItem(placement: .principal) {
+                HStack(spacing: 6) {
+                    LiveUI.liveDot(isLive: vm.detail?.isLive == true)
+                    Text(shortTitle)
+                        .font(.headline)
+                        .lineLimit(1)
                 }
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    isPlayerFullscreen = true
+                } label: {
+                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                }
+                .accessibilityLabel("全屏播放")
             }
         }
         .task { vm.start() }
-        // Only tear down when leaving the room page (not when entering fullscreen cover).
         .onDisappear {
-            if !isPlayerFullscreen {
-                vm.stop()
-            }
+            if !isPlayerFullscreen { vm.stop() }
         }
         .fullScreenCover(isPresented: $isPlayerFullscreen) {
             LiveRoomFullscreenView(vm: vm)
         }
     }
 
-    private var navTitle: String {
-        if let name = vm.detail?.userName, !name.isEmpty { return name }
-        if !room.userName.isEmpty { return room.userName }
-        return "直播间 \(room.roomId)"
+    private var shortTitle: String {
+        let n = vm.detail?.userName ?? room.userName
+        return n.isEmpty ? "直播间" : n
+    }
+
+    // MARK: Player (16:9, overlays like 虎牙/斗鱼/B站)
+
+    private var playerHero: some View {
+        GeometryReader { geo in
+            let h = geo.size.width * 9 / 16
+            ZStack {
+                LivePlayerSurface(vm: vm)
+                if showPlayerChrome {
+                    playerOverlay
+                }
+            }
+            .frame(width: geo.size.width, height: h)
+            .clipped()
+            .contentShape(Rectangle())
+            .onTapGesture {
+                withAnimation(.easeInOut(duration: 0.18)) {
+                    showPlayerChrome.toggle()
+                }
+            }
+        }
+        .aspectRatio(16 / 9, contentMode: .fit)
+        .background(Color.black)
+    }
+
+    private var playerOverlay: some View {
+        ZStack {
+            // Top / bottom scrims
+            VStack {
+                LinearGradient(
+                    colors: [Color.black.opacity(0.55), .clear],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 72)
+                Spacer()
+                LinearGradient(
+                    colors: [.clear, Color.black.opacity(0.65)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 88)
+            }
+            .allowsHitTesting(false)
+
+            VStack {
+                HStack(spacing: 8) {
+                    LiveUI.liveBadge(isLive: vm.detail?.isLive == true)
+                    LiveUI.platformChip(platform)
+                    Spacer()
+                    Text(vm.statusText)
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(.white.opacity(0.9))
+                        .lineLimit(1)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.black.opacity(0.35), in: Capsule())
+                }
+                .padding(.horizontal, 12)
+                .padding(.top, 10)
+
+                Spacer()
+
+                HStack(spacing: 10) {
+                    // Engine mini toggle
+                    Menu {
+                        Button {
+                            vm.retryNative()
+                        } label: {
+                            Label("应用内播放", systemImage: "play.rectangle.fill")
+                        }
+                        Button {
+                            vm.switchToWeb()
+                        } label: {
+                            Label("网页播放", systemImage: "safari")
+                        }
+                        if vm.playMode == .native {
+                            Button {
+                                vm.retryNative()
+                            } label: {
+                                Label("重新拉流", systemImage: "arrow.clockwise")
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: vm.playMode == .native ? "play.rectangle.fill" : "safari")
+                            Text(vm.playMode.rawValue)
+                        }
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(Color.white.opacity(0.18), in: Capsule())
+                    }
+
+                    if vm.playMode == .native, let name = selectedQualityName {
+                        Text(name)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 7)
+                            .background(Color.white.opacity(0.18), in: Capsule())
+                    }
+
+                    Spacer()
+
+                    Button {
+                        isPlayerFullscreen = true
+                    } label: {
+                        Image(systemName: "arrow.up.left.and.arrow.down.right")
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 36, height: 36)
+                            .background(Color.white.opacity(0.18), in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("全屏")
+                }
+                .padding(.horizontal, 12)
+                .padding(.bottom, 12)
+            }
+        }
+    }
+
+    private var selectedQualityName: String? {
+        guard let id = vm.selectedId else { return vm.qualities.first?.name }
+        return vm.qualities.first(where: { $0.id == id })?.name
+    }
+
+    // MARK: Anchor card (avatar · name · follow)
+
+    private var anchorCard: some View {
+        HStack(spacing: 12) {
+            avatarView
+            VStack(alignment: .leading, spacing: 4) {
+                Text(displayName)
+                    .font(.headline)
+                    .lineLimit(1)
+                HStack(spacing: 8) {
+                    Label(platform.title, systemImage: platform.systemImage)
+                    Text("·")
+                    Text("房间 \(vm.detail?.roomId ?? room.roomId)")
+                    if let online = displayOnline {
+                        Text("·")
+                        Label(online, systemImage: "person.2.fill")
+                    }
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            }
+            Spacer(minLength: 8)
+            Button {
+                toggleFollow()
+            } label: {
+                Text(isFollowed ? "已关注" : "关注")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(isFollowed ? Color.primary : Color.white)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(
+                        isFollowed ? Color(.tertiarySystemFill) : brand,
+                        in: Capsule()
+                    )
+            }
+            .buttonStyle(PressableButtonStyle())
+        }
+        .padding(14)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    private var avatarView: some View {
+        let cover = vm.detail?.userAvatar.isEmpty == false ? (vm.detail?.userAvatar ?? "") : (vm.detail?.cover ?? room.cover)
+        return ZStack {
+            Circle().fill(brand.opacity(0.2))
+            if let url = URL(string: cover), url.scheme == "http" || url.scheme == "https" {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let img):
+                        img.resizable().scaledToFill()
+                    default:
+                        Image(systemName: "person.fill")
+                            .foregroundStyle(brand)
+                    }
+                }
+            } else {
+                Image(systemName: "person.fill")
+                    .foregroundStyle(brand)
+            }
+        }
+        .frame(width: 48, height: 48)
+        .clipShape(Circle())
+        .overlay(Circle().stroke(brand.opacity(0.35), lineWidth: 1.5))
+    }
+
+    private var displayName: String {
+        let n = vm.detail?.userName ?? room.userName
+        return n.isEmpty ? "主播 \(vm.detail?.roomId ?? room.roomId)" : n
+    }
+
+    private var displayOnline: String? {
+        let n = vm.detail?.online ?? room.online
+        guard n > 0 else { return nil }
+        return LiveUI.formatCount(n)
+    }
+
+    // MARK: Title
+
+    private var titleBlock: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(vm.detail?.title ?? (room.title.isEmpty ? "直播间 \(room.roomId)" : room.title))
+                .font(.title3.weight(.semibold))
+                .fixedSize(horizontal: false, vertical: true)
+            if let intro = vm.detail?.introduction, !intro.isEmpty {
+                Text(intro)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(3)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    // MARK: Quality
+
+    private var qualitySection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("清晰度")
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                Text(vm.statusText)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            if vm.qualities.isEmpty {
+                Text(vm.isLoading ? "线路解析中…" : "暂无清晰度（可切网页）")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(vm.qualities) { q in
+                            let on = vm.selectedId == q.id
+                            Button {
+                                vm.selectQuality(q)
+                            } label: {
+                                Text(q.name)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(on ? Color.white : Color.primary)
+                                    .padding(.horizontal, 14)
+                                    .padding(.vertical, 8)
+                                    .background(on ? brand : Color(.tertiarySystemFill), in: Capsule())
+                            }
+                            .buttonStyle(PressableButtonStyle())
+                        }
+                    }
+                }
+            }
+        }
+        .padding(14)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    // MARK: Engine
+
+    private var engineSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("播放方式")
+                .font(.subheadline.weight(.semibold))
+            HStack(spacing: 10) {
+                engineButton(
+                    title: "应用内",
+                    subtitle: "VLC · 支持 FLV",
+                    icon: "play.rectangle.fill",
+                    selected: vm.playMode == .native
+                ) {
+                    vm.retryNative()
+                }
+                engineButton(
+                    title: "网页",
+                    subtitle: "站点页面",
+                    icon: "safari",
+                    selected: vm.playMode == .web
+                ) {
+                    vm.switchToWeb()
+                }
+            }
+            HStack(spacing: 10) {
+                Button {
+                    vm.retryNative()
+                } label: {
+                    Label("重试", systemImage: "arrow.clockwise")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+
+                Button {
+                    isPlayerFullscreen = true
+                } label: {
+                    Label("全屏", systemImage: "arrow.up.left.and.arrow.down.right")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(brand)
+            }
+        }
+        .padding(14)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    private func engineButton(
+        title: String,
+        subtitle: String,
+        icon: String,
+        selected: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .font(.title3)
+                    .foregroundStyle(selected ? brand : .secondary)
+                    .frame(width: 28)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Text(subtitle)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
+                if selected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(brand)
+                }
+            }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(selected ? brand.opacity(0.55) : Color(.separator).opacity(0.35), lineWidth: selected ? 1.5 : 1)
+                    .background(
+                        (selected ? brand.opacity(0.08) : Color(.tertiarySystemFill).opacity(0.35))
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    )
+            )
+        }
+        .buttonStyle(PressableButtonStyle())
+    }
+
+    private func errorBanner(_ text: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.orange)
+            Text(text)
+                .font(.footnote)
+                .foregroundStyle(.primary)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private var tipsCard: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label("小提示", systemImage: "lightbulb")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text("点播放器可显示/隐藏控件；全屏后点屏幕切换控制条。虎牙/斗鱼/快手应用内走 VLC 播 FLV。")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
     }
 
     private var isFollowed: Bool {
@@ -523,61 +845,56 @@ struct LiveRoomView: View {
             follows.follow(item)
         }
     }
+}
 
-    @ViewBuilder
-    private var playerArea: some View {
-        LivePlayerSurface(vm: vm)
-    }
+// MARK: - UI helpers
 
-    private var infoArea: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(vm.detail?.title ?? (room.title.isEmpty ? "直播间 \(room.roomId)" : room.title))
-                .font(.headline)
-            HStack {
-                Text(vm.detail?.userName ?? (room.userName.isEmpty ? platformTitle : room.userName))
-                Spacer()
-                if let d = vm.detail {
-                    Text(d.isLive ? "直播中" : "未开播")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(d.isLive ? Color.green : Color.secondary)
-                }
-            }
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
-            Text("\(platformTitle) · 房间 \(vm.detail?.roomId ?? room.roomId)")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
+enum LiveUI {
+    static func brand(_ p: LivePlatform) -> Color {
+        switch p {
+        case .huya: return Color(red: 1.0, green: 0.55, blue: 0.0)
+        case .douyu: return Color(red: 1.0, green: 0.42, blue: 0.0)
+        case .douyin: return Color(red: 0.12, green: 0.12, blue: 0.14)
+        case .kuaishou: return Color(red: 1.0, green: 0.29, blue: 0.02)
         }
     }
 
-    private var platformTitle: String {
-        (vm.detail?.platform ?? room.platform).title
+    static func formatCount(_ n: Int) -> String {
+        if n >= 100_000_000 { return String(format: "%.1f亿", Double(n) / 100_000_000) }
+        if n >= 10_000 { return String(format: "%.1f万", Double(n) / 10_000) }
+        return "\(n)"
     }
 
-    @ViewBuilder
-    private var qualityPicker: some View {
-        if !vm.qualities.isEmpty {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack {
-                    ForEach(vm.qualities) { q in
-                        Button {
-                            vm.selectQuality(q)
-                        } label: {
-                            Text(q.name)
-                                .font(.caption.weight(.semibold))
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                                .foregroundStyle(vm.selectedId == q.id ? Color.white : Color.primary)
-                                .background(
-                                    vm.selectedId == q.id ? Color.accentColor : Color(.tertiarySystemFill),
-                                    in: Capsule()
-                                )
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
+    static func liveDot(isLive: Bool) -> some View {
+        Circle()
+            .fill(isLive ? Color.red : Color.secondary)
+            .frame(width: 8, height: 8)
+    }
+
+    static func liveBadge(isLive: Bool) -> some View {
+        HStack(spacing: 4) {
+            Circle()
+                .fill(Color.white)
+                .frame(width: 5, height: 5)
+            Text(isLive ? "LIVE" : "OFF")
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(.white)
         }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(isLive ? Color.red : Color.gray, in: Capsule())
+    }
+
+    static func platformChip(_ p: LivePlatform) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: p.systemImage)
+            Text(p.title)
+        }
+        .font(.caption2.weight(.semibold))
+        .foregroundStyle(.white)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(brand(p).opacity(0.9), in: Capsule())
     }
 }
 
@@ -632,11 +949,15 @@ struct LivePlayerSurface: View {
     }
 }
 
-/// True fullscreen player page (not a sheet over the list).
+/// Fullscreen player — SimpleLive / 主流直播风格控制条
 struct LiveRoomFullscreenView: View {
     @ObservedObject var vm: LiveRoomViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var showChrome = true
+
+    private var brand: Color {
+        LiveUI.brand(vm.detail?.platform ?? .huya)
+    }
 
     var body: some View {
         ZStack {
@@ -650,23 +971,29 @@ struct LiveRoomFullscreenView: View {
                 }
 
             if showChrome {
-                VStack {
-                    HStack {
-                        Button {
-                            dismiss()
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.title2)
-                                .symbolRenderingMode(.hierarchical)
+                VStack(spacing: 0) {
+                    HStack(spacing: 12) {
+                        Button { dismiss() } label: {
+                            Image(systemName: "chevron.down")
+                                .font(.title3.weight(.semibold))
                                 .foregroundStyle(.white)
+                                .frame(width: 40, height: 40)
+                                .background(Color.white.opacity(0.15), in: Circle())
+                        }
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 6) {
+                                LiveUI.liveBadge(isLive: vm.detail?.isLive == true)
+                                Text(vm.detail?.userName ?? "直播")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.white)
+                                    .lineLimit(1)
+                            }
+                            Text(vm.detail?.title ?? "")
+                                .font(.caption2)
+                                .foregroundStyle(.white.opacity(0.8))
+                                .lineLimit(1)
                         }
                         Spacer()
-                        Text(vm.detail?.userName ?? "全屏播放")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
-                        Spacer()
-                        // Balance trailing space with close button.
-                        Color.clear.frame(width: 28, height: 28)
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
@@ -675,37 +1002,48 @@ struct LiveRoomFullscreenView: View {
 
                     if vm.playMode == .native, !vm.qualities.isEmpty {
                         ScrollView(.horizontal, showsIndicators: false) {
-                            HStack {
+                            HStack(spacing: 8) {
                                 ForEach(vm.qualities) { q in
-                                    Button {
-                                        vm.selectQuality(q)
-                                    } label: {
+                                    let on = vm.selectedId == q.id
+                                    Button { vm.selectQuality(q) } label: {
                                         Text(q.name)
                                             .font(.caption.weight(.semibold))
                                             .padding(.horizontal, 12)
                                             .padding(.vertical, 8)
-                                            .foregroundStyle(vm.selectedId == q.id ? Color.black : Color.white)
-                                            .background(
-                                                vm.selectedId == q.id ? Color.white : Color.white.opacity(0.2),
-                                                in: Capsule()
-                                            )
+                                            .foregroundStyle(on ? Color.black : Color.white)
+                                            .background(on ? Color.white : Color.white.opacity(0.2), in: Capsule())
                                     }
                                     .buttonStyle(.plain)
                                 }
                             }
                             .padding(.horizontal, 16)
                         }
-                        .padding(.bottom, 8)
+                        .padding(.bottom, 10)
                     }
 
-                    Text(vm.statusText)
-                        .font(.caption2)
-                        .foregroundStyle(.white.opacity(0.85))
-                        .padding(.bottom, 20)
+                    HStack {
+                        Text(vm.statusText)
+                            .font(.caption2)
+                            .foregroundStyle(.white.opacity(0.85))
+                        Spacer()
+                        Button {
+                            if vm.playMode == .native { vm.switchToWeb() }
+                            else { vm.retryNative() }
+                        } label: {
+                            Text(vm.playMode == .native ? "切网页" : "切应用内")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(brand.opacity(0.9), in: Capsule())
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 24)
                 }
                 .background(
                     LinearGradient(
-                        colors: [Color.black.opacity(0.55), .clear, Color.black.opacity(0.45)],
+                        colors: [Color.black.opacity(0.6), .clear, Color.black.opacity(0.55)],
                         startPoint: .top,
                         endPoint: .bottom
                     )

@@ -56,7 +56,8 @@ final class AppSettings: ObservableObject {
         static let ytPassword = "ytPassword"
     }
 
-    static let defaultModels = [
+    /// Pure data table; nonisolated so actors (e.g. Sub2APIService) can read without hopping to MainActor.
+    nonisolated static let defaultModels = [
         "grok-4.5",
         "grok-4.3",
         "grok-4.20-0309-reasoning",

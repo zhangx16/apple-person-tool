@@ -64,6 +64,8 @@ struct LiveRoomItem: Identifiable, Hashable {
     var online: Int
     /// Streamer profile avatar (prefer for list rows).
     var userAvatar: String = ""
+    /// Live category / game partition name (e.g. 王者荣耀).
+    var categoryName: String = ""
 
     /// Prefer homepage avatar; fall back to room cover.
     var displayAvatar: String {
@@ -86,6 +88,8 @@ struct LiveRoomDetail: Hashable {
     var introduction: String
     var playContextJSON: String = "{}"
     var danmakuJSON: String = "{}"
+    /// Live category / game partition name.
+    var categoryName: String = ""
 }
 
 struct LiveCategory: Identifiable, Hashable {
@@ -153,12 +157,18 @@ enum LiveSiteRouter {
     }
 
     static func roomDetail(platform: LivePlatform, roomId: String) async throws -> LiveRoomDetail {
-        switch platform {
-        case .huya: return try await HuyaLiveService.shared.getRoomDetail(roomId: roomId)
-        case .douyu: return try await DouyuLiveService.shared.getRoomDetail(roomId: roomId)
-        case .douyin: return try await DouyinLiveService.shared.getRoomDetail(roomId: roomId)
-        case .kuaishou: return try await KuaishouLiveService.shared.getRoomDetail(roomId: roomId)
+        if let cached = await LiveDetailCache.shared.get(platform: platform, roomId: roomId) {
+            return cached
         }
+        let detail: LiveRoomDetail
+        switch platform {
+        case .huya: detail = try await HuyaLiveService.shared.getRoomDetail(roomId: roomId)
+        case .douyu: detail = try await DouyuLiveService.shared.getRoomDetail(roomId: roomId)
+        case .douyin: detail = try await DouyinLiveService.shared.getRoomDetail(roomId: roomId)
+        case .kuaishou: detail = try await KuaishouLiveService.shared.getRoomDetail(roomId: roomId)
+        }
+        await LiveDetailCache.shared.set(detail)
+        return detail
     }
 
     static func playQualities(detail: LiveRoomDetail) async throws -> [LivePlayQuality] {

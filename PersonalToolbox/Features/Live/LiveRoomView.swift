@@ -45,8 +45,11 @@ final class LiveRoomViewModel: ObservableObject {
     init(room: LiveRoomItem) {
         self.room = room
         webURL = URL(string: defaultWebURL)
-        // With VLC, FLV sites use in-app player by default.
-        playMode = .native
+        // Restore last successful engine for this platform.
+        switch LivePlayPrefs.preferred(for: room.platform) {
+        case .web: playMode = .web
+        case .native: playMode = .native
+        }
     }
 
     func toggleControlsLock() {
@@ -82,6 +85,7 @@ final class LiveRoomViewModel: ObservableObject {
 
     func retryNative() {
         playMode = .native
+        LivePlayPrefs.remember(.native, for: room.platform)
         errorMessage = nil
         start()
     }
@@ -89,8 +93,13 @@ final class LiveRoomViewModel: ObservableObject {
     func switchToWeb() {
         clearStream()
         playMode = .web
+        LivePlayPrefs.remember(.web, for: room.platform)
         statusText = "网页播放"
         isLoading = false
+        // Still ensure webURL / detail when possible.
+        if detail == nil {
+            start()
+        }
     }
 
     private func clearStream() {
@@ -118,9 +127,27 @@ final class LiveRoomViewModel: ObservableObject {
             } else if let u = URL(string: d.webURL), u.scheme == "http" || u.scheme == "https" {
                 webURL = u
             }
+            // Keep follow list avatar/title fresh when already followed.
+            if LiveFollowStore.shared.isFollowing(platform: d.platform, roomId: d.roomId)
+                || LiveFollowStore.shared.isFollowing(platform: d.platform, roomId: room.roomId) {
+                LiveFollowStore.shared.follow(
+                    LiveRoomItem(
+                        platform: d.platform,
+                        roomId: d.roomId,
+                        title: d.title,
+                        cover: d.cover,
+                        userName: d.userName,
+                        online: d.online,
+                        userAvatar: d.userAvatar,
+                        categoryName: d.categoryName
+                    ),
+                    isLive: d.isLive
+                )
+            }
 
             if playMode == .web {
                 statusText = d.isLive ? "网页播放中" : "未开播 · 网页可试"
+                LivePlayPrefs.remember(.web, for: room.platform)
                 Task { await warmQualities(detail: d) }
                 return
             }
@@ -128,7 +155,7 @@ final class LiveRoomViewModel: ObservableObject {
             statusText = d.isLive ? "解析播放地址…" : "主播未开播"
             guard d.isLive else {
                 errorMessage = "当前未开播"
-                playMode = .web
+                fallbackToWeb(reason: "未开播，已切网页")
                 return
             }
 
@@ -136,21 +163,47 @@ final class LiveRoomViewModel: ObservableObject {
             guard !Task.isCancelled else { return }
             qualities = qs
             guard let first = qs.first else {
-                statusText = "无播放线路，使用网页"
-                playMode = .web
+                fallbackToWeb(reason: "无播放线路，已切网页")
                 return
             }
             selectedId = first.id
-            await play(quality: first)
+            let ok = await play(quality: first)
+            if !ok {
+                // Try remaining qualities once, then web.
+                var recovered = false
+                for q in qs.dropFirst().prefix(3) {
+                    selectedId = q.id
+                    if await play(quality: q) {
+                        recovered = true
+                        break
+                    }
+                }
+                if !recovered {
+                    fallbackToWeb(reason: "拉流失败，已自动切网页")
+                    return
+                }
+            }
+            LivePlayPrefs.remember(.native, for: room.platform)
             scheduleAutoWebFallback()
         } catch is CancellationError {
             return
         } catch {
             guard !Task.isCancelled else { return }
-            errorMessage = error.localizedDescription
-            statusText = "信息加载失败，仍可试网页"
-            playMode = .web
+            let msg = error.localizedDescription
+            if room.platform == .douyin, msg.contains("Cookie") || msg.contains("风控") || msg.contains("登录") {
+                errorMessage = msg + " · 可在设置配置抖音直播 Cookie"
+            } else {
+                errorMessage = msg
+            }
+            fallbackToWeb(reason: "加载失败，已切网页")
         }
+    }
+
+    private func fallbackToWeb(reason: String) {
+        clearStream()
+        playMode = .web
+        statusText = reason
+        LivePlayPrefs.remember(.web, for: room.platform)
     }
 
     private func mobileWebURL(for d: LiveRoomDetail) -> String {
@@ -176,30 +229,28 @@ final class LiveRoomViewModel: ObservableObject {
         Task { await play(quality: q) }
     }
 
-    private func play(quality: LivePlayQuality) async {
-        guard let detail else { return }
+    @discardableResult
+    private func play(quality: LivePlayQuality) async -> Bool {
+        guard let detail else { return false }
         statusText = "拉取线路 \(quality.name)…"
         do {
             let result = try await LiveSiteRouter.playURLs(detail: detail, quality: quality)
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled else { return false }
 
             // Prefer order: HLS first (lighter), then FLV (needs VLC), skip empty.
             let ordered = Self.rankURLs(result.urls)
             guard !ordered.isEmpty else {
                 errorMessage = nil
-                statusText = "无可用地址，使用网页"
-                playMode = .web
-                return
+                statusText = "无可用地址"
+                return false
             }
 
-            var lastErr: String?
             for urlString in ordered.prefix(6) {
                 guard let url = URL(string: urlString) else { continue }
                 let isFLV = urlString.lowercased().contains(".flv")
                 statusText = isFLV ? "VLC 播放 FLV…" : "连接 \(quality.name)…"
 
                 #if canImport(MobileVLCKit)
-                // VLC handles both FLV and HLS.
                 clearStream()
                 streamHeaders = result.headers
                 streamIsFLV = isFLV
@@ -207,13 +258,9 @@ final class LiveRoomViewModel: ObservableObject {
                 playMode = .native
                 errorMessage = nil
                 statusText = "播放中 · \(quality.name)" + (isFLV ? " · FLV" : " · HLS")
-                return
+                return true
                 #else
-                // No VLC: only try HLS via AVPlayer.
-                if isFLV {
-                    lastErr = "无 VLC，跳过 FLV"
-                    continue
-                }
+                if isFLV { continue }
                 if await startAVPlayer(url: url, headers: result.headers) {
                     streamIsFLV = false
                     streamURL = url
@@ -221,26 +268,19 @@ final class LiveRoomViewModel: ObservableObject {
                     playMode = .native
                     errorMessage = nil
                     statusText = "播放中 · \(quality.name)"
-                    return
+                    return true
                 }
-                lastErr = "线路失败"
                 #endif
             }
-
-            #if canImport(MobileVLCKit)
-            errorMessage = (lastErr ?? "播放失败") + "，可切网页"
-            statusText = "播放失败"
-            #else
-            errorMessage = "当前包未集成 VLC，FLV 请用网页或重新 pod install"
-            statusText = "改用网页"
-            playMode = .web
-            #endif
+            statusText = "线路均不可用"
+            return false
         } catch is CancellationError {
-            return
+            return false
         } catch {
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled else { return false }
             errorMessage = error.localizedDescription
-            statusText = "拉流失败，可切网页"
+            statusText = "拉流失败"
+            return false
         }
     }
 
@@ -298,18 +338,11 @@ final class LiveRoomViewModel: ObservableObject {
     private func scheduleAutoWebFallback() {
         failWatchTask?.cancel()
         failWatchTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 8_000_000_000)
+            try? await Task.sleep(nanoseconds: 6_000_000_000)
             guard let self, !Task.isCancelled else { return }
-            #if canImport(MobileVLCKit)
-            // VLC path: only fall back if still loading with no URL.
-            if self.playMode == .native, self.streamURL == nil, self.isLoading == false {
-                self.statusText = "无画面，可手动切网页"
+            if self.playMode == .native, self.streamURL == nil {
+                self.fallbackToWeb(reason: "长时间无画面，已自动切网页")
             }
-            #else
-            if self.playMode == .native, self.avPlayer == nil {
-                self.switchToWeb()
-            }
-            #endif
         }
     }
 }
@@ -939,7 +972,9 @@ struct LiveRoomView: View {
             title: vm.detail?.title ?? room.title,
             cover: vm.detail?.cover ?? room.cover,
             userName: vm.detail?.userName ?? room.userName,
-            online: vm.detail?.online ?? room.online
+            online: vm.detail?.online ?? room.online,
+            userAvatar: vm.detail?.userAvatar ?? room.userAvatar,
+            categoryName: vm.detail?.categoryName ?? room.categoryName
         )
         if isFollowed {
             follows.unfollow(platform: item.platform, roomId: item.roomId)

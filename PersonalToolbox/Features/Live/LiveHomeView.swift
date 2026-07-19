@@ -34,6 +34,8 @@ struct LiveHomeView: View {
     @State private var searchError: String?
     @State private var path = NavigationPath()
     @FocusState private var searchFocused: Bool
+    @State private var clipboardRoomHint: String?
+    @EnvironmentObject private var settings: AppSettings
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -43,6 +45,9 @@ struct LiveHomeView: View {
 
                 VStack(spacing: 0) {
                     topChrome
+                    if let clipboardRoomHint {
+                        clipboardBanner(clipboardRoomHint)
+                    }
                     content
                 }
             }
@@ -52,7 +57,87 @@ struct LiveHomeView: View {
             .navigationDestination(for: RoomRoute.self) { route in
                 LiveRoomView(room: route.room)
             }
+            .onAppear {
+                follows.refreshMissingAvatars(for: platform)
+                detectClipboardRoomId()
+            }
+            .onChange(of: mode) { _, newMode in
+                if newMode == .follow {
+                    follows.refreshMissingAvatars(for: platform)
+                }
+            }
+            .onChange(of: platform) { _, newPlatform in
+                if mode == .follow {
+                    follows.refreshMissingAvatars(for: newPlatform)
+                }
+                detectClipboardRoomId()
+            }
         }
+    }
+
+    private func clipboardBanner(_ rid: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: "doc.on.clipboard")
+                .foregroundStyle(LiveUI.brand(platform))
+            VStack(alignment: .leading, spacing: 2) {
+                Text("检测到剪贴板房间号")
+                    .font(.caption.weight(.semibold))
+                Text(rid)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button("打开") {
+                openRoom(LiveRoomItem(
+                    platform: platform,
+                    roomId: rid,
+                    title: "",
+                    cover: "",
+                    userName: "",
+                    online: 0
+                ))
+                clipboardRoomHint = nil
+            }
+            .font(.caption.weight(.bold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(LiveUI.brand(platform).gradient, in: Capsule())
+            Button {
+                clipboardRoomHint = nil
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
+    }
+
+    private func detectClipboardRoomId() {
+        let text = UIPasteboard.general.string?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !text.isEmpty, text.count <= 24 else {
+            clipboardRoomHint = nil
+            return
+        }
+        // Pure digits or alnum room id (huya private host etc.)
+        let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "_-"))
+        guard text.unicodeScalars.allSatisfy({ allowed.contains($0) }) else {
+            clipboardRoomHint = nil
+            return
+        }
+        // Avoid treating normal words as room ids
+        let hasDigit = text.contains { $0.isNumber }
+        guard hasDigit || text.count >= 4 else {
+            clipboardRoomHint = nil
+            return
+        }
+        clipboardRoomHint = text
     }
 
     // MARK: - Top chrome
@@ -215,7 +300,7 @@ struct LiveHomeView: View {
 
     @ViewBuilder
     private var followContent: some View {
-        let filtered = follows.items.filter { $0.platform == platform }
+        let filtered = follows.items(for: platform)
         if filtered.isEmpty {
             LiveEmptyState(
                 symbol: "heart.circle",
@@ -229,14 +314,22 @@ struct LiveHomeView: View {
         } else {
             ScrollView {
                 LazyVStack(spacing: 12) {
+                    if follows.isRefreshingStatus {
+                        HStack(spacing: 8) {
+                            ProgressView()
+                                .controlSize(.small)
+                            Text("正在刷新开播状态…")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 4)
+                    }
                     ForEach(filtered) { item in
-                        LiveStreamerCard(
-                            title: item.title.isEmpty ? item.userName : item.title,
-                            subtitle: item.userName.isEmpty ? "房间 \(item.roomId)" : item.userName,
-                            meta: "房间 \(item.roomId)",
-                            avatarURL: item.cover,
-                            brand: LiveUI.brand(platform),
-                            trailing: .play
+                        // 关注卡：主播名（加粗）→ 房间号 → 分区
+                        LiveFollowCard(
+                            item: item,
+                            brand: LiveUI.brand(platform)
                         ) {
                             openRoom(follows.asRoomItem(item))
                         }
@@ -247,9 +340,6 @@ struct LiveHomeView: View {
                                 Label("取消关注", systemImage: "heart.slash")
                             }
                         }
-                        .swipeActionsCompat {
-                            follows.unfollow(item)
-                        }
                     }
                 }
                 .padding(.horizontal, 16)
@@ -257,6 +347,11 @@ struct LiveHomeView: View {
                 .padding(.bottom, 28)
             }
             .scrollDismissesKeyboard(.interactively)
+            .refreshable {
+                follows.refreshMetadata(for: platform, forceStatus: true)
+                // Brief wait so pull-to-refresh feels responsive.
+                try? await Task.sleep(nanoseconds: 600_000_000)
+            }
         }
     }
 
@@ -354,7 +449,11 @@ struct LiveHomeView: View {
             return
         } catch {
             searchResults = []
-            searchError = error.localizedDescription
+            var msg = error.localizedDescription
+            if platform == .douyin {
+                msg += " · 可到「设置 → 抖音直播」配置 Cookie"
+            }
+            searchError = msg
         }
     }
 
@@ -459,6 +558,108 @@ private struct LiveEmptyState: View {
     }
 }
 
+/// 关注专用卡：名称加粗 → 房间号 → 分区 + LIVE 角标
+private struct LiveFollowCard: View {
+    let item: LiveFollowItem
+    let brand: Color
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 14) {
+                ZStack(alignment: .bottomTrailing) {
+                    avatar
+                    if item.isLive == true {
+                        Text("LIVE")
+                            .font(.system(size: 9, weight: .heavy))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(Color.red, in: Capsule())
+                            .offset(x: 4, y: 4)
+                    }
+                }
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 8) {
+                        Text(item.displayName)
+                            .font(.body.weight(.bold))
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+                        if item.isLive == true {
+                            Text("直播中")
+                                .font(.caption2.weight(.bold))
+                                .foregroundStyle(.red)
+                        } else if item.isLive == false {
+                            Text("未开播")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    Text("房间 \(item.roomId)")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                    HStack(spacing: 4) {
+                        Image(systemName: "square.grid.2x2")
+                            .font(.caption2)
+                        Text(item.categoryName.isEmpty ? "分区获取中…" : item.categoryName)
+                            .font(.caption)
+                        if item.online > 0 {
+                            Text("·")
+                            Text("\(formatOnline(item.online)) 人气")
+                                .font(.caption)
+                        }
+                    }
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+                }
+                Spacer(minLength: 4)
+                Image(systemName: "play.fill")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 36, height: 36)
+                    .background(brand.gradient, in: Circle())
+            }
+            .padding(14)
+            .background {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color(.secondarySystemGroupedBackground))
+                    .shadow(color: .black.opacity(0.05), radius: 10, y: 3)
+            }
+        }
+        .buttonStyle(PressableButtonStyle(scale: 0.98))
+    }
+
+    private var avatar: some View {
+        ZStack {
+            Circle().fill(brand.opacity(0.12))
+            if let url = URL(string: item.displayAvatar),
+               url.scheme == "http" || url.scheme == "https" {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let img):
+                        img.resizable().scaledToFill()
+                    default:
+                        Image(systemName: "person.fill")
+                            .foregroundStyle(brand.opacity(0.7))
+                    }
+                }
+            } else {
+                Image(systemName: "person.fill")
+                    .foregroundStyle(brand.opacity(0.7))
+            }
+        }
+        .frame(width: 56, height: 56)
+        .clipShape(Circle())
+        .overlay(Circle().stroke(brand.opacity(0.2), lineWidth: 1.5))
+    }
+
+    private func formatOnline(_ n: Int) -> String {
+        if n >= 10_000 { return String(format: "%.1f万", Double(n) / 10_000) }
+        return "\(n)"
+    }
+}
+
 private enum LiveCardTrailing {
     case play
     case follow(isOn: Bool, action: () -> Void)
@@ -471,26 +672,36 @@ private struct LiveStreamerCard: View {
     let avatarURL: String
     let brand: Color
     let trailing: LiveCardTrailing
+    /// Follow list: bold name on top; search keeps medium weight.
+    var emphasizeName: Bool = false
     let onTap: () -> Void
 
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 14) {
                 avatar
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: emphasizeName ? 5 : 4) {
                     Text(title.isEmpty ? "未命名" : title)
-                        .font(.body.weight(.semibold))
+                        .font(emphasizeName ? .body.weight(.bold) : .body.weight(.semibold))
                         .foregroundStyle(.primary)
-                        .lineLimit(2)
+                        .lineLimit(emphasizeName ? 1 : 2)
                         .multilineTextAlignment(.leading)
                     Text(subtitle)
-                        .font(.subheadline)
+                        .font(emphasizeName ? .subheadline : .subheadline)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
-                    Text(meta)
-                        .font(.caption)
+                    if !meta.isEmpty {
+                        HStack(spacing: 4) {
+                            if emphasizeName {
+                                Image(systemName: "square.grid.2x2")
+                                    .font(.caption2)
+                            }
+                            Text(meta)
+                                .font(.caption)
+                        }
                         .foregroundStyle(.tertiary)
                         .lineLimit(1)
+                    }
                 }
                 Spacer(minLength: 4)
                 trailingView

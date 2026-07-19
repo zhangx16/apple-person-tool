@@ -87,6 +87,10 @@ actor DouyuLiveService {
             if avatar.isEmpty { avatar = LiveJSON.string(item["ownerAvatar"]) }
             if avatar.isEmpty { avatar = LiveJSON.string(item["icon"]) }
             if avatar.hasPrefix("//") { avatar = "https:" + avatar }
+            var category = LiveJSON.string(item["cateName"])
+            if category.isEmpty { category = LiveJSON.string(item["cate2Name"]) }
+            if category.isEmpty { category = LiveJSON.string(item["gameName"]) }
+            if category.isEmpty { category = LiveJSON.string(item["tagName"]) }
             return LiveRoomItem(
                 platform: .douyu,
                 roomId: LiveJSON.string(item["rid"]),
@@ -94,7 +98,8 @@ actor DouyuLiveService {
                 cover: LiveJSON.string(item["roomSrc"]),
                 userName: LiveJSON.string(item["nickName"]),
                 online: parseHot(LiveJSON.string(item["hot"])),
-                userAvatar: avatar
+                userAvatar: avatar,
+                categoryName: category
             )
         }
     }
@@ -117,6 +122,9 @@ actor DouyuLiveService {
         let sign = try LiveJSEngine.shared.douyuSign(encryptedJS: crptext, roomId: rid)
         let isLive = LiveJSON.int(room["show_status"]) == 1 && LiveJSON.int(room["videoLoop"]) != 1
         let hot = LiveJSON.int(LiveJSON.object(room["room_biz_all"])?["hot"])
+        var category = LiveJSON.string(room["cate2_name"])
+        if category.isEmpty { category = LiveJSON.string(room["game_name"]) }
+        if category.isEmpty { category = LiveJSON.string(room["cate2Name"]) }
         return LiveRoomDetail(
             platform: .douyu,
             roomId: rid,
@@ -129,7 +137,8 @@ actor DouyuLiveService {
             webURL: "https://www.douyu.com/\(rid)",
             introduction: LiveJSON.string(room["show_details"]),
             playContextJSON: LiveJSON.encode(["sign": sign, "roomId": rid]),
-            danmakuJSON: LiveJSON.encode(["roomId": rid])
+            danmakuJSON: LiveJSON.encode(["roomId": rid]),
+            categoryName: category
         )
     }
 

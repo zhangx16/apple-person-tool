@@ -193,6 +193,12 @@ actor DouyinLiveService {
             let stats = LiveJSON.object(itemData["stats"])
             let webRid = LiveJSON.string(owner?["web_rid"])
             guard !webRid.isEmpty else { return nil }
+            let partition = LiveJSON.object(itemData["partition"])
+                ?? LiveJSON.object(itemData["partition_road_map"])
+            var category = LiveJSON.string(partition?["title"])
+            if category.isEmpty {
+                category = LiveJSON.string(LiveJSON.object(itemData["category"])?["name"])
+            }
             return LiveRoomItem(
                 platform: .douyin,
                 roomId: webRid,
@@ -200,7 +206,8 @@ actor DouyinLiveService {
                 cover: cover,
                 userName: LiveJSON.string(owner?["nickname"]),
                 online: LiveJSON.int(stats?["total_user"]),
-                userAvatar: avatar
+                userAvatar: avatar,
+                categoryName: category
             )
         }
     }

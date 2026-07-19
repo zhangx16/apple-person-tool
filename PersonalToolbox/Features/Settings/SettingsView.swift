@@ -79,25 +79,28 @@ struct SettingsView: View {
                         ) {
                             Kuaidi100SettingsPage()
                         }
+                    }
+
+                    settingsSection("直播账号", symbol: "play.tv.fill") {
                         plainLink(
                             systemImage: "music.note",
-                            title: "抖音直播",
-                            subtitle: settings.douyinLiveCookie.isEmpty ? "建议配置 Cookie · 搜索/风控" : "Cookie 已配置",
+                            title: "抖音直播 Cookie",
+                            subtitle: settings.douyinLiveCookie.isEmpty ? "未配置 · 搜索/风控可能失败" : "已配置",
                             tint: Color(hex: 0x111111)
                         ) {
                             DouyinLiveSettingsPage()
                         }
                         plainLink(
                             systemImage: "video.fill",
-                            title: "快手直播",
-                            subtitle: settings.kuaishouCookie.isEmpty ? "匿名可播 · 弹幕需 Cookie" : "Cookie 已配置",
+                            title: "快手直播 Cookie",
+                            subtitle: settings.kuaishouCookie.isEmpty ? "匿名可播 · 弹幕可选" : "已配置",
                             tint: ServiceBrand.live.tint
                         ) {
                             KuaishouLiveSettingsPage()
                         }
                     }
 
-                    Text("点进各自页面填写地址与密钥。")
+                    Text("密钥与 Cookie 仅保存在本机。")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                         .padding(.horizontal, 4)

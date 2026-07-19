@@ -354,6 +354,9 @@ actor KuaishouLiveService {
             .ifEmpty(LiveJSON.string(author["headUrl"]))
             .ifEmpty(LiveJSON.string(item["headurl"]))
         if !avatar.isEmpty, !isImageURL(avatar) { avatar += ".jpg" }
+        var category = LiveJSON.string(gameInfo["name"])
+            .ifEmpty(LiveJSON.string(gameInfo["categoryName"]))
+            .ifEmpty(LiveJSON.string(item["categoryName"]))
         return LiveRoomItem(
             platform: .kuaishou,
             roomId: roomId,
@@ -363,7 +366,8 @@ actor KuaishouLiveService {
             cover: cover,
             userName: LiveJSON.string(author["name"]).ifEmpty(LiveJSON.string(item["userName"])),
             online: LiveJSON.int(item["watchingCount"]),
-            userAvatar: avatar
+            userAvatar: avatar,
+            categoryName: category
         )
     }
 
@@ -476,6 +480,9 @@ actor KuaishouLiveService {
             playCtx = ["raw": LiveJSON.string(playUrls)]
         }
 
+        var category = LiveJSON.string(gameInfo["name"])
+            .ifEmpty(LiveJSON.string(gameInfo["categoryName"]))
+            .ifEmpty(LiveJSON.string(first["categoryName"]))
         return LiveRoomDetail(
             platform: .kuaishou,
             roomId: authorId,
@@ -498,7 +505,8 @@ actor KuaishouLiveService {
                 "attach": LiveJSON.string(first["expTag"]),
                 "cookie": currentCookieHeader(),
                 "userAgent": ua
-            ])
+            ]),
+            categoryName: category
         )
     }
 

@@ -127,7 +127,13 @@ actor HuyaLiveService {
                 cover: cover,
                 userName: LiveJSON.string(item["game_nick"]),
                 online: LiveJSON.int(item["game_total_count"]),
-                userAvatar: avatar
+                userAvatar: avatar,
+                categoryName: {
+                    var c = LiveJSON.string(item["gameName"])
+                    if c.isEmpty { c = LiveJSON.string(item["game_name"]) }
+                    if c.isEmpty { c = LiveJSON.string(item["tag_name"]) }
+                    return c
+                }()
             )
         }
     }
@@ -203,7 +209,12 @@ actor HuyaLiveService {
                 "ayyuid": ayyuid,
                 "topSid": topSid,
                 "subSid": subSid
-            ])
+            ]),
+            categoryName: {
+                var c = LiveJSON.string(tLiveInfo["sGameFullName"])
+                if c.isEmpty { c = LiveJSON.string(tLiveInfo["sGameName"]) }
+                return c
+            }()
         )
     }
 

@@ -1,7 +1,7 @@
-# Archive failed on `a124928`
+# Archive failed on `248107b`
 
-Run: https://github.com/zhangx16/apple-person-tool/actions/runs/29683806281
-Commit: `a124928b8c95b0e35401019eaa32aad4e4b12f63`
+Run: https://github.com/zhangx16/apple-person-tool/actions/runs/29684315688
+Commit: `248107b1fbff87ab58620211489b12d8bdad6171`
 
 ## Grep errors
 ```
@@ -13,6 +13,8 @@ Commit: `a124928b8c95b0e35401019eaa32aad4e4b12f63`
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
     optional func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: any Error)
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Models/IPCheckModels.swift:42:8: error: type 'IPFactorRow' does not conform to protocol 'Hashable'
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Models/IPCheckModels.swift:42:8: error: type 'IPFactorRow' does not conform to protocol 'Equatable'
 /Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Models/LiveModels.swift:160:31: error: cannot find 'LiveDetailCache' in scope
 /Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Models/LiveModels.swift:170:15: error: cannot find 'LiveDetailCache' in scope
 /Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Live/LiveRoomView.swift:49:16: error: cannot find 'LivePlayPrefs' in scope
@@ -30,54 +32,6 @@ Commit: `a124928b8c95b0e35401019eaa32aad4e4b12f63`
 
 ## Tail
 ```
-        var ordered: [(String, String)] = [
-        ~~~ ^
-        let
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Services/ExpressService.swift:215:19: warning: value 'http' was defined but never used; consider replacing with boolean test
-        guard let http = resp as? HTTPURLResponse else {
-              ~~~~^~~~~~~     ~~~
-                              is
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Chat/ChatViewModel.swift:25:68: warning: main actor-isolated static property 'shared' can not be referenced from a non-isolated context; this is an error in Swift 6
-    init(store: ConversationStore? = nil, settings: AppSettings = .shared) {
-                                                                   ^
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Core/AppSettings.swift:6:16: note: static property declared here
-    static let shared = AppSettings()
-               ^
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Chat/ImagineViewModel.swift:48:35: warning: main actor-isolated static property 'shared' can not be referenced from a non-isolated context; this is an error in Swift 6
-    init(settings: AppSettings = .shared) {
-                                  ^
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Core/AppSettings.swift:6:16: note: static property declared here
-    static let shared = AppSettings()
-               ^
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Chat/ChatViewModel.swift:31:70: warning: main actor-isolated static property 'shared' can not be referenced from a non-isolated context; this is an error in Swift 6
-    func attach(modelContext: ModelContext, settings: AppSettings = .shared) {
-                                                                     ^
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Core/AppSettings.swift:6:16: note: static property declared here
-    static let shared = AppSettings()
-               ^
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Chat/ImagineViewModel.swift:55:70: warning: main actor-isolated static property 'shared' can not be referenced from a non-isolated context; this is an error in Swift 6
-    func attach(modelContext: ModelContext, settings: AppSettings = .shared) {
-                                                                     ^
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Core/AppSettings.swift:6:16: note: static property declared here
-    static let shared = AppSettings()
-               ^
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Download/DownloadViewModel.swift:53:35: warning: main actor-isolated static property 'shared' can not be referenced from a non-isolated context; this is an error in Swift 6
-    init(settings: AppSettings = .shared) {
-                                  ^
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Core/AppSettings.swift:6:16: note: static property declared here
-    static let shared = AppSettings()
-               ^
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Services/ServicesHubView.swift:7:42: error: cannot find 'LiveRecentStore' in scope
-    @ObservedObject private var recent = LiveRecentStore.shared
-                                         ^~~~~~~~~~~~~~~
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Services/ServicesHubView.swift:220:32: error: cannot infer contextual base in reference to member 'live'
-                recent.record(.live)
-                              ~^~~~
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Settings/SettingsViewModel.swift:24:35: warning: main actor-isolated static property 'shared' can not be referenced from a non-isolated context; this is an error in Swift 6
-    init(settings: AppSettings = .shared) {
-                                  ^
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Core/AppSettings.swift:6:16: note: static property declared here
-    static let shared = AppSettings()
                ^
 /Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Services/DouyinService.swift:947:10: warning: main actor-isolated instance method 'webView(_:didFailProvisionalNavigation:withError:)' cannot be used to satisfy nonisolated protocol requirement
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
@@ -117,6 +71,54 @@ WebKit.WKNavigationDelegate:36:19: note: 'webView(_:didFail:withError:)' declare
         if let err = result.errorMessage, result.fromCache {
            ~~~~^~~
            _
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Models/IPCheckModels.swift:42:8: error: type 'IPFactorRow' does not conform to protocol 'Hashable'
+struct IPFactorRow: Hashable, Identifiable, Sendable {
+       ^
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Models/IPCheckModels.swift:47:9: note: stored property type '[(String, String)]' does not conform to protocol 'Hashable', preventing synthesized conformance of 'IPFactorRow' to 'Hashable'
+    var checks: [(String, String)]
+        ^
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Models/IPCheckModels.swift:42:8: error: type 'IPFactorRow' does not conform to protocol 'Equatable'
+struct IPFactorRow: Hashable, Identifiable, Sendable {
+       ^
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Models/IPCheckModels.swift:47:9: note: stored property type '[(String, String)]' does not conform to protocol 'Equatable', preventing synthesized conformance of 'IPFactorRow' to 'Equatable'
+    var checks: [(String, String)]
+        ^
+Swift.==:1:24: note: candidate would match if 'IPFactorRow' conformed to 'RawRepresentable'
+@inlinable public func == <T>(lhs: T, rhs: T) -> Bool where T : RawRepresentable, T.RawValue : Equatable
+                       ^
+Swift.FloatingPoint:2:24: note: candidate would match if 'IPFactorRow' conformed to 'FloatingPoint'
+    public static func == (lhs: Self, rhs: Self) -> Bool
+                       ^
+Swift.BinaryInteger:2:24: note: candidate would match if 'IPFactorRow' conformed to 'BinaryInteger'
+    public static func == <Other>(lhs: Self, rhs: Other) -> Bool where Other : BinaryInteger
+                       ^
+Swift._Pointer:2:24: note: candidate would match if 'IPFactorRow' conformed to '_Pointer'
+    public static func == (lhs: Self, rhs: Self) -> Bool
+                       ^
+Swift._Pointer:3:35: note: candidate would match if 'IPFactorRow' conformed to '_Pointer'
+    @inlinable public static func == <Other>(lhs: Self, rhs: Other) -> Bool where Other : _Pointer
+                                  ^
+Swift.Strideable:3:35: note: candidate would match if 'IPFactorRow' conformed to 'Strideable'
+    @inlinable public static func == (x: Self, y: Self) -> Bool
+                                  ^
+Swift.StringProtocol:2:35: note: candidate would match if 'IPFactorRow' conformed to 'StringProtocol'
+    @inlinable public static func == <RHS>(lhs: Self, rhs: RHS) -> Bool where RHS : StringProtocol
+                                  ^
+Swift.SIMD:4:24: note: candidate would match if 'IPFactorRow' conformed to 'SIMD'
+    public static func == (a: Self, b: Self) -> Bool
+                       ^
+Foundation.AttributedStringProtocol:3:24: note: candidate would match if 'IPFactorRow' conformed to 'AttributedStringProtocol'
+    public static func == <RHS>(lhs: Self, rhs: RHS) -> Bool where RHS : AttributedStringProtocol
+                       ^
+Foundation._BridgedStoredNSError:4:24: note: candidate would match if 'IPFactorRow' conformed to '_BridgedStoredNSError'
+    public static func == (lhs: Self, rhs: Self) -> Bool
+                       ^
+CoreFoundation._CFObject:4:24: note: candidate would match if 'IPFactorRow' conformed to '_CFObject'
+    public static func == (left: Self, right: Self) -> Bool
+                       ^
+Swift.Equatable:2:17: note: protocol requires function '==' with type '(IPFactorRow, IPFactorRow) -> Bool'
+    static func == (lhs: Self, rhs: Self) -> Bool
+                ^
 /Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Models/LiveModels.swift:160:31: error: cannot find 'LiveDetailCache' in scope
         if let cached = await LiveDetailCache.shared.get(platform: platform, roomId: roomId) {
                               ^~~~~~~~~~~~~~~

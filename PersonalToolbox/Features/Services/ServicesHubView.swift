@@ -162,7 +162,7 @@ struct ServicesHubView: View {
                 item("komari", "Komari", settings.komariBaseURL, .komari) {
                     AnyView(KomariHomeView())
                 },
-                item("ip", "IP 检测", "出口 IP · 分流/代理启发式", .ipCheck) {
+                item("ip", "IP 检测", "出口质量 · 风险库 · 流媒体/AI", .ipCheck) {
                     AnyView(IPCheckHomeView())
                 }
             ]),

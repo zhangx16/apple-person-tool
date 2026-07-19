@@ -1,7 +1,7 @@
 import Foundation
 import SwiftUI
 
-// MARK: - IP 检测 (aligned with riccilnl IP检测.scripting)
+// MARK: - IP 检测 · 对齐 MaYIHEI/paperclip ipquality 展示口径
 
 struct IPGeoInfo: Hashable, Sendable {
     var query: String
@@ -13,6 +13,47 @@ struct IPGeoInfo: Hashable, Sendable {
     var org: String
     var asInfo: String
     var sourceLabel: String
+    var latitude: Double? = nil
+    var longitude: Double? = nil
+    var timezone: String = ""
+    var route: String = ""
+    /// 原生 IP / 广播 IP（注册国 vs 实际国）
+    var nature: String = ""
+    var registeredRegion: String = ""
+}
+
+struct IPTypeRow: Hashable, Identifiable, Sendable {
+    var id: String { name }
+    var name: String
+    var usage: String
+    var company: String
+}
+
+struct IPRiskRow: Hashable, Identifiable, Sendable {
+    var id: String { name }
+    var name: String
+    var available: Bool
+    /// 0 low … 4 extreme
+    var severity: Int
+    var label: String
+    var detail: String
+}
+
+struct IPFactorRow: Hashable, Identifiable, Sendable {
+    var id: String { name }
+    var name: String
+    var country: String
+    /// key -> yes/no/unknown
+    var checks: [(String, String)]
+}
+
+struct IPMediaRow: Hashable, Identifiable, Sendable {
+    var id: String { name }
+    var name: String
+    /// yes / no / unknown
+    var status: String
+    var region: String
+    var note: String
 }
 
 struct IPCheckResult: Hashable, Sendable {
@@ -26,10 +67,19 @@ struct IPCheckResult: Hashable, Sendable {
     var vpnConfidence: Int
     var vpnMethod: String
     var pathStatus: String
+
+    // Quality extension (ipquality-aligned)
+    var probeMatched: Int = 0
+    var probeTotal: Int = 0
+    var typeRows: [IPTypeRow] = []
+    var riskRows: [IPRiskRow] = []
+    var factorRows: [IPFactorRow] = []
+    var mediaRows: [IPMediaRow] = []
+    var qualityNote: String = ""
 }
 
 enum IPCheckAccent {
-    /// Match script rgba(174, 109, 216)
+    /// Match script / brand purple
     static let color = Color(hex: 0xAE6DD8)
 }
 
@@ -37,7 +87,7 @@ enum IPCheckAnalysis {
     private static let dataCenterKeywords = [
         "数据中心", "Amazon", "Google", "Tencent", "Alibaba", "Cloudflare",
         "IDC", "DMIT", "Vultr", "DigitalOcean", "Linode", "OVH", "Hetzner",
-        "AWS", "Azure", "GCP", "Oracle Cloud", "Bandwagon", "搬瓦工"
+        "AWS", "Azure", "GCP", "Oracle Cloud", "Bandwagon", "搬瓦工", "Leaseweb", "hosting"
     ]
     private static let homeBroadbandKeywords = [
         "电信", "移动", "联通", "宽带", "Comcast", "Verizon", "ChinaNet",
@@ -185,7 +235,6 @@ enum IPCheckAnalysis {
         )
     }
 
-    /// Flag emoji from ISO country code (regional indicator symbols).
     static func flagEmoji(countryCode: String) -> String {
         let code = countryCode.uppercased()
         guard code.count == 2, code.unicodeScalars.allSatisfy({ CharacterSet.uppercaseLetters.contains($0) }) else {
@@ -199,5 +248,30 @@ enum IPCheckAnalysis {
             }
         }
         return s.isEmpty ? "🌐" : s
+    }
+
+    static func riskColor(_ severity: Int) -> Color {
+        switch severity {
+        case 4: return .red
+        case 3: return .orange
+        case 2: return .yellow
+        default: return .green
+        }
+    }
+
+    static func mediaColor(_ status: String) -> Color {
+        switch status {
+        case "yes": return .green
+        case "no": return .red
+        default: return .secondary
+        }
+    }
+
+    static func mediaLabel(_ status: String) -> String {
+        switch status {
+        case "yes": return "可用"
+        case "no": return "不可用"
+        default: return "未知"
+        }
     }
 }

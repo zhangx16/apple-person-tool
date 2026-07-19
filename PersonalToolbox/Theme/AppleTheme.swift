@@ -122,6 +122,116 @@ struct PrimaryButtonLabel: View {
     }
 }
 
+// MARK: - Global modern surfaces (shared by 助手 / 直播 / 服务 / 设置)
+
+struct AppSurfaceBackground: View {
+    var accent: Color = .accentColor
+
+    var body: some View {
+        ZStack {
+            Color(.systemGroupedBackground)
+            LinearGradient(
+                colors: [accent.opacity(0.07), Color.clear, Color.clear],
+                startPoint: .topLeading,
+                endPoint: .center
+            )
+        }
+        .ignoresSafeArea()
+    }
+}
+
+struct AppCardModifier: ViewModifier {
+    var corner: CGFloat = 18
+    var padding: CGFloat = 14
+
+    func body(content: Content) -> some View {
+        content
+            .padding(padding)
+            .background {
+                RoundedRectangle(cornerRadius: corner, style: .continuous)
+                    .fill(Color(.secondarySystemGroupedBackground))
+                    .shadow(color: .black.opacity(0.05), radius: 10, y: 3)
+            }
+    }
+}
+
+extension View {
+    func appCard(corner: CGFloat = 18, padding: CGFloat = 14) -> some View {
+        modifier(AppCardModifier(corner: corner, padding: padding))
+    }
+}
+
+extension Color {
+    /// Soft CTA gradient used across live / hub / chat chrome.
+    var gradient: LinearGradient {
+        LinearGradient(
+            colors: [self, self.opacity(0.82)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+}
+
+struct AppSectionTitle: View {
+    let title: String
+    var systemImage: String? = nil
+
+    var body: some View {
+        HStack(spacing: 6) {
+            if let systemImage {
+                Image(systemName: systemImage)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 4)
+        .padding(.bottom, 2)
+        .textCase(nil)
+    }
+}
+
+struct AppNavRow: View {
+    let title: String
+    let subtitle: String
+    var brand: ServiceBrand? = nil
+    var systemImage: String? = nil
+    var tint: Color = Color(hex: 0x0A84FF)
+
+    var body: some View {
+        HStack(spacing: 14) {
+            if let brand {
+                ServiceBrandIcon(brand: brand, size: 44)
+            } else if let systemImage {
+                Image(systemName: systemImage)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(tint)
+                    .frame(width: 44, height: 44)
+                    .background(tint.opacity(0.14), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.primary)
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+        }
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title)，\(subtitle)")
+    }
+}
+
 struct EmptyStateView: View {
     let symbol: String
     let title: String
@@ -130,12 +240,17 @@ struct EmptyStateView: View {
     var action: (() -> Void)? = nil
 
     var body: some View {
-        VStack(spacing: 12) {
-            Image(systemName: symbol)
-                .font(.largeTitle.weight(.light))
-                .foregroundStyle(.secondary)
-                .symbolRenderingMode(.hierarchical)
-                .accessibilityHidden(true)
+        VStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(Color.accentColor.opacity(0.12))
+                    .frame(width: 88, height: 88)
+                Image(systemName: symbol)
+                    .font(.system(size: 34, weight: .medium))
+                    .foregroundStyle(Color.accentColor.opacity(0.9))
+                    .symbolRenderingMode(.hierarchical)
+                    .accessibilityHidden(true)
+            }
             Text(title)
                 .font(.title3.weight(.semibold))
                 .multilineTextAlignment(.center)
@@ -143,12 +258,12 @@ struct EmptyStateView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 24)
+                .padding(.horizontal, 28)
             if let actionTitle, let action {
                 Button(action: action) {
                     Text(actionTitle)
                         .font(.body.weight(.semibold))
-                        .padding(.horizontal, 20)
+                        .padding(.horizontal, 24)
                         .padding(.vertical, 12)
                         .frame(minHeight: 44)
                         .foregroundStyle(.white)

@@ -1,227 +1,133 @@
 import SwiftUI
 
-/// Hub for self-hosted services + local tools.
+/// Hub for self-hosted services + local tools — card sections, soft hierarchy.
 struct ServicesHubView: View {
     @Binding var selectedTab: AppTab
     @EnvironmentObject private var settings: AppSettings
 
     var body: some View {
         NavigationStack {
-            List {
-                Section("效率") {
-                    NavigationLink {
-                        QuickActionsHomeView()
-                    } label: {
-                        hubLabel(
-                            title: "快捷动作中心",
-                            subtitle: "剪贴板 / 链接 / 单号智能分流",
-                            brand: .quickActions
-                        )
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    section("效率", symbol: "bolt.fill") {
+                        hubLink("快捷动作中心", "剪贴板 / 链接 / 单号智能分流", .quickActions) {
+                            QuickActionsHomeView()
+                        }
+                        hubLink("剪贴板工具箱", "历史 · 验证码 · 动作推荐", .clipboard) {
+                            ClipboardHomeView()
+                        }
+                        hubLink("密码生成器", "本地随机 · 强度提示", .password) {
+                            PasswordGeneratorHomeView()
+                        }
                     }
 
-                    NavigationLink {
-                        ClipboardHomeView()
-                    } label: {
-                        hubLabel(
-                            title: "剪贴板工具箱",
-                            subtitle: "历史 · 验证码 · 动作推荐",
-                            brand: .clipboard
-                        )
+                    section("生活", symbol: "heart.fill") {
+                        hubLink("纪念日", "生日 · 倒计时 · 本地提醒", .anniversary) {
+                            AnniversaryHomeView()
+                        }
+                        hubLink("习惯与待办", "打卡连续天数 · 待办清单", .habits) {
+                            HabitsTodosHomeView()
+                        }
+                        hubLink("二维码助手", "扫码 · 生成 · 智能跳转", .qrAssistant) {
+                            QRAssistantHomeView()
+                        }
+                        hubLink("翻译器", "Sub2API · Google · 多引擎", .translator) {
+                            TranslatorHomeView()
+                        }
+                        hubLink("快递查询", "单号本机管理 · 跳转查询", .express) {
+                            ExpressHomeView()
+                        }
+                        hubLink("油价 / 汇率 / 金价", "国际参考行情", .market) {
+                            MarketQuotesHomeView()
+                        }
                     }
 
-                    NavigationLink {
-                        PasswordGeneratorHomeView()
-                    } label: {
-                        hubLabel(
-                            title: "密码生成器",
-                            subtitle: "本地随机 · 强度提示",
-                            brand: .password
-                        )
-                    }
-                }
-
-                Section("生活") {
-                    NavigationLink {
-                        AnniversaryHomeView()
-                    } label: {
-                        hubLabel(
-                            title: "纪念日",
-                            subtitle: "生日 · 倒计时 · 本地提醒",
-                            brand: .anniversary
-                        )
+                    section("资讯", symbol: "newspaper.fill") {
+                        hubLink("RSS 阅读器", "多源订阅 · 下拉刷新", .rss) {
+                            RSSHomeView()
+                        }
+                        hubLink("财联社电报", "实时电报 · 本地缓存", .clsNews) {
+                            CLSNewsHomeView()
+                        }
                     }
 
-                    NavigationLink {
-                        HabitsTodosHomeView()
-                    } label: {
-                        hubLabel(
-                            title: "习惯与待办",
-                            subtitle: "打卡连续天数 · 待办清单",
-                            brand: .habits
-                        )
+                    section("监控", symbol: "waveform.path.ecg") {
+                        hubLink("监控中心", "Sub2 管理 · Cloudflare（点标题切换）", .sub2) {
+                            MonitorShellView()
+                        }
+                        hubLink("服务健康总览", "一键探测全部已配置服务", .health) {
+                            ServiceHealthHomeView()
+                        }
+                        hubLink("Komari", settings.komariBaseURL, .komari) {
+                            KomariHomeView()
+                        }
+                        hubLink("IP 检测", "出口 IP · 分流/代理启发式", .ipCheck) {
+                            IPCheckHomeView()
+                        }
                     }
 
-                    NavigationLink {
-                        QRAssistantHomeView()
-                    } label: {
-                        hubLabel(
-                            title: "二维码助手",
-                            subtitle: "扫码 · 生成 · 智能跳转",
-                            brand: .qrAssistant
-                        )
+                    section("订阅与节点", symbol: "link") {
+                        hubLink("SublinkX", settings.sublinkBaseURL, .sublink) {
+                            SublinkHomeView()
+                        }
                     }
 
-                    NavigationLink {
-                        TranslatorHomeView()
-                    } label: {
-                        hubLabel(
-                            title: "翻译器",
-                            subtitle: "Sub2API · Google · 多引擎",
-                            brand: .translator
-                        )
+                    section("下载", symbol: "arrow.down.circle.fill") {
+                        hubLink("视频下载", "YouTube · 抖音（页内切换）", .youtube) {
+                            DownloadHomeView(isTabSelected: true)
+                        }
                     }
 
-                    NavigationLink {
-                        ExpressHomeView()
-                    } label: {
-                        hubLabel(
-                            title: "快递查询",
-                            subtitle: "单号本机管理 · 跳转查询",
-                            brand: .express
-                        )
-                    }
-
-                    NavigationLink {
-                        MarketQuotesHomeView()
-                    } label: {
-                        hubLabel(
-                            title: "油价 / 汇率 / 金价",
-                            subtitle: "国际参考行情",
-                            brand: .market
-                        )
+                    section("直播", symbol: "play.tv.fill") {
+                        Button {
+                            selectedTab = .live
+                        } label: {
+                            AppNavRow(
+                                title: "多平台直播",
+                                subtitle: "虎牙/斗鱼/抖音/快手 · 关注搜索",
+                                brand: .live
+                            )
+                            .appCard()
+                        }
+                        .buttonStyle(PressableButtonStyle(scale: 0.98))
                     }
                 }
-
-                Section("资讯") {
-                    NavigationLink {
-                        RSSHomeView()
-                    } label: {
-                        hubLabel(
-                            title: "RSS 阅读器",
-                            subtitle: "多源订阅 · 下拉刷新",
-                            brand: .rss
-                        )
-                    }
-
-                    NavigationLink {
-                        CLSNewsHomeView()
-                    } label: {
-                        hubLabel(
-                            title: "财联社电报",
-                            subtitle: "实时电报 · 本地缓存",
-                            brand: .clsNews
-                        )
-                    }
-                }
-
-                Section("监控") {
-                    NavigationLink {
-                        MonitorShellView()
-                    } label: {
-                        hubLabel(
-                            title: "监控中心",
-                            subtitle: "Sub2 管理 · Cloudflare（点标题切换）",
-                            brand: .sub2
-                        )
-                    }
-                    .accessibilityLabel("监控中心")
-
-                    NavigationLink {
-                        ServiceHealthHomeView()
-                    } label: {
-                        hubLabel(
-                            title: "服务健康总览",
-                            subtitle: "一键探测全部已配置服务",
-                            brand: .health
-                        )
-                    }
-
-                    NavigationLink {
-                        KomariHomeView()
-                    } label: {
-                        hubLabel(
-                            title: "Komari",
-                            subtitle: settings.komariBaseURL,
-                            brand: .komari
-                        )
-                    }
-
-                    NavigationLink {
-                        IPCheckHomeView()
-                    } label: {
-                        hubLabel(
-                            title: "IP 检测",
-                            subtitle: "出口 IP · 分流/代理启发式",
-                            brand: .ipCheck
-                        )
-                    }
-                }
-
-                Section("订阅与节点") {
-                    NavigationLink {
-                        SublinkHomeView()
-                    } label: {
-                        hubLabel(
-                            title: "SublinkX",
-                            subtitle: settings.sublinkBaseURL,
-                            brand: .sublink
-                        )
-                    }
-                }
-
-                Section("下载") {
-                    NavigationLink {
-                        DownloadHomeView(isTabSelected: true)
-                    } label: {
-                        hubLabel(
-                            title: "视频下载",
-                            subtitle: "YouTube · 抖音（页内切换）",
-                            brand: .youtube
-                        )
-                    }
-                    .accessibilityLabel("视频下载")
-                }
-
-                Section("直播") {
-                    hubLabel(
-                        title: "多平台直播",
-                        subtitle: "虎牙/斗鱼/抖音/快手 · 关注搜索",
-                        brand: .live
-                    )
-                }
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+                .padding(.bottom, 32)
             }
-            .scrollContentBackground(.hidden)
-            .background(AppleTheme.canvas)
+            .background(AppSurfaceBackground(accent: Color.accentColor))
             .navigationTitle("服务")
+            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
         }
     }
 
-    private func hubLabel(title: String, subtitle: String, brand: ServiceBrand) -> some View {
-        HStack(spacing: 14) {
-            ServiceBrandIcon(brand: brand, size: 40)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(.primary)
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+    @ViewBuilder
+    private func section<Content: View>(
+        _ title: String,
+        symbol: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            AppSectionTitle(title: title, systemImage: symbol)
+            VStack(spacing: 10) {
+                content()
             }
-            Spacer(minLength: 0)
         }
-        .padding(.vertical, 4)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(title)，\(subtitle)")
+    }
+
+    private func hubLink<Destination: View>(
+        _ title: String,
+        _ subtitle: String,
+        _ brand: ServiceBrand,
+        @ViewBuilder destination: () -> Destination
+    ) -> some View {
+        NavigationLink {
+            destination()
+        } label: {
+            AppNavRow(title: title, subtitle: subtitle, brand: brand)
+                .appCard()
+        }
+        .buttonStyle(PressableButtonStyle(scale: 0.98))
     }
 }

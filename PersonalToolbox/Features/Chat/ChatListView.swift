@@ -37,18 +37,23 @@ struct ChatListView: View {
                     conversationList
                 }
             }
-            .background(AppleTheme.canvas)
+            .background(AppSurfaceBackground(accent: Color.accentColor))
             .navigationTitle("助手")
+            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         createAndOpen()
                     } label: {
                         Image(systemName: "plus")
-                            .frame(minWidth: 44, minHeight: 44)
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 32, height: 32)
+                            .background(Color.accentColor.gradient, in: Circle())
                     }
                     .buttonStyle(PressableButtonStyle())
                     .disabled(!settings.isAIConfigured)
+                    .opacity(settings.isAIConfigured ? 1 : 0.45)
                     .accessibilityLabel("新建对话")
                 }
             }
@@ -90,38 +95,35 @@ struct ChatListView: View {
     }
 
     private var conversationList: some View {
-        List {
-            ForEach(viewModel.conversations) { conv in
-                Button {
-                    path.append(conv.id)
-                } label: {
-                    ConversationRow(conversation: conv)
-                }
-                .buttonStyle(.plain)
-                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                    Button(role: .destructive) {
-                        viewModel.deleteConversation(id: conv.id)
-                    } label: {
-                        Label("删除", systemImage: "trash")
-                    }
-                }
-                .contextMenu {
+        ScrollView {
+            LazyVStack(spacing: 12) {
+                ForEach(viewModel.conversations) { conv in
                     Button {
-                        renameText = conv.title
-                        renameTarget = conv
+                        path.append(conv.id)
                     } label: {
-                        Label("重命名", systemImage: "pencil")
+                        ConversationRow(conversation: conv)
+                            .appCard()
                     }
-                    Button(role: .destructive) {
-                        viewModel.deleteConversation(id: conv.id)
-                    } label: {
-                        Label("删除", systemImage: "trash")
+                    .buttonStyle(PressableButtonStyle(scale: 0.98))
+                    .contextMenu {
+                        Button {
+                            renameText = conv.title
+                            renameTarget = conv
+                        } label: {
+                            Label("重命名", systemImage: "pencil")
+                        }
+                        Button(role: .destructive) {
+                            viewModel.deleteConversation(id: conv.id)
+                        } label: {
+                            Label("删除", systemImage: "trash")
+                        }
                     }
                 }
             }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .padding(.bottom, 28)
         }
-        .listStyle(.insetGrouped)
-        .scrollContentBackground(.hidden)
     }
 
     private func createAndOpen() {
@@ -142,29 +144,39 @@ private struct ConversationRow: View {
     let conversation: ChatConversation
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "bubble.left.fill")
-                .font(.body)
-                .foregroundStyle(.secondary)
-                .frame(width: 28)
-                .accessibilityHidden(true)
+        HStack(spacing: 14) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.accentColor.opacity(0.14))
+                Image(systemName: "bubble.left.and.bubble.right.fill")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Color.accentColor)
+                    .symbolRenderingMode(.hierarchical)
+            }
+            .frame(width: 44, height: 44)
+            .accessibilityHidden(true)
+
             VStack(alignment: .leading, spacing: 4) {
                 Text(conversation.title)
-                    .font(.body.weight(.medium))
+                    .font(.body.weight(.semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(2)
+                    .multilineTextAlignment(.leading)
                 Text(conversation.model)
                     .font(.caption)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
             Spacer(minLength: 8)
-            Text(Self.relativeDate(conversation.updatedAt))
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            VStack(alignment: .trailing, spacing: 6) {
+                Text(Self.relativeDate(conversation.updatedAt))
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                Image(systemName: "chevron.right")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.quaternary)
+            }
         }
-        .padding(.vertical, 4)
-        .frame(minHeight: 44)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(conversation.title)，\(Self.relativeDate(conversation.updatedAt))，模型 \(conversation.model)")

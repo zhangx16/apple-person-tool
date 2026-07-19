@@ -1027,17 +1027,6 @@ struct LivePlatformMark: View {
     }
 }
 
-extension Color {
-    /// Soft brand gradient for live CTAs.
-    var gradient: LinearGradient {
-        LinearGradient(
-            colors: [self, self.opacity(0.82)],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-}
-
 // MARK: - Shared player surface (inline + fullscreen)
 
 struct LivePlayerSurface: View {

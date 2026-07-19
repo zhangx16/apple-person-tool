@@ -27,7 +27,7 @@ struct RootTabView: View {
 
                 // No dynamic params — changing init args under TabView recreated the tree on newer iOS.
                 LiveHomeView()
-                    .tabItem { Label("直播", systemImage: "tv") }
+                    .tabItem { Label("直播", systemImage: "play.tv.fill") }
                     .tag(AppTab.live)
                     .accessibilityLabel("直播")
 
@@ -37,10 +37,11 @@ struct RootTabView: View {
                     .accessibilityLabel("服务")
 
                 SettingsView()
-                    .tabItem { Label("设置", systemImage: "gearshape") }
+                    .tabItem { Label("设置", systemImage: "gearshape.fill") }
                     .tag(AppTab.settings)
                     .accessibilityLabel("设置")
             }
+            .tint(Color.accentColor)
             .preferredColorScheme(preferredScheme)
             .allowsHitTesting(isContentInteractive)
             .accessibilityHidden(!isContentInteractive)

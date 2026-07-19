@@ -9,162 +9,165 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    projectLink(
-                        brand: .sub2,
-                        title: "Sub2API 助手",
-                        subtitle: configuredHint(
-                            configured: settings.isAIConfigured,
-                            detail: hostHint(settings.sub2apiBaseURL)
-                        )
-                    ) {
-                        Sub2ChatSettingsPage(viewModel: viewModel)
-                    }
-
-                    projectLink(
-                        brand: .sub2,
-                        title: "Sub2API 监控",
-                        subtitle: configuredHint(
-                            configured: settings.isAdminConfigured,
-                            detail: "Admin API Key"
-                        )
-                    ) {
-                        Sub2AdminSettingsPage(viewModel: viewModel)
-                    }
-
-                    projectLink(
-                        brand: .youtube,
-                        title: "YouTube 下载",
-                        subtitle: configuredHint(
-                            configured: settings.isYTConfigured,
-                            detail: hostHint(settings.ytBaseURL)
-                        )
-                    ) {
-                        YTSettingsPage(viewModel: viewModel)
-                    }
-
-                    projectLink(
-                        brand: .sublink,
-                        title: "SublinkX",
-                        subtitle: configuredHint(
-                            configured: settings.isSublinkConfigured,
-                            detail: hostHint(settings.sublinkBaseURL)
-                        )
-                    ) {
-                        SublinkSettingsPage(viewModel: viewModel)
-                    }
-
-                    projectLink(
-                        brand: .komari,
-                        title: "Komari",
-                        subtitle: hostHint(settings.komariBaseURL)
-                    ) {
-                        KomariSettingsPage(viewModel: viewModel)
-                    }
-
-                    projectLink(
-                        brand: .cloudflare,
-                        title: "Cloudflare",
-                        subtitle: configuredHint(
-                            configured: settings.isCloudflareConfigured,
-                            detail: settings.cloudflareAccountName.isEmpty
-                                ? "API Token"
-                                : settings.cloudflareAccountName
-                        )
-                    ) {
-                        CloudflareSettingsPage(viewModel: viewModel)
-                    }
-
-                    NavigationLink {
-                        Kuaidi100SettingsPage()
-                    } label: {
-                        projectRow(
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    settingsSection("服务配置", symbol: "server.rack") {
+                        projectLink(
+                            brand: .sub2,
+                            title: "Sub2API 助手",
+                            subtitle: configuredHint(
+                                configured: settings.isAIConfigured,
+                                detail: hostHint(settings.sub2apiBaseURL)
+                            )
+                        ) {
+                            Sub2ChatSettingsPage(viewModel: viewModel)
+                        }
+                        projectLink(
+                            brand: .sub2,
+                            title: "Sub2API 监控",
+                            subtitle: configuredHint(
+                                configured: settings.isAdminConfigured,
+                                detail: "Admin API Key"
+                            )
+                        ) {
+                            Sub2AdminSettingsPage(viewModel: viewModel)
+                        }
+                        projectLink(
+                            brand: .youtube,
+                            title: "YouTube 下载",
+                            subtitle: configuredHint(
+                                configured: settings.isYTConfigured,
+                                detail: hostHint(settings.ytBaseURL)
+                            )
+                        ) {
+                            YTSettingsPage(viewModel: viewModel)
+                        }
+                        projectLink(
+                            brand: .sublink,
+                            title: "SublinkX",
+                            subtitle: configuredHint(
+                                configured: settings.isSublinkConfigured,
+                                detail: hostHint(settings.sublinkBaseURL)
+                            )
+                        ) {
+                            SublinkSettingsPage(viewModel: viewModel)
+                        }
+                        projectLink(
+                            brand: .komari,
+                            title: "Komari",
+                            subtitle: hostHint(settings.komariBaseURL)
+                        ) {
+                            KomariSettingsPage(viewModel: viewModel)
+                        }
+                        projectLink(
+                            brand: .cloudflare,
+                            title: "Cloudflare",
+                            subtitle: configuredHint(
+                                configured: settings.isCloudflareConfigured,
+                                detail: settings.cloudflareAccountName.isEmpty
+                                    ? "API Token"
+                                    : settings.cloudflareAccountName
+                            )
+                        ) {
+                            CloudflareSettingsPage(viewModel: viewModel)
+                        }
+                        plainLink(
                             systemImage: "shippingbox.fill",
                             title: "快递100",
                             subtitle: settings.kuaidi100Customer.isEmpty ? "未配置" : "customer 已填",
                             tint: ServiceBrand.express.tint
-                        )
-                    }
-
-                    NavigationLink {
-                        DouyinLiveSettingsPage()
-                    } label: {
-                        projectRow(
+                        ) {
+                            Kuaidi100SettingsPage()
+                        }
+                        plainLink(
                             systemImage: "music.note",
                             title: "抖音直播",
                             subtitle: settings.douyinLiveCookie.isEmpty ? "建议配置 Cookie · 搜索/风控" : "Cookie 已配置",
                             tint: Color(hex: 0x111111)
-                        )
-                    }
-
-                    NavigationLink {
-                        KuaishouLiveSettingsPage()
-                    } label: {
-                        projectRow(
+                        ) {
+                            DouyinLiveSettingsPage()
+                        }
+                        plainLink(
                             systemImage: "video.fill",
                             title: "快手直播",
                             subtitle: settings.kuaishouCookie.isEmpty ? "匿名可播 · 弹幕需 Cookie" : "Cookie 已配置",
                             tint: ServiceBrand.live.tint
-                        )
+                        ) {
+                            KuaishouLiveSettingsPage()
+                        }
                     }
-                } header: {
-                    Text("服务配置")
-                } footer: {
-                    Text("仅显示项目名称，点进各自页面填写地址与密钥。")
-                }
 
-                Section("通用") {
-                    NavigationLink {
-                        NotificationSettingsPage()
-                    } label: {
-                        projectRow(
+                    Text("点进各自页面填写地址与密钥。")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .padding(.horizontal, 4)
+                        .padding(.top, -10)
+
+                    settingsSection("通用", symbol: "slider.horizontal.3") {
+                        plainLink(
                             systemImage: "bell.badge.fill",
                             title: "通知",
                             subtitle: settings.notifyDownloadCompleted ? "下载完成提醒已开" : "下载完成提醒已关",
                             tint: Color(hex: 0xFF9F0A)
-                        )
-                    }
-
-                    NavigationLink {
-                        AppearanceSettingsPage()
-                    } label: {
-                        projectRow(
+                        ) {
+                            NotificationSettingsPage()
+                        }
+                        plainLink(
                             systemImage: "paintbrush.fill",
                             title: "外观",
                             subtitle: appearanceLabel,
                             tint: Color(hex: 0xBF5AF2)
-                        )
-                    }
-
-                    NavigationLink {
-                        PrivacySettingsPage(
-                            confirmLogout: $confirmLogout,
-                            biometricAlert: $biometricAlert,
-                            isEnablingBiometric: $isEnablingBiometric,
-                            onLogout: { Task { await viewModel.logoutAllSessions() } }
-                        )
-                    } label: {
-                        projectRow(
+                        ) {
+                            AppearanceSettingsPage()
+                        }
+                        plainLink(
                             systemImage: "lock.shield.fill",
                             title: "隐私与安全",
-                            subtitle: settings.requireBiometricUnlock ? "应用锁已开启" : "应用锁关闭"
-                        )
+                            subtitle: settings.requireBiometricUnlock ? "应用锁已开启" : "应用锁关闭",
+                            tint: Color(hex: 0x30D158)
+                        ) {
+                            PrivacySettingsPage(
+                                confirmLogout: $confirmLogout,
+                                biometricAlert: $biometricAlert,
+                                isEnablingBiometric: $isEnablingBiometric,
+                                onLogout: { Task { await viewModel.logoutAllSessions() } }
+                            )
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        AppSectionTitle(title: "关于", systemImage: "info.circle")
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Text("应用")
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text("XIN's Tool")
+                                    .fontWeight(.medium)
+                            }
+                            Divider().opacity(0.5)
+                            HStack {
+                                Text("版本")
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text(appVersion)
+                                    .fontWeight(.medium)
+                            }
+                            Divider().opacity(0.5)
+                            Text("助手 · 直播 · 服务 · 本地工具")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
+                        .appCard()
                     }
                 }
-
-                Section("关于") {
-                    LabeledContent("应用", value: "XIN's Tool")
-                    LabeledContent("版本", value: appVersion)
-                    Text("助手 · 监控 · 下载 · 本地工具")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+                .padding(.bottom, 32)
             }
-            .listStyle(.insetGrouped)
-            .scrollContentBackground(.hidden)
-            .background(AppleTheme.canvas)
+            .background(AppSurfaceBackground(accent: Color(hex: 0x8E8E93)))
             .navigationTitle("设置")
+            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .confirmationDialog(
                 "注销全部会话？",
                 isPresented: $confirmLogout,
@@ -204,6 +207,20 @@ struct SettingsView: View {
 
     // MARK: - Home rows
 
+    @ViewBuilder
+    private func settingsSection<Content: View>(
+        _ title: String,
+        symbol: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            AppSectionTitle(title: title, systemImage: symbol)
+            VStack(spacing: 10) {
+                content()
+            }
+        }
+    }
+
     private func projectLink<Destination: View>(
         brand: ServiceBrand,
         title: String,
@@ -214,22 +231,27 @@ struct SettingsView: View {
             destination()
                 .environmentObject(settings)
         } label: {
-            HStack(spacing: 14) {
-                ServiceBrandIcon(brand: brand, size: 36)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(.primary)
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-            }
-            .padding(.vertical, 2)
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel("\(title)，\(subtitle)")
+            AppNavRow(title: title, subtitle: subtitle, brand: brand)
+                .appCard()
         }
+        .buttonStyle(PressableButtonStyle(scale: 0.98))
+    }
+
+    private func plainLink<Destination: View>(
+        systemImage: String,
+        title: String,
+        subtitle: String,
+        tint: Color = Color(hex: 0x0A84FF),
+        @ViewBuilder destination: () -> Destination
+    ) -> some View {
+        NavigationLink {
+            destination()
+                .environmentObject(settings)
+        } label: {
+            AppNavRow(title: title, subtitle: subtitle, systemImage: systemImage, tint: tint)
+                .appCard()
+        }
+        .buttonStyle(PressableButtonStyle(scale: 0.98))
     }
 
     private func projectRow(
@@ -238,25 +260,8 @@ struct SettingsView: View {
         subtitle: String,
         tint: Color = Color(hex: 0x0A84FF)
     ) -> some View {
-        HStack(spacing: 14) {
-            Image(systemName: systemImage)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(tint)
-                .frame(width: 36, height: 36)
-                .background(
-                    tint.opacity(0.16),
-                    in: RoundedRectangle(cornerRadius: 8, style: .continuous)
-                )
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.body.weight(.semibold))
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-        }
-        .padding(.vertical, 2)
+        // Kept for nested settings pages that still reference projectRow.
+        AppNavRow(title: title, subtitle: subtitle, systemImage: systemImage, tint: tint)
     }
 
     private func configuredHint(configured: Bool, detail: String) -> String {

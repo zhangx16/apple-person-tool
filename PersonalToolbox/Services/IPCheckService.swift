@@ -445,12 +445,12 @@ actor IPCheckService {
                 name: "ipapi",
                 country: api.countryCode.uppercased(),
                 checks: [
-                    ("VPN", yn(api.isVPN)),
-                    ("代理", yn(api.isProxy)),
-                    ("Tor", yn(api.isTor)),
-                    ("机房", yn(api.isDatacenter)),
-                    ("滥用", yn(api.isAbuser)),
-                    ("爬虫", yn(api.isCrawler))
+                    .init(key: "VPN", value: yn(api.isVPN)),
+                    .init(key: "代理", value: yn(api.isProxy)),
+                    .init(key: "Tor", value: yn(api.isTor)),
+                    .init(key: "机房", value: yn(api.isDatacenter)),
+                    .init(key: "滥用", value: yn(api.isAbuser)),
+                    .init(key: "爬虫", value: yn(api.isCrawler))
                 ]
             ))
         }
@@ -460,10 +460,10 @@ actor IPCheckService {
                 name: "IP2Location",
                 country: (string(ip2, keys: ["country_code"]) ?? "").uppercased(),
                 checks: [
-                    ("代理", yn(bool(ip2, "is_proxy") || bool(proxy, "is_public_proxy"))),
-                    ("Tor", yn(bool(proxy, "is_tor"))),
-                    ("VPN", yn(bool(proxy, "is_vpn"))),
-                    ("机房", yn(bool(proxy, "is_data_center")))
+                    .init(key: "代理", value: yn(bool(ip2, "is_proxy") || bool(proxy, "is_public_proxy"))),
+                    .init(key: "Tor", value: yn(bool(proxy, "is_tor"))),
+                    .init(key: "VPN", value: yn(bool(proxy, "is_vpn"))),
+                    .init(key: "机房", value: yn(bool(proxy, "is_data_center")))
                 ]
             ))
         }
@@ -472,11 +472,11 @@ actor IPCheckService {
                 name: "IPQS",
                 country: (string(ipqs, keys: ["country_code"]) ?? "").uppercased(),
                 checks: [
-                    ("VPN", yn(bool(ipqs, "vpn") || bool(ipqs, "active_vpn"))),
-                    ("代理", yn(bool(ipqs, "proxy"))),
-                    ("Tor", yn(bool(ipqs, "tor") || bool(ipqs, "active_tor"))),
-                    ("机器人", yn(bool(ipqs, "bot_status"))),
-                    ("滥用", yn(bool(ipqs, "recent_abuse")))
+                    .init(key: "VPN", value: yn(bool(ipqs, "vpn") || bool(ipqs, "active_vpn"))),
+                    .init(key: "代理", value: yn(bool(ipqs, "proxy"))),
+                    .init(key: "Tor", value: yn(bool(ipqs, "tor") || bool(ipqs, "active_tor"))),
+                    .init(key: "机器人", value: yn(bool(ipqs, "bot_status"))),
+                    .init(key: "滥用", value: yn(bool(ipqs, "recent_abuse")))
                 ]
             ))
         }
@@ -485,9 +485,9 @@ actor IPCheckService {
                 name: "ip-api",
                 country: (string(com, keys: ["countryCode"]) ?? "").uppercased(),
                 checks: [
-                    ("代理", yn(bool(com, "proxy"))),
-                    ("机房", yn(bool(com, "hosting"))),
-                    ("移动", yn(bool(com, "mobile")))
+                    .init(key: "代理", value: yn(bool(com, "proxy"))),
+                    .init(key: "机房", value: yn(bool(com, "hosting"))),
+                    .init(key: "移动", value: yn(bool(com, "mobile")))
                 ]
             ))
         }
@@ -498,8 +498,8 @@ actor IPCheckService {
                 name: "proxycheck",
                 country: (string(pc, keys: ["isocode"]) ?? "").uppercased(),
                 checks: [
-                    ("代理", proxy.uppercased() == "YES" ? "是" : (proxy.isEmpty ? "—" : "否")),
-                    ("类型", type.isEmpty ? "—" : type)
+                    .init(key: "代理", value: proxy.uppercased() == "YES" ? "是" : (proxy.isEmpty ? "—" : "否")),
+                    .init(key: "类型", value: type.isEmpty ? "—" : type)
                 ]
             ))
         }

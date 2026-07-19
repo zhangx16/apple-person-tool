@@ -130,6 +130,8 @@
 		000000000000000000000548 /* LiveJSEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveJSEngine.swift; sourceTree = "<group>"; };
 		00000000000000000000054A /* LiveCryptoMD5.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveCryptoMD5.swift; sourceTree = "<group>"; };
 		000000000000000000000572 /* LiveFollowStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveFollowStore.swift; sourceTree = "<group>"; };
+		000000000000000000000590 /* LivePlayPrefs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LivePlayPrefs.swift; sourceTree = "<group>"; };
+		000000000000000000000592 /* LiveRecentStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveRecentStore.swift; sourceTree = "<group>"; };
 		00000000000000000000054C /* cryptojs.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = cryptojs.js; sourceTree = "<group>"; };
 		00000000000000000000054E /* abogus.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = abogus.js; sourceTree = "<group>"; };
 		000000000000000000000101 /* PersonalToolboxApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalToolboxApp.swift; sourceTree = "<group>"; };
@@ -744,7 +746,8 @@
 				000000000000000000000581 /* LiveVLCPlayerView.swift in Sources */,
 				000000000000000000000573 /* LiveFollowStore.swift in Sources */,
 				000000000000000000000591 /* LivePlayPrefs.swift in Sources */,
-				000000000000000000000593 /* LiveRecentStore.swift in Sources */,);
+				000000000000000000000593 /* LiveRecentStore.swift in Sources */,
+			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 
@@ -817,7 +820,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 36;
+				CURRENT_PROJECT_VERSION = 37;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				CODE_SIGN_ENTITLEMENTS = PersonalToolbox/PersonalToolbox.entitlements;
@@ -843,7 +846,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 36;
+				CURRENT_PROJECT_VERSION = 37;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				CODE_SIGN_ENTITLEMENTS = PersonalToolbox/PersonalToolbox.entitlements;
@@ -869,7 +872,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 36;
+				CURRENT_PROJECT_VERSION = 37;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
@@ -894,7 +897,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 36;
+				CURRENT_PROJECT_VERSION = 37;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;

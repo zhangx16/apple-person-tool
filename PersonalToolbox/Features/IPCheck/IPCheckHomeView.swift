@@ -433,10 +433,10 @@ struct IPCheckHomeView: View {
 
 // Simple wrap of factor chips
 private struct FlowChecks: View {
-    let checks: [(String, String)]
+    let checks: [IPFactorCheck]
 
     var body: some View {
-        FlexibleChips(items: checks.map { "\($0.0) \($0.1)" })
+        FlexibleChips(items: checks.map { "\($0.key) \($0.value)" })
     }
 }
 

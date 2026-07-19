@@ -39,12 +39,17 @@ struct IPRiskRow: Hashable, Identifiable, Sendable {
     var detail: String
 }
 
+struct IPFactorCheck: Hashable, Sendable {
+    var key: String
+    var value: String
+}
+
 struct IPFactorRow: Hashable, Identifiable, Sendable {
     var id: String { name }
     var name: String
     var country: String
     /// key -> yes/no/unknown
-    var checks: [(String, String)]
+    var checks: [IPFactorCheck]
 }
 
 struct IPMediaRow: Hashable, Identifiable, Sendable {

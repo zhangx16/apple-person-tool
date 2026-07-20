@@ -1,8 +1,9 @@
 import Foundation
 import Network
 
-/// 出口 IP 检测 · 对齐 MaYIHEI/paperclip `ipquality`（Loon 脚本）口径。
-/// 在 iOS 上检测当前 App 出口（非 Loon 节点），聚合 check.place / ipapi.is 等公开源 + 流媒体探测。
+/// 出口 / 任意 IP 检测 · 对齐 MaYIHEI/ipquality + IPSuper 一站式聚合展示。
+/// - 默认检测当前 App 出口
+/// - 可传入 targetIP 做查询（类似 IPSuper 输入框）
 actor IPCheckService {
     static let shared = IPCheckService()
 
@@ -12,58 +13,156 @@ actor IPCheckService {
 
     // MARK: - Public
 
-    func check(includeMedia: Bool = true) async -> (result: IPCheckResult?, error: String?) {
+    /// - Parameters:
+    ///   - targetIP: 为空则多源探测当前出口；非空则查询指定 IP（不做流媒体探针时更有意义）。
+    ///   - includeMedia: 流媒体/AI 可用性（仅对当前出口有意义）。
+    func check(targetIP: String? = nil, includeMedia: Bool = true) async -> (result: IPCheckResult?, error: String?) {
         let pathNote = await Self.currentPathDescription()
         let hasVPNPath = pathNote.lowercased().contains("vpn")
             || pathNote.lowercased().contains("tunnel")
             || pathNote.lowercased().contains("other")
 
-        // 1) Discover egress IP (multi-probe consensus, like ipquality.js)
-        let discovery = await discoverIP()
-        guard let ip = discovery.ip, !ip.isEmpty else {
-            return (nil, "无法获取出口 IP")
+        let lookup = targetIP?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let isLookup: Bool
+        let ip: String
+        var discovery = Discovery(ip: nil, secondaryIP: nil, secondarySource: nil, matched: 0, total: 0)
+
+        if let lookup, !lookup.isEmpty {
+            let normalized = Self.normalizeIP(lookup)
+            guard !normalized.isEmpty else {
+                return (nil, "IP 格式无效")
+            }
+            isLookup = true
+            ip = normalized
+            // Media tests only make sense for current egress.
+        } else {
+            isLookup = false
+            discovery = await discoverIP()
+            guard let found = discovery.ip, !found.isEmpty else {
+                return (nil, "无法获取出口 IP")
+            }
+            ip = found
         }
 
-        // 2) Parallel DB + media
+        let runMedia = includeMedia && !isLookup
         async let dbTask = collectDatabases(ip: ip)
-        async let mediaTask: [IPMediaRow] = includeMedia ? collectMedia() : []
+        async let mediaTask: [IPMediaRow] = runMedia ? collectMedia() : []
         let dbs = await dbTask
         let media = await mediaTask
 
-        // 3) Build geo profile
         let geo = buildGeo(ip: ip, dbs: dbs)
 
-        // 4) Legacy heuristic (keep as summary score)
         var result = IPCheckAnalysis.calculateRisk(
             ipInfo: geo,
-            compareIP: discovery.secondaryIP,
-            hasVPNInterface: hasVPNPath
+            compareIP: isLookup ? nil : discovery.secondaryIP,
+            hasVPNInterface: isLookup ? false : hasVPNPath
         )
         result.primary = geo
-        result.compareIP = discovery.secondaryIP
-        result.compareSource = discovery.secondarySource
-        result.pathStatus = pathNote
+        result.compareIP = isLookup ? nil : discovery.secondaryIP
+        result.compareSource = isLookup ? nil : discovery.secondarySource
+        result.pathStatus = isLookup ? "查询模式（非本机出口）" : pathNote
         result.probeMatched = discovery.matched
         result.probeTotal = discovery.total
         result.typeRows = buildTypes(dbs)
         result.riskRows = buildRisks(dbs)
         result.factorRows = buildFactors(dbs)
         result.mediaRows = media
+        result.isLookupMode = isLookup
         result.qualityNote =
-            "类型与风险分档对齐 xykt/IPQuality · MaYIHEI/ipquality 展示口径；各库独立展示，不合成单一结论。缺失数据不参与判断。"
+            "聚合口径参考 IPSuper 一站式风险查询与 MaYIHEI/ipquality；多库交叉展示，缺失源不参与判断。流媒体/AI 仅检测当前出口。"
 
-        // Refine 原生/家宽 using quality factors when available
         if let native = geo.nature.nilIfEmpty {
-            result.isNative = native.contains("原生") ? "原生" : "非原生"
-        }
-        if result.typeRows.contains(where: { $0.usage.lowercased().contains("isp") || $0.company.lowercased().contains("isp") }) {
-            // leave as-is
+            result.isNative = native.contains("原生") ? "原生" : "广播"
         }
         if dbs.ipapi?.isDatacenter == true {
-            result.isHomeBroadband = "非家宽"
+            result.isHomeBroadband = "机房/IDC"
+        } else if result.typeRows.contains(where: {
+            $0.usage.contains("家宽") || $0.usage.lowercased().contains("isp")
+        }) {
+            result.isHomeBroadband = "家宽/ISP"
         }
 
+        // IPSuper 风格：风险系数融合多库 severity + 本地启发式
+        result.riskValue = Self.fusedRiskCoefficient(
+            heuristic: result.riskValue,
+            riskRows: result.riskRows
+        )
+        result.portraitTags = Self.buildPortrait(
+            geo: geo,
+            result: result,
+            dbs: dbs
+        )
+
         return (result, nil)
+    }
+
+    /// 融合多库风险分档 → 0…100 风险系数（类似 IPSuper 风险系数条）
+    private static func fusedRiskCoefficient(heuristic: Int, riskRows: [IPRiskRow]) -> Int {
+        let available = riskRows.filter(\.available)
+        guard !available.isEmpty else { return heuristic }
+        // Map severity 0…4 → 0…100
+        let scores = available.map { min(100, max(0, $0.severity * 25)) }
+        let avg = scores.reduce(0, +) / scores.count
+        let peak = scores.max() ?? 0
+        // 60% 峰值 + 25% 均值 + 15% 启发式，避免单库误伤
+        let fused = Int(Double(peak) * 0.60 + Double(avg) * 0.25 + Double(heuristic) * 0.15)
+        return max(0, min(100, fused))
+    }
+
+    private static func buildPortrait(
+        geo: IPGeoInfo,
+        result: IPCheckResult,
+        dbs: DBBundle
+    ) -> [IPPortraitTag] {
+        var tags: [IPPortraitTag] = []
+        if !geo.nature.isEmpty {
+            let native = geo.nature.contains("原生")
+            tags.append(.init(text: native ? "原生 IP" : "广播 IP", level: native ? "low" : "mid"))
+        } else if result.isNative.contains("原生") {
+            tags.append(.init(text: "原生倾向", level: "low"))
+        } else {
+            tags.append(.init(text: "非原生倾向", level: "mid"))
+        }
+
+        if dbs.ipapi?.isDatacenter == true
+            || result.typeRows.contains(where: { $0.usage.contains("机房") || $0.usage.lowercased().contains("hosting") }) {
+            tags.append(.init(text: "机房/IDC", level: "mid"))
+        } else if result.isHomeBroadband.contains("家宽") {
+            tags.append(.init(text: "家宽/住宅", level: "low"))
+        }
+
+        let vpnYes = result.factorRows.contains { row in
+            row.checks.contains { $0.key == "VPN" && $0.value == "是" }
+        } || result.vpnStatus == "已连接"
+        if vpnYes { tags.append(.init(text: "VPN", level: "high")) }
+
+        let proxyYes = result.factorRows.contains { row in
+            row.checks.contains { $0.key == "代理" && $0.value == "是" }
+        } || result.vpnStatus.contains("代理")
+        if proxyYes { tags.append(.init(text: "代理", level: "high")) }
+
+        let torYes = result.factorRows.contains { row in
+            row.checks.contains { $0.key == "Tor" && $0.value == "是" }
+        }
+        if torYes { tags.append(.init(text: "Tor", level: "high")) }
+
+        let abuseYes = result.factorRows.contains { row in
+            row.checks.contains { ($0.key == "滥用" || $0.key == "机器人") && $0.value == "是" }
+        } || result.riskRows.contains(where: { $0.severity >= 3 && $0.name.contains("Abuse") })
+        if abuseYes { tags.append(.init(text: "滥用风险", level: "high")) }
+
+        if result.riskValue >= 66 {
+            tags.append(.init(text: "高风险", level: "high"))
+        } else if result.riskValue >= 33 {
+            tags.append(.init(text: "中风险", level: "mid"))
+        } else {
+            tags.append(.init(text: "低风险", level: "low"))
+        }
+
+        // de-dupe by text
+        var seen = Set<String>()
+        return tags.filter { seen.insert($0.text).inserted }
     }
 
     // MARK: - Discover IP

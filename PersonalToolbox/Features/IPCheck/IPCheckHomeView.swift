@@ -1,34 +1,41 @@
 import SwiftUI
 import UIKit
 
-/// 出口 IP 质量检测 · 对齐 MaYIHEI/paperclip ipquality 展示口径。
+/// IP 风险聚合查询 · 参考 IPSuper 一站式体验 + ipquality 多库口径。
 struct IPCheckHomeView: View {
     @StateObject private var viewModel = IPCheckViewModel()
     @State private var toast: String?
     @State private var includeMedia = true
     @State private var maskIP = false
+    @State private var queryIP = ""
+    @FocusState private var queryFocused: Bool
 
     private let accent = IPCheckAccent.color
 
     var body: some View {
         ScrollView {
             VStack(spacing: 14) {
+                queryBar
                 optionsBar
 
                 if viewModel.isLoading && viewModel.result == nil {
                     VStack(spacing: 12) {
                         ProgressView()
                             .controlSize(.large)
-                        Text("多源检测中…")
+                        Text("多源聚合检测中…")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
-                        Text("出口探针 · 风险库 · 流媒体")
+                        Text("出口探针 · 风险库 · 网络画像 · 流媒体")
                             .font(.caption2)
                             .foregroundStyle(.tertiary)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.top, 48)
                 } else if let result = viewModel.result, let info = result.primary {
+                    riskCoefficientHero(result)
+                    if !result.portraitTags.isEmpty {
+                        portraitCard(result.portraitTags)
+                    }
                     statusCard(result)
                     ipCard(info, result: result)
                     basicCard(info, result: result)
@@ -44,7 +51,6 @@ struct IPCheckHomeView: View {
                     if includeMedia, !result.mediaRows.isEmpty {
                         mediaCard(result.mediaRows)
                     }
-                    riskSummaryCard(result)
                     if !result.qualityNote.isEmpty {
                         Text(result.qualityNote)
                             .font(.caption2)
@@ -57,8 +63,9 @@ struct IPCheckHomeView: View {
                     } description: {
                         Text(viewModel.errorMessage ?? "请检查网络后重试")
                     } actions: {
-                        Button("重新检测") {
-                            Task { await viewModel.refresh(includeMedia: includeMedia) }
+                        Button("检测当前出口") {
+                            queryIP = ""
+                            Task { await viewModel.refresh(targetIP: nil, includeMedia: includeMedia) }
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(accent)
@@ -77,7 +84,7 @@ struct IPCheckHomeView: View {
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
-                    Task { await viewModel.refresh(includeMedia: includeMedia) }
+                    Task { await runCheck() }
                 } label: {
                     if viewModel.isLoading {
                         ProgressView()
@@ -90,11 +97,11 @@ struct IPCheckHomeView: View {
             }
         }
         .refreshable {
-            await viewModel.refresh(includeMedia: includeMedia)
+            await runCheck()
         }
         .task {
             if viewModel.result == nil {
-                await viewModel.refresh(includeMedia: includeMedia)
+                await runCheck()
             }
         }
         .overlay(alignment: .top) {
@@ -111,6 +118,67 @@ struct IPCheckHomeView: View {
         .animation(AppleTheme.preferredSnappy, value: toast)
     }
 
+    // MARK: - Query (IPSuper-style)
+
+    private var queryBar: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("IP 风险信息聚合查询")
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(.secondary)
+            HStack(spacing: 10) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                TextField("留空=当前出口，或输入要查询的 IP", text: $queryIP)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.numbersAndPunctuation)
+                    .focused($queryFocused)
+                    .submitLabel(.search)
+                    .onSubmit { Task { await runCheck() } }
+                Button {
+                    Task { await runCheck() }
+                } label: {
+                    Text("查询")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(accent.gradient, in: Capsule())
+                }
+                .buttonStyle(PressableButtonStyle())
+                .disabled(viewModel.isLoading)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
+
+            HStack(spacing: 8) {
+                Button {
+                    queryIP = ""
+                    Task { await runCheck() }
+                } label: {
+                    Label("当前出口", systemImage: "location.fill")
+                        .font(.caption.weight(.semibold))
+                }
+                .buttonStyle(.bordered)
+                .tint(accent)
+                .controlSize(.small)
+
+                if let ip = viewModel.result?.primary?.query, !ip.isEmpty {
+                    Button {
+                        queryIP = ip
+                    } label: {
+                        Text("填入当前 IP")
+                            .font(.caption.weight(.semibold))
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+            }
+        }
+    }
+
     // MARK: - Options
 
     private var optionsBar: some View {
@@ -121,6 +189,7 @@ struct IPCheckHomeView: View {
             }
             .toggleStyle(.button)
             .tint(accent)
+            .disabled(!queryIP.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
 
             Toggle(isOn: $maskIP) {
                 Text("隐藏 IP")
@@ -133,7 +202,94 @@ struct IPCheckHomeView: View {
         }
     }
 
+    private func runCheck() async {
+        queryFocused = false
+        let raw = queryIP.trimmingCharacters(in: .whitespacesAndNewlines)
+        await viewModel.refresh(
+            targetIP: raw.isEmpty ? nil : raw,
+            includeMedia: includeMedia && raw.isEmpty
+        )
+    }
+
     // MARK: - Cards
+
+    /// IPSuper 风格风险系数大卡片
+    private func riskCoefficientHero(_ result: IPCheckResult) -> some View {
+        let v = result.riskValue
+        let color: Color = v >= 66 ? .red : (v >= 33 ? .orange : accent)
+        let label = v >= 66 ? "高风险" : (v >= 33 ? "中风险" : "低风险")
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text(result.isLookupMode ? "查询 IP 风险系数" : "当前出口风险系数")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(label)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(color, in: Capsule())
+            }
+            HStack(alignment: .lastTextBaseline, spacing: 6) {
+                Text("\(v)")
+                    .font(.system(size: 48, weight: .bold, design: .rounded))
+                    .foregroundStyle(color)
+                    .monospacedDigit()
+                Text("/ 100")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            ProgressView(value: Double(v), total: 100)
+                .tint(color)
+            Text(riskHint(v))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .appCard()
+    }
+
+    private func portraitCard(_ tags: [IPPortraitTag]) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("网络画像")
+                .font(.subheadline.weight(.bold))
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 88), spacing: 8)],
+                alignment: .leading,
+                spacing: 8
+            ) {
+                ForEach(tags) { tag in
+                    Text(tag.text)
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(portraitFg(tag.level))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .frame(maxWidth: .infinity)
+                        .background(portraitBg(tag.level), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                }
+            }
+        }
+        .appCard()
+    }
+
+    private func portraitFg(_ level: String) -> Color {
+        switch level {
+        case "high": return .white
+        case "mid": return Color(hex: 0x92400E)
+        case "low": return Color(hex: 0x065F46)
+        default: return .primary
+        }
+    }
+
+    private func portraitBg(_ level: String) -> Color {
+        switch level {
+        case "high": return .red.opacity(0.85)
+        case "mid": return Color(hex: 0xFBBF24).opacity(0.35)
+        case "low": return accent.opacity(0.22)
+        default: return Color(.tertiarySystemFill)
+        }
+    }
 
     private func statusCard(_ result: IPCheckResult) -> some View {
         let vpnOn = result.vpnStatus == "已连接"
@@ -351,29 +507,6 @@ struct IPCheckHomeView: View {
         .appCard()
     }
 
-    private func riskSummaryCard(_ result: IPCheckResult) -> some View {
-        let color: Color = result.riskValue > 60 ? .red : (result.riskValue > 20 ? .orange : .green)
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text("本地启发式风险")
-                    .font(.subheadline.weight(.semibold))
-                Spacer()
-                Text("\(result.riskValue)")
-                    .font(.title2.weight(.bold).monospacedDigit())
-                    .foregroundStyle(color)
-                Text("/ 100")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            ProgressView(value: Double(result.riskValue), total: 100)
-                .tint(color)
-            Text(riskHint(result.riskValue))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .appCard()
-    }
-
     private func sectionTitle(_ t: String) -> some View {
         Text(t)
             .font(.subheadline.weight(.bold))
@@ -476,11 +609,11 @@ final class IPCheckViewModel: ObservableObject {
 
     private let service = IPCheckService.shared
 
-    func refresh(includeMedia: Bool = true) async {
+    func refresh(targetIP: String? = nil, includeMedia: Bool = true) async {
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
-        let (res, err) = await service.check(includeMedia: includeMedia)
+        let (res, err) = await service.check(targetIP: targetIP, includeMedia: includeMedia)
         if let res {
             result = res
             Haptics.success()

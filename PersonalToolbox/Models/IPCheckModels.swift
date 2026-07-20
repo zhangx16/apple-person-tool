@@ -61,6 +61,14 @@ struct IPMediaRow: Hashable, Identifiable, Sendable {
     var note: String
 }
 
+/// 网络画像标签（对齐 IPSuper：机房/家宽/VPN/原生等一站式摘要）
+struct IPPortraitTag: Hashable, Identifiable, Sendable {
+    var id: String { text }
+    var text: String
+    /// low / mid / high / info
+    var level: String
+}
+
 struct IPCheckResult: Hashable, Sendable {
     var primary: IPGeoInfo?
     var compareIP: String?
@@ -73,19 +81,24 @@ struct IPCheckResult: Hashable, Sendable {
     var vpnMethod: String
     var pathStatus: String
 
-    // Quality extension (ipquality-aligned)
+    // Quality extension (ipquality + IPSuper-aligned)
     var probeMatched: Int = 0
     var probeTotal: Int = 0
     var typeRows: [IPTypeRow] = []
     var riskRows: [IPRiskRow] = []
     var factorRows: [IPFactorRow] = []
     var mediaRows: [IPMediaRow] = []
+    var portraitTags: [IPPortraitTag] = []
+    /// true = user queried a specific IP (not current egress)
+    var isLookupMode: Bool = false
     var qualityNote: String = ""
 }
 
 enum IPCheckAccent {
-    /// Match script / brand purple
-    static let color = Color(hex: 0xAE6DD8)
+    /// IPSuper teal
+    static let color = Color(hex: 0x14B8A6)
+    /// Legacy purple kept for reference
+    static let purple = Color(hex: 0xAE6DD8)
 }
 
 enum IPCheckAnalysis {

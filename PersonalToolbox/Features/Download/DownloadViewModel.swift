@@ -29,6 +29,8 @@ final class DownloadViewModel: ObservableObject {
     @Published private(set) var douyinStage: String = ""
     /// Explicit project selected via nav title menu (YouTube service vs Douyin local).
     @Published var project: DownloadProject = .youtube
+    /// Douyin video quality preference (aligned with douyin-downloader).
+    @Published var douyinQuality: DouyinService.VideoQuality = .highest
 
     private let settings: AppSettings
     private let service = YTService.shared
@@ -312,6 +314,7 @@ final class DownloadViewModel: ObservableObject {
                 let result = try await self.douyin.download(
                     sourceURL: url,
                     preferNoWatermark: true,
+                    quality: self.douyinQuality,
                     onProgress: { fraction, stage in
                         Task { @MainActor in
                             guard !self.cancelledDouyinIds.contains(taskId) else { return }

@@ -114,8 +114,31 @@ struct DownloadHomeView: View {
                 .accessibilityLabel("粘贴")
             }
 
-            // Quality presets only apply to YouTube / yt-dlp backend.
-            if !viewModel.isDouyinMode {
+            // Quality presets: YouTube formats or Douyin tiers.
+            if viewModel.isDouyinMode {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(DouyinService.VideoQuality.allCases) { q in
+                            let on = viewModel.douyinQuality == q
+                            Button {
+                                viewModel.douyinQuality = q
+                            } label: {
+                                Text(q.rawValue)
+                                    .font(.caption.weight(.semibold))
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .foregroundStyle(on ? Color.white : Color.primary)
+                                    .background(
+                                        on ? Color.accentColor : Color(.tertiarySystemFill),
+                                        in: Capsule()
+                                    )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+            } else {
                 FormatChipBar(
                     presets: YTFormatOption.presets,
                     selection: $viewModel.selectedPreset
@@ -187,7 +210,7 @@ struct DownloadHomeView: View {
             Text(viewModel.isDouyinMode ? "新建抖音下载" : "新建 YouTube 下载")
         } footer: {
             if viewModel.isDouyinMode {
-                Text("粘贴 v.douyin.com / douyin.com 分享链接或分享文案。优先无水印，文件保存在本机 Documents/douyin-downloader。点顶部标题可切回 YouTube。")
+                Text("粘贴 v.douyin.com / douyin.com / note 分享文案。自动展开短链、优先无水印与最高清（参考 jiji262/douyin-downloader）。Cookie 可在「设置 → 抖音直播」配置。文件：Documents/douyin-downloader。")
             } else if !settings.isYTConfigured {
                 Text("请先在「设置」中填写 yt-dlp 下载服务账号密码。抖音请点顶部标题切换到「抖音」。")
             } else {

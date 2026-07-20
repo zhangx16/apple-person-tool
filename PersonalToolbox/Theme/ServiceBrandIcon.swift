@@ -7,6 +7,7 @@ enum ServiceBrand: String, CaseIterable, Identifiable {
     case komari
     case youtube
     case douyin
+    case bilibili
     case sub2
     case anniversary
     case qrAssistant
@@ -36,6 +37,7 @@ enum ServiceBrand: String, CaseIterable, Identifiable {
         case .komari: return "IconKomari"
         case .youtube: return "IconYouTube"
         case .douyin: return "IconDouyin"
+        case .bilibili: return "IconLiveBilibili"
         case .sub2: return "IconSub2"
         case .anniversary: return "IconAnniversary"
         case .qrAssistant: return "IconQRAssistant"
@@ -54,6 +56,7 @@ enum ServiceBrand: String, CaseIterable, Identifiable {
         case .komari: return "server.rack"
         case .youtube: return "play.rectangle.fill"
         case .douyin: return "music.note.tv.fill"
+        case .bilibili: return "play.rectangle.on.rectangle.fill"
         case .sub2: return "chart.bar.fill"
         case .anniversary: return "heart.text.square.fill"
         case .qrAssistant: return "qrcode.viewfinder"
@@ -82,6 +85,7 @@ enum ServiceBrand: String, CaseIterable, Identifiable {
         case .komari: return Color(hex: 0x30D158)
         case .youtube: return Color(hex: 0xFF3B30)
         case .douyin: return Color(hex: 0xFF2D55)
+        case .bilibili: return Color(hex: 0x00A1D6)
         case .sub2: return Color(hex: 0x5E5CE6)
         case .anniversary: return Color(hex: 0xFF2D55)
         case .qrAssistant: return Color(hex: 0x64D2FF)
@@ -109,6 +113,7 @@ enum ServiceBrand: String, CaseIterable, Identifiable {
         case .komari: return "Komari"
         case .youtube: return "YouTube 下载"
         case .douyin: return "抖音下载"
+        case .bilibili: return "B站下载"
         case .sub2: return "Sub2API"
         case .anniversary: return "纪念日"
         case .qrAssistant: return "二维码助手"

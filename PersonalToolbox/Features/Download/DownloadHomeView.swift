@@ -31,7 +31,7 @@ struct DownloadHomeView: View {
             if let meta = viewModel.metadata {
                 metadataSection(meta)
             }
-            if viewModel.isDouyinMode, !viewModel.douyinLogs.isEmpty || !viewModel.douyinStage.isEmpty {
+            if viewModel.isLocalMode, !viewModel.douyinLogs.isEmpty || !viewModel.douyinStage.isEmpty {
                 douyinLogSection
             }
             tasksSection
@@ -39,15 +39,10 @@ struct DownloadHomeView: View {
         }
         .listStyle(.insetGrouped)
         .background(AppleTheme.canvas)
-        .navigationTitle("")
-        .navigationBarTitleDisplayMode(.inline)
+        // 统一「视频下载」模块：YouTube / 抖音 / B站 均为页内切换，不单独占底部 Tab
+        .navigationTitle("视频下载")
+        .navigationBarTitleDisplayMode(.large)
         .toolbar {
-            ToolbarItem(placement: .principal) {
-                DownloadNavTitle(selection: Binding(
-                    get: { viewModel.project },
-                    set: { viewModel.setProject($0) }
-                ))
-            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     Task { await viewModel.refreshNow() }
@@ -98,8 +93,11 @@ struct DownloadHomeView: View {
 
     private var composeSection: some View {
         Section {
+            // 同一模块内切换来源（非底部 Tab）
+            platformPicker
+
             HStack(spacing: 8) {
-                TextField("粘贴视频链接", text: $viewModel.urlText)
+                TextField(linkPlaceholder, text: $viewModel.urlText)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .keyboardType(.URL)
@@ -114,30 +112,30 @@ struct DownloadHomeView: View {
                 .accessibilityLabel("粘贴")
             }
 
-            // Quality presets: YouTube formats or Douyin tiers.
+            // Quality presets by project.
             if viewModel.isDouyinMode {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(DouyinService.VideoQuality.allCases) { q in
-                            let on = viewModel.douyinQuality == q
-                            Button {
-                                viewModel.douyinQuality = q
-                            } label: {
-                                Text(q.rawValue)
-                                    .font(.caption.weight(.semibold))
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 8)
-                                    .foregroundStyle(on ? Color.white : Color.primary)
-                                    .background(
-                                        on ? Color.accentColor : Color(.tertiarySystemFill),
-                                        in: Capsule()
-                                    )
-                            }
-                            .buttonStyle(.plain)
+                qualityChips(
+                    items: DouyinService.VideoQuality.allCases.map { ($0.rawValue, $0) },
+                    selected: viewModel.douyinQuality
+                ) { viewModel.douyinQuality = $0 }
+            } else if viewModel.isBilibiliMode {
+                qualityChips(
+                    items: [
+                        ("1080P", 80),
+                        ("720P", 64),
+                        ("480P", 32),
+                        ("360P", 16)
+                    ],
+                    selected: viewModel.bilibiliQn
+                ) { viewModel.bilibiliQn = $0 }
+                if viewModel.bilibiliPages.count > 1 {
+                    Picker("分 P", selection: $viewModel.bilibiliPageIndex) {
+                        ForEach(Array(viewModel.bilibiliPages.enumerated()), id: \.element.id) { idx, page in
+                            Text("P\(page.page) \(page.part.isEmpty ? "" : page.part)")
+                                .tag(idx)
                         }
                     }
                 }
-                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
             } else {
                 FormatChipBar(
                     presets: YTFormatOption.presets,
@@ -171,7 +169,7 @@ struct DownloadHomeView: View {
                 .buttonStyle(PressableButtonStyle())
                 .disabled(viewModel.isParsing || viewModel.isEnqueueing)
                 .accessibilityLabel("解析链接")
-                .accessibilityHint(viewModel.isDouyinMode ? "本机解析抖音标题" : "获取视频标题与格式信息")
+                .accessibilityHint(viewModel.isLocalMode ? "本机解析标题" : "获取视频标题与格式信息")
 
                 Button {
                     Task { await viewModel.startDownload() }
@@ -184,7 +182,7 @@ struct DownloadHomeView: View {
                         } else {
                             Image(systemName: "arrow.down.circle.fill")
                         }
-                        Text(viewModel.isDouyinMode ? "本机下载" : "开始下载")
+                        Text(viewModel.isLocalMode ? "本机下载" : "开始下载")
                             .font(.subheadline.weight(.semibold))
                     }
                     .frame(maxWidth: .infinity)
@@ -198,25 +196,94 @@ struct DownloadHomeView: View {
                 }
                 .buttonStyle(PressableButtonStyle())
                 .disabled(viewModel.isParsing || viewModel.isEnqueueing)
-                .accessibilityLabel(viewModel.isDouyinMode ? "本机下载抖音" : "开始下载")
-                .accessibilityHint(
-                    viewModel.isDouyinMode
-                        ? "使用 WebView 解析并下载到本机"
-                        : "按所选画质加入下载队列"
-                )
+                .accessibilityLabel(viewModel.isLocalMode ? "本机下载" : "开始下载")
             }
             .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 12, trailing: 16))
         } header: {
-            Text(viewModel.isDouyinMode ? "新建抖音下载" : "新建 YouTube 下载")
+            Text("新建下载")
         } footer: {
-            if viewModel.isDouyinMode {
-                Text("粘贴 v.douyin.com / douyin.com / note 分享文案。自动展开短链、优先无水印与最高清（参考 jiji262/douyin-downloader）。Cookie 可在「设置 → 抖音直播」配置。文件：Documents/douyin-downloader。")
-            } else if !settings.isYTConfigured {
-                Text("请先在「设置」中填写 yt-dlp 下载服务账号密码。抖音请点顶部标题切换到「抖音」。")
-            } else {
-                Text("通过 yt-dlp 服务下载 YouTube 等通用链接。抖音请点顶部标题切换到「抖音」。")
+            Text(composeFooter)
+                .font(.caption)
+        }
+    }
+
+    private var platformPicker: some View {
+        HStack(spacing: 8) {
+            ForEach(DownloadProject.allCases) { p in
+                let on = viewModel.project == p
+                Button {
+                    viewModel.setProject(p)
+                } label: {
+                    HStack(spacing: 6) {
+                        ServiceBrandIcon(brand: p.brand, size: 18, showsBackground: false)
+                        Text(p.title)
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .foregroundStyle(on ? Color.white : Color.primary)
+                    .background(
+                        on ? p.brand.tint : Color(.tertiarySystemFill),
+                        in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    )
+                }
+                .buttonStyle(PressableButtonStyle(scale: 0.98))
+                .accessibilityLabel(p.accessibilityLabel)
+                .accessibilityAddTraits(on ? .isSelected : [])
             }
         }
+        .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 6, trailing: 16))
+        .listRowBackground(Color.clear)
+    }
+
+    private var linkPlaceholder: String {
+        switch viewModel.project {
+        case .youtube: return "粘贴 YouTube 等链接"
+        case .douyin: return "粘贴抖音分享链接"
+        case .bilibili: return "粘贴 BV / b23.tv 链接"
+        }
+    }
+
+    private var composeFooter: String {
+        switch viewModel.project {
+        case .douyin:
+            return "粘贴抖音分享链接。短链展开、无水印与画质参考 douyin-downloader。Cookie：设置 → 抖音。"
+        case .bilibili:
+            return "粘贴 BV/av/b23.tv 链接。本机 playurl 下载（参考 BilibiliDown）。高清建议配置 SESSDATA。文件：Documents/bilibili-downloader。"
+        case .youtube:
+            return settings.isYTConfigured
+                ? "通过 yt-dlp 服务下载通用链接。抖音/B站请切换顶部模式。"
+                : "请先在设置中配置 yt-dlp。抖音/B站可本机下载。"
+        }
+    }
+
+    private func qualityChips<T: Hashable>(
+        items: [(String, T)],
+        selected: T,
+        onSelect: @escaping (T) -> Void
+    ) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                    let on = selected == item.1
+                    Button {
+                        onSelect(item.1)
+                    } label: {
+                        Text(item.0)
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .foregroundStyle(on ? Color.white : Color.primary)
+                            .background(
+                                on ? Color.accentColor : Color(.tertiarySystemFill),
+                                in: Capsule()
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
     }
 
     private var douyinLogSection: some View {
@@ -238,7 +305,7 @@ struct DownloadHomeView: View {
                 .padding(.vertical, 2)
             }
         } header: {
-            Text("抖音解析日志")
+            Text(viewModel.isBilibiliMode ? "B站解析日志" : "抖音解析日志")
         }
     }
 

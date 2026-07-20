@@ -4,7 +4,7 @@ import Combine
 import UIKit
 
 /// Drives the Download tab: URL parse/start, 2s queue poll, file list, share.
-/// Douyin share links are handled locally via `DouyinService`; other URLs go to yt-dlp-web-ui.
+/// Douyin / B 站本机下载；其它链接走 yt-dlp-web-ui。
 @MainActor
 final class DownloadViewModel: ObservableObject {
     @Published var urlText: String = ""
@@ -59,8 +59,15 @@ final class DownloadViewModel: ObservableObject {
         }
     }
 
-    /// Manual project mode from title menu. Auto-detect still applies as soft hint only when youtube mode gets a douyin URL.
+    /// Manual project mode from title menu.
     var isDouyinMode: Bool { project == .douyin }
+    var isBilibiliMode: Bool { project == .bilibili }
+    var isLocalMode: Bool { project.isLocal }
+
+    private let bilibili = BilibiliDownloadService.shared
+    @Published var bilibiliPageIndex: Int = 0
+    @Published private(set) var bilibiliPages: [BilibiliDownloadService.PageInfo] = []
+    @Published var bilibiliQn: Int = 80
 
     func setProject(_ newProject: DownloadProject) {
         guard project != newProject else { return }
@@ -69,11 +76,15 @@ final class DownloadViewModel: ObservableObject {
         metadata = nil
         douyinLogs = []
         douyinStage = ""
+        bilibiliPages = []
+        bilibiliPageIndex = 0
         errorBanner = nil
-        // Soft notice when switching.
-        if newProject == .douyin {
+        switch newProject {
+        case .douyin:
             infoBanner = "已切换到抖音本机下载"
-        } else {
+        case .bilibili:
+            infoBanner = "已切换到 B 站本机下载（参考 BilibiliDown）"
+        case .youtube:
             infoBanner = "已切换到 YouTube / yt-dlp 服务下载"
         }
     }
@@ -205,9 +216,37 @@ final class DownloadViewModel: ObservableObject {
             return
         }
 
-        // YouTube / yt-dlp mode: if user pasted a Douyin URL, nudge them to switch.
+        if isBilibiliMode {
+            do {
+                douyinLogs = []
+                douyinStage = "解析 B 站稿件…"
+                let (meta, info) = try await bilibili.parseMetadata(sourceURL: raw) { [weak self] line in
+                    self?.appendDouyinLog(line)
+                }
+                metadata = meta
+                bilibiliPages = info.pages
+                bilibiliPageIndex = 0
+                infoBanner = info.pages.count > 1
+                    ? "解析完成 · 共 \(info.pages.count) 个分 P"
+                    : "B 站解析完成"
+                Haptics.success()
+            } catch {
+                metadata = nil
+                bilibiliPages = []
+                errorBanner = Self.chineseError(error)
+                Haptics.error()
+            }
+            return
+        }
+
+        // YouTube / yt-dlp mode: nudge platform-specific links.
         if DouyinService.isDouyinURL(DouyinService.extractURL(from: raw) ?? raw) {
             errorBanner = "这是抖音链接。请点顶部标题切换到「抖音」后再下载。"
+            Haptics.error()
+            return
+        }
+        if BilibiliDownloadService.isBilibiliURL(raw) {
+            errorBanner = "这是 B 站链接。请点顶部标题切换到「B站」后再下载。"
             Haptics.error()
             return
         }
@@ -245,9 +284,18 @@ final class DownloadViewModel: ObservableObject {
             await startDouyinDownload(raw: raw)
             return
         }
+        if isBilibiliMode {
+            await startBilibiliDownload(raw: raw)
+            return
+        }
 
         if DouyinService.isDouyinURL(DouyinService.extractURL(from: raw) ?? raw) {
             errorBanner = "这是抖音链接。请点顶部标题切换到「抖音」后再下载。"
+            Haptics.error()
+            return
+        }
+        if BilibiliDownloadService.isBilibiliURL(raw) {
+            errorBanner = "这是 B 站链接。请点顶部标题切换到「B站」后再下载。"
             Haptics.error()
             return
         }
@@ -276,6 +324,129 @@ final class DownloadViewModel: ObservableObject {
             errorBanner = Self.chineseError(error)
             Haptics.error()
         }
+    }
+
+    private func startBilibiliDownload(raw: String) async {
+        activeDouyinWork?.cancel()
+        isEnqueueing = true
+        errorBanner = nil
+        douyinLogs = []
+        douyinStage = "准备中"
+        let url = BilibiliDownloadService.extractURL(from: raw) ?? raw
+        let taskId = UUID().uuidString
+        cancelledDouyinIds.remove(taskId)
+        upsertLocalTask(
+            YTTask.makeLocalBilibili(
+                id: taskId,
+                url: url,
+                title: metadata?.title ?? "B站下载",
+                processStatus: 1,
+                progress: 0.02,
+                stage: "解析中"
+            )
+        )
+        let page = bilibiliPageIndex
+        let qn = bilibiliQn
+        let work = Task { [weak self] in
+            guard let self else { return }
+            defer {
+                Task { @MainActor in
+                    self.isEnqueueing = false
+                    self.activeDouyinWork = nil
+                    self.reevaluatePolling()
+                }
+            }
+            do {
+                let result = try await self.bilibili.download(
+                    sourceURL: url,
+                    pageIndex: page,
+                    qn: qn,
+                    onProgress: { fraction, stage in
+                        Task { @MainActor in
+                            guard !self.cancelledDouyinIds.contains(taskId) else { return }
+                            self.douyinStage = stage
+                            self.upsertLocalTask(
+                                YTTask.makeLocalBilibili(
+                                    id: taskId,
+                                    url: url,
+                                    title: self.metadata?.title ?? stage,
+                                    processStatus: 1,
+                                    progress: fraction,
+                                    stage: stage
+                                )
+                            )
+                        }
+                    },
+                    onLog: { line in
+                        Task { @MainActor in
+                            guard !self.cancelledDouyinIds.contains(taskId) else { return }
+                            self.appendDouyinLog(line)
+                        }
+                    }
+                )
+                await MainActor.run {
+                    guard !self.cancelledDouyinIds.contains(taskId) else { return }
+                    self.metadata = VideoMetadata(
+                        title: result.title,
+                        duration: nil,
+                        thumbnail: result.thumbnailURL,
+                        uploader: nil
+                    )
+                    self.upsertLocalTask(
+                        YTTask.makeLocalBilibili(
+                            id: taskId,
+                            url: url,
+                            title: result.title,
+                            processStatus: 2,
+                            progress: 1,
+                            stage: "已完成 · \(result.qualityLabel)",
+                            filepath: result.filePath
+                        )
+                    )
+                    self.infoBanner = "B站下载完成：\(result.fileName)"
+                    Haptics.success()
+                    self.mergeLocalFilesIntoList()
+                    self.emitDownloadNotificationIfNeeded(
+                        taskId: taskId,
+                        title: result.title,
+                        source: "B站",
+                        failed: false,
+                        reason: nil
+                    )
+                }
+            } catch is CancellationError {
+                await MainActor.run {
+                    self.localTasks.removeAll { $0.id == YTTask.localBilibiliPrefix + taskId }
+                    self.rebuildTasks()
+                }
+            } catch {
+                await MainActor.run {
+                    guard !self.cancelledDouyinIds.contains(taskId) else { return }
+                    let reason = Self.chineseError(error)
+                    self.upsertLocalTask(
+                        YTTask.makeLocalBilibili(
+                            id: taskId,
+                            url: url,
+                            title: self.metadata?.title ?? "B站下载",
+                            processStatus: 3,
+                            progress: 0,
+                            stage: "失败",
+                            error: reason
+                        )
+                    )
+                    self.errorBanner = reason
+                    Haptics.error()
+                    self.emitDownloadNotificationIfNeeded(
+                        taskId: taskId,
+                        title: self.metadata?.title ?? "B站下载",
+                        source: "B站",
+                        failed: true,
+                        reason: reason
+                    )
+                }
+            }
+        }
+        activeDouyinWork = work
     }
 
     private func startDouyinDownload(raw: String) async {
@@ -430,16 +601,20 @@ final class DownloadViewModel: ObservableObject {
     }
 
     private func mergeLocalFilesIntoList() {
-        let local = douyin.listLocalFiles()
-        // Prefer showing local files; remote files loaded separately.
+        let local = douyin.listLocalFiles() + bilibili.listLocalFiles()
         let remoteOnly = files.filter { !$0.isLocalFile && !$0.id.hasPrefix("local:") }
         files = local + remoteOnly
     }
 
     func kill(_ task: YTTask) async {
-        if task.isLocalDouyin {
-            let rawId = String(task.id.dropFirst(YTTask.localDouyinPrefix.count))
-            cancelledDouyinIds.insert(rawId)
+        if task.isLocalDownload {
+            if task.isLocalDouyin {
+                let rawId = String(task.id.dropFirst(YTTask.localDouyinPrefix.count))
+                cancelledDouyinIds.insert(rawId)
+            } else if task.isLocalBilibili {
+                let rawId = String(task.id.dropFirst(YTTask.localBilibiliPrefix.count))
+                cancelledDouyinIds.insert(rawId)
+            }
             if task.isActive {
                 activeDouyinWork?.cancel()
                 activeDouyinWork = nil
@@ -467,7 +642,7 @@ final class DownloadViewModel: ObservableObject {
     }
 
     func clear(_ task: YTTask) async {
-        if task.isLocalDouyin {
+        if task.isLocalDownload {
             localTasks.removeAll { $0.id == task.id }
             rebuildTasks()
             Haptics.light()
@@ -656,8 +831,8 @@ final class DownloadViewModel: ObservableObject {
         guard isConfigured else {
             rebuildTasks()
             // Soft notice only on explicit refresh, and only if not currently on a Douyin URL.
-            if !silent && !isDouyinMode && errorBanner == nil && infoBanner == nil {
-                infoBanner = "通用下载需配置 yt-dlp 服务；抖音链接可直接粘贴本机下载"
+            if !silent && !isLocalMode && errorBanner == nil && infoBanner == nil {
+                infoBanner = "通用下载需配置 yt-dlp；抖音/B站可本机下载"
             }
             reevaluatePolling()
             return
@@ -685,7 +860,7 @@ final class DownloadViewModel: ObservableObject {
                     username: username,
                     password: password
                 )
-                let local = douyin.listLocalFiles()
+                let local = douyin.listLocalFiles() + bilibili.listLocalFiles()
                 files = local + remoteFiles
                 lastFilesRefresh = now
             }

@@ -81,11 +81,11 @@ struct SettingsView: View {
                         }
                     }
 
-                    settingsSection("直播账号", symbol: "play.tv.fill") {
+                    settingsSection("直播 / 下载 Cookie", symbol: "play.tv.fill") {
                         plainLink(
                             systemImage: "music.note",
-                            title: "抖音直播 Cookie",
-                            subtitle: settings.douyinLiveCookie.isEmpty ? "未配置 · 搜索/风控可能失败" : "已配置",
+                            title: "抖音 Cookie",
+                            subtitle: settings.douyinLiveCookie.isEmpty ? "未配置 · 直播搜索/下载" : "已配置",
                             tint: Color(hex: 0x111111)
                         ) {
                             DouyinLiveSettingsPage()
@@ -97,6 +97,14 @@ struct SettingsView: View {
                             tint: ServiceBrand.live.tint
                         ) {
                             KuaishouLiveSettingsPage()
+                        }
+                        plainLink(
+                            systemImage: "play.rectangle.on.rectangle.fill",
+                            title: "B站 Cookie",
+                            subtitle: settings.bilibiliCookie.isEmpty ? "未配置 · 高清/大会员需登录" : "已配置",
+                            tint: ServiceBrand.bilibili.tint
+                        ) {
+                            BilibiliDownloadSettingsPage()
                         }
                     }
 
@@ -596,6 +604,37 @@ struct Kuaidi100SettingsPage: View {
             }
         }
         .navigationTitle("快递100")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+struct BilibiliDownloadSettingsPage: View {
+    @EnvironmentObject private var settings: AppSettings
+
+    var body: some View {
+        Form {
+            Section {
+                TextField("Cookie", text: $settings.bilibiliCookie, axis: .vertical)
+                    .lineLimit(4...12)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+            } header: {
+                Text("登录 Cookie（BilibiliDown 同思路）")
+            } footer: {
+                Text("浏览器登录 bilibili.com 后，复制 Cookie（建议含 SESSDATA、bili_jct、DedeUserID）。用于下载 Tab「B站」本机解析高清；不填也可下公开低清。")
+            }
+            Section("说明") {
+                Text("参考 nICEnnnnnnnLee/BilibiliDown 的 Cookie 登录与 playurl 拉流；App 内优先单文件流，无需桌面 ffmpeg。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if !settings.bilibiliCookie.isEmpty {
+                    Button("清除 Cookie", role: .destructive) {
+                        settings.bilibiliCookie = ""
+                    }
+                }
+            }
+        }
+        .navigationTitle("B站 Cookie")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

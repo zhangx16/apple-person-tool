@@ -69,6 +69,7 @@ enum MonitorProject: String, CaseIterable, Identifiable, Hashable {
 enum DownloadProject: String, CaseIterable, Identifiable, Hashable {
     case youtube
     case douyin
+    case bilibili
 
     var id: String { rawValue }
 
@@ -76,6 +77,7 @@ enum DownloadProject: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .youtube: return "YouTube"
         case .douyin: return "抖音"
+        case .bilibili: return "B站"
         }
     }
 
@@ -83,6 +85,7 @@ enum DownloadProject: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .youtube: return .youtube
         case .douyin: return .douyin
+        case .bilibili: return .bilibili
         }
     }
 
@@ -92,6 +95,14 @@ enum DownloadProject: String, CaseIterable, Identifiable, Hashable {
 
     var accessibilityLabel: String {
         brand.accessibilityLabel
+    }
+
+    /// Local on-device download (no yt-dlp server).
+    var isLocal: Bool {
+        switch self {
+        case .douyin, .bilibili: return true
+        case .youtube: return false
+        }
     }
 }
 

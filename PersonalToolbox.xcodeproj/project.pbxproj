@@ -65,6 +65,7 @@
 		000000000000000000000150 /* SublinkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000014F /* SublinkService.swift */; };
 		000000000000000000000152 /* YTService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000151 /* YTService.swift */; };
 		0000000000000000000001C3 /* DouyinService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000001C2 /* DouyinService.swift */; };
+		0000000000000000000005A1 /* BilibiliDownloadService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000005A0 /* BilibiliDownloadService.swift */; };
 		0000000000000000000001C5 /* SelectableNavTitle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000001C4 /* SelectableNavTitle.swift */; };
 		0000000000000000000001C7 /* MonitorShellView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000001C6 /* MonitorShellView.swift */; };
 		000000000000000000000154 /* AppleTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000153 /* AppleTheme.swift */; };
@@ -178,6 +179,7 @@
 		00000000000000000000014F /* SublinkService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SublinkService.swift; sourceTree = "<group>"; };
 		000000000000000000000151 /* YTService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YTService.swift; sourceTree = "<group>"; };
 		0000000000000000000001C2 /* DouyinService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DouyinService.swift; sourceTree = "<group>"; };
+		0000000000000000000005A0 /* BilibiliDownloadService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BilibiliDownloadService.swift; sourceTree = "<group>"; };
 		0000000000000000000001C4 /* SelectableNavTitle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectableNavTitle.swift; sourceTree = "<group>"; };
 		0000000000000000000001C6 /* MonitorShellView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitorShellView.swift; sourceTree = "<group>"; };
 		000000000000000000000153 /* AppleTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleTheme.swift; sourceTree = "<group>"; };
@@ -314,6 +316,7 @@
 				00000000000000000000014F /* SublinkService.swift */,
 				000000000000000000000151 /* YTService.swift */,
 				0000000000000000000001C2 /* DouyinService.swift */,
+				0000000000000000000005A0 /* BilibiliDownloadService.swift */,
 				000000000000000000000530 /* BilibiliLiveService.swift */,
 				000000000000000000000540 /* HuyaLiveService.swift */,
 				000000000000000000000542 /* DouyuLiveService.swift */,
@@ -704,6 +707,7 @@
 				000000000000000000000150 /* SublinkService.swift in Sources */,
 				000000000000000000000152 /* YTService.swift in Sources */,
 				0000000000000000000001C3 /* DouyinService.swift in Sources */,
+				0000000000000000000005A1 /* BilibiliDownloadService.swift in Sources */,
 				000000000000000000000154 /* AppleTheme.swift in Sources */,
 				0000000000000000000001C5 /* SelectableNavTitle.swift in Sources */,
 				000000000000000000000156 /* ServiceBrandIcon.swift in Sources */,
@@ -820,7 +824,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 39;
+				CURRENT_PROJECT_VERSION = 40;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				CODE_SIGN_ENTITLEMENTS = PersonalToolbox/PersonalToolbox.entitlements;
@@ -828,7 +832,7 @@
 				INFOPLIST_FILE = PersonalToolbox/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = ( "$(inherited)", "@executable_path/Frameworks", );
-				MARKETING_VERSION = 3.9;
+				MARKETING_VERSION = 4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = app.parsnip6345.lake8262;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "00008150-001A088E148B401C6F01CD";
@@ -846,7 +850,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 39;
+				CURRENT_PROJECT_VERSION = 40;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				CODE_SIGN_ENTITLEMENTS = PersonalToolbox/PersonalToolbox.entitlements;
@@ -854,7 +858,7 @@
 				INFOPLIST_FILE = PersonalToolbox/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = ( "$(inherited)", "@executable_path/Frameworks", );
-				MARKETING_VERSION = 3.9;
+				MARKETING_VERSION = 4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = app.parsnip6345.lake8262;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "00008150-001A088E148B401C6F01CD";
@@ -872,7 +876,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 39;
+				CURRENT_PROJECT_VERSION = 40;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
@@ -882,7 +886,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 3.9;
+				MARKETING_VERSION = 4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = app.parsnip6345.lake8262.share;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -897,7 +901,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 39;
+				CURRENT_PROJECT_VERSION = 40;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
@@ -907,7 +911,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 3.9;
+				MARKETING_VERSION = 4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = app.parsnip6345.lake8262.share;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;

@@ -120,9 +120,18 @@ struct VideoMetadata: Hashable {
 extension YTTask {
     /// Local Douyin task id prefix.
     static let localDouyinPrefix = "local-douyin-"
+    static let localBilibiliPrefix = "local-bili-"
 
     var isLocalDouyin: Bool {
         id.hasPrefix(Self.localDouyinPrefix)
+    }
+
+    var isLocalBilibili: Bool {
+        id.hasPrefix(Self.localBilibiliPrefix)
+    }
+
+    var isLocalDownload: Bool {
+        isLocalDouyin || isLocalBilibili
     }
 
     static func makeLocalDouyin(
@@ -137,6 +146,32 @@ extension YTTask {
     ) -> YTTask {
         YTTask(
             id: localDouyinPrefix + id,
+            url: url,
+            title: title.isEmpty ? url : title,
+            status: stage,
+            processStatus: processStatus,
+            percentageRaw: processStatus == 2 ? "-1" : String(format: "%.1f%%", progress * 100),
+            progress: progress,
+            speed: "",
+            eta: "",
+            filepath: filepath,
+            error: error,
+            thumbnail: nil
+        )
+    }
+
+    static func makeLocalBilibili(
+        id: String = UUID().uuidString,
+        url: String,
+        title: String,
+        processStatus: Int,
+        progress: Double,
+        stage: String,
+        filepath: String? = nil,
+        error: String? = nil
+    ) -> YTTask {
+        YTTask(
+            id: localBilibiliPrefix + id,
             url: url,
             title: title.isEmpty ? url : title,
             status: stage,

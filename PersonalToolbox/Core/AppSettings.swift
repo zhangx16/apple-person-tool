@@ -145,6 +145,13 @@ final class AppSettings: ObservableObject {
         didSet { UserDefaults.standard.set(douyinLiveCookie, forKey: Keys.douyinLiveCookie) }
     }
 
+    // MARK: - B 站下载（SESSDATA 等，高清/大会员）
+
+    /// 浏览器登录 bilibili.com 后复制的 Cookie（建议含 SESSDATA、bili_jct）。
+    @Published var bilibiliCookie: String {
+        didSet { UserDefaults.standard.set(bilibiliCookie, forKey: Keys.bilibiliCookie) }
+    }
+
     enum Appearance: String, CaseIterable, Identifiable {
         case system, light, dark
         var id: String { rawValue }
@@ -182,6 +189,7 @@ final class AppSettings: ObservableObject {
         static let kuaishouCookie = "kuaishouCookie"
         static let kuaishouKww = "kuaishouKww"
         static let douyinLiveCookie = "douyinLiveCookie"
+        static let bilibiliCookie = "bilibiliCookie"
     }
 
     nonisolated static let defaultTextModel = "grok-4.3"
@@ -244,6 +252,7 @@ final class AppSettings: ObservableObject {
         kuaishouCookie = d.string(forKey: Keys.kuaishouCookie) ?? ""
         kuaishouKww = d.string(forKey: Keys.kuaishouKww) ?? ""
         douyinLiveCookie = d.string(forKey: Keys.douyinLiveCookie) ?? ""
+        bilibiliCookie = d.string(forKey: Keys.bilibiliCookie) ?? ""
     }
 
     var isAIConfigured: Bool {

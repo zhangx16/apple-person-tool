@@ -172,7 +172,7 @@ struct ServicesHubView: View {
                 }
             ]),
             SectionModel(title: "下载", symbol: "arrow.down.circle.fill", items: [
-                item("download", "视频下载", "YouTube · 抖音（页内切换）", .youtube) {
+                item("download", "视频下载", "YouTube / 抖音 / B站 · 同一入口", .youtube) {
                     AnyView(DownloadHomeView(isTabSelected: true))
                 }
             ]),

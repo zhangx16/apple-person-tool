@@ -154,7 +154,7 @@ struct PressableButtonStyle: ButtonStyle {
             .animation(.easeOut(duration: AppleTheme.pressDuration), value: configuration.isPressed)
             .onChange(of: configuration.isPressed) { _, pressed in
                 if pressed && haptic {
-                    Haptics.light()
+                    Task { @MainActor in Haptics.light() }
                 }
             }
     }

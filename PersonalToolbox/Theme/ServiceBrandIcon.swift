@@ -156,14 +156,19 @@ struct ServiceBrandIcon: View {
     var body: some View {
         ZStack {
             if showsBackground {
-                RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .fill(hasAsset
-                          ? Color(.secondarySystemBackground)
-                          : brand.tint.brandGradient)
-                    .overlay {
+                Group {
+                    if hasAsset {
                         RoundedRectangle(cornerRadius: radius, style: .continuous)
-                            .strokeBorder(AppStroke.highlight, lineWidth: 0.5)
+                            .fill(Color(.secondarySystemBackground))
+                    } else {
+                        RoundedRectangle(cornerRadius: radius, style: .continuous)
+                            .fill(brand.tint.brandGradient)
                     }
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: radius, style: .continuous)
+                        .strokeBorder(AppStroke.highlight, lineWidth: 0.5)
+                }
             }
             Group {
                 if let asset = brand.assetName, UIImage(named: asset) != nil {

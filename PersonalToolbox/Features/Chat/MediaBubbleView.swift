@@ -152,6 +152,10 @@ struct MediaBubbleView: View {
                         .font(.body.weight(.semibold))
                         .padding(10)
                         .background(.ultraThinMaterial, in: Circle())
+                        .overlay {
+                            Circle()
+                                .strokeBorder(AppStroke.highlight, lineWidth: 0.5)
+                        }
                 }
                 .buttonStyle(PressableButtonStyle())
                 .padding(8)
@@ -159,6 +163,7 @@ struct MediaBubbleView: View {
                 .accessibilityLabel("分享图片")
             }
         }
+        .shadow(color: .black.opacity(0.06), radius: 10, y: 4)
     }
 
     @ViewBuilder
@@ -181,6 +186,10 @@ struct MediaBubbleView: View {
                         .font(.body.weight(.semibold))
                         .padding(10)
                         .background(.ultraThinMaterial, in: Circle())
+                        .overlay {
+                            Circle()
+                                .strokeBorder(AppStroke.highlight, lineWidth: 0.5)
+                        }
                 }
                 .buttonStyle(PressableButtonStyle())
                 .padding(8)
@@ -188,6 +197,7 @@ struct MediaBubbleView: View {
                 .accessibilityLabel("分享视频")
             }
         }
+        .shadow(color: .black.opacity(0.06), radius: 10, y: 4)
     }
 
     private func failedPlaceholder(text: String) -> some View {

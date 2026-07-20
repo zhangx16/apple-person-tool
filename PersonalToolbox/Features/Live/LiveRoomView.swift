@@ -709,18 +709,20 @@ struct LiveRoomView: View {
                         if isFollowed {
                             Capsule().fill(Color(.tertiarySystemFill))
                         } else {
-                            Capsule().fill(brand.gradient)
+                            Capsule().fill(brand.brandGradient)
                         }
                     }
+                    .overlay {
+                        if !isFollowed {
+                            Capsule()
+                                .strokeBorder(AppStroke.highlight, lineWidth: 0.5)
+                        }
+                    }
+                    .shadow(color: isFollowed ? .clear : brand.opacity(0.3), radius: 8, y: 3)
             }
             .buttonStyle(PressableButtonStyle())
         }
-        .padding(16)
-        .background {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color(.secondarySystemGroupedBackground))
-                .shadow(color: .black.opacity(0.05), radius: 12, y: 4)
-        }
+        .appCardV2(corner: 20, padding: 16)
     }
 
     private var avatarView: some View {
@@ -773,12 +775,7 @@ struct LiveRoomView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color(.secondarySystemGroupedBackground))
-                .shadow(color: .black.opacity(0.04), radius: 10, y: 3)
-        }
+        .appCardV2(corner: 20, padding: 16)
     }
 
     // MARK: Quality
@@ -813,11 +810,18 @@ struct LiveRoomView: View {
                                     .padding(.vertical, 8)
                                     .background {
                                         if on {
-                                            Capsule().fill(brand.gradient)
+                                            Capsule().fill(brand.brandGradient)
                                         } else {
                                             Capsule().fill(Color(.tertiarySystemFill))
                                         }
                                     }
+                                    .overlay {
+                                        if on {
+                                            Capsule()
+                                                .strokeBorder(AppStroke.highlight, lineWidth: 0.5)
+                                        }
+                                    }
+                                    .shadow(color: on ? brand.opacity(0.3) : .clear, radius: 6, y: 2)
                             }
                             .buttonStyle(PressableButtonStyle())
                         }
@@ -825,12 +829,7 @@ struct LiveRoomView: View {
                 }
             }
         }
-        .padding(16)
-        .background {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color(.secondarySystemGroupedBackground))
-                .shadow(color: .black.opacity(0.04), radius: 10, y: 3)
-        }
+        .appCardV2(corner: 20, padding: 16)
     }
 
     // MARK: Engine
@@ -877,17 +876,17 @@ struct LiveRoomView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
                         .foregroundStyle(.white)
-                        .background(brand.opacity(0.95), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .background(brand.brandGradient, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .strokeBorder(AppStroke.highlight, lineWidth: 0.5)
+                        }
+                        .shadow(color: brand.opacity(0.3), radius: 8, y: 3)
                 }
                 .buttonStyle(PressableButtonStyle())
             }
         }
-        .padding(16)
-        .background {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color(.secondarySystemGroupedBackground))
-                .shadow(color: .black.opacity(0.04), radius: 10, y: 3)
-        }
+        .appCardV2(corner: 20, padding: 16)
     }
 
     private func engineButton(

@@ -24,7 +24,7 @@ struct SublinkHomeView: View {
                 }
             }
         }
-        .background(AppleTheme.canvas)
+        .background(AppSurfaceBackground(accent: Color.accentColor))
         .navigationTitle("SublinkX")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

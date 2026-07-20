@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Hub for self-hosted services + local tools — card sections, recent, search.
+/// Hub for self-hosted services + local tools — 2 列网格品牌卡片 + 最近使用横滑 + 悬浮搜索。
 struct ServicesHubView: View {
     @Binding var selectedTab: AppTab
     @EnvironmentObject private var settings: AppSettings
@@ -16,46 +16,35 @@ struct ServicesHubView: View {
         let open: () -> AnyView
     }
 
+    private let columns = [
+        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 12)
+    ]
+
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 22) {
-                    searchBar
+                VStack(alignment: .leading, spacing: AppleTheme.space5) {
+                    // 悬浮搜索胶囊
+                    FloatingSearchBar(text: $query, placeholder: "搜索工具")
+                        .padding(.horizontal, AppleTheme.space4)
+                        .padding(.top, AppleTheme.space2)
 
-                    if query.isEmpty, !recent.brands().isEmpty {
-                        section("最近使用", symbol: "clock.fill") {
-                            ForEach(recent.brands(), id: \.rawValue) { brand in
-                                if let item = allItems.first(where: { $0.brand == brand }) {
-                                    hubButton(item)
-                                }
-                            }
+                    if query.isEmpty {
+                        // 最近使用
+                        if !recent.brands().isEmpty {
+                            recentSection
                         }
-                    }
-
-                    ForEach(filteredSections, id: \.title) { sec in
-                        section(sec.title, symbol: sec.symbol) {
-                            ForEach(sec.items) { item in
-                                hubButton(item)
-                            }
+                        // 全部分组网格
+                        ForEach(filteredSections, id: \.title) { sec in
+                            gridSection(sec)
                         }
-                    }
-
-                    if !query.isEmpty, filteredSections.isEmpty {
-                        VStack(spacing: 12) {
-                            Image(systemName: "magnifyingglass")
-                                .font(.largeTitle)
-                                .foregroundStyle(.secondary)
-                            Text("没有匹配「\(query)」的工具")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 40)
+                    } else {
+                        // 搜索结果（列表样式，便于扫读）
+                        searchResults
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-                .padding(.bottom, 32)
+                .padding(.bottom, AppleTheme.space8)
             }
             .background(AppSurfaceBackground(accent: Color.accentColor))
             .navigationTitle("服务")
@@ -63,28 +52,180 @@ struct ServicesHubView: View {
         }
     }
 
-    private var searchBar: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "magnifyingglass")
-                .foregroundStyle(.secondary)
-            TextField("搜索工具", text: $query)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-            if !query.isEmpty {
-                Button {
-                    query = ""
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.tertiary)
+    // MARK: - 最近使用
+
+    private var recentSection: some View {
+        VStack(alignment: .leading, spacing: AppleTheme.space3) {
+            AppSectionTitle(title: "最近使用", systemImage: "clock.fill")
+                .padding(.horizontal, AppleTheme.space4)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(recent.brands(), id: \.rawValue) { brand in
+                        if let item = allItems.first(where: { $0.brand == brand }) {
+                            recentChip(item)
+                        }
+                    }
                 }
-                .buttonStyle(.plain)
+                .padding(.horizontal, AppleTheme.space4)
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
     }
+
+    @ViewBuilder
+    private func recentChip(_ item: HubItem) -> some View {
+        let label = HStack(spacing: 8) {
+            ServiceBrandIcon(brand: item.brand, size: 28)
+            Text(item.title)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.primary)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background {
+            Capsule()
+                .fill(Color(.secondarySystemGroupedBackground))
+        }
+        .overlay {
+            Capsule()
+                .strokeBorder(AppStroke.highlight, lineWidth: 1)
+        }
+        .modifier(AppShadow.near())
+
+        if item.brand == .live {
+            Button {
+                recent.record(.live)
+                selectedTab = .live
+            } label: {
+                label
+            }
+            .buttonStyle(PressableButtonStyle(scale: 0.97))
+        } else {
+            NavigationLink {
+                item.open()
+                    .onAppear { recent.record(item.brand) }
+            } label: {
+                label
+            }
+            .buttonStyle(PressableButtonStyle(scale: 0.97))
+        }
+    }
+
+    // MARK: - 网格分组
+
+    @ViewBuilder
+    private func gridSection(_ sec: SectionModel) -> some View {
+        VStack(alignment: .leading, spacing: AppleTheme.space3) {
+            AppSectionTitle(title: sec.title, systemImage: sec.symbol)
+                .padding(.horizontal, AppleTheme.space4)
+
+            LazyVGrid(columns: columns, spacing: 12) {
+                ForEach(sec.items) { item in
+                    gridCard(item)
+                }
+            }
+            .padding(.horizontal, AppleTheme.space4)
+        }
+    }
+
+    @ViewBuilder
+    private func gridCard(_ item: HubItem) -> some View {
+        let card = GridCard {
+            VStack(alignment: .leading, spacing: AppleTheme.space3) {
+                BrandIconBadge(brand: item.brand, size: 40)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(item.title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.85)
+                    Text(item.subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.85)
+                }
+            }
+        }
+
+        if item.brand == .live {
+            Button {
+                recent.record(.live)
+                selectedTab = .live
+            } label: {
+                card
+            }
+            .buttonStyle(PressableButtonStyle(scale: 0.97))
+        } else {
+            NavigationLink {
+                item.open()
+                    .onAppear { recent.record(item.brand) }
+            } label: {
+                card
+            }
+            .buttonStyle(PressableButtonStyle(scale: 0.97))
+        }
+    }
+
+    // MARK: - 搜索结果
+
+    @ViewBuilder
+    private var searchResults: some View {
+        if filteredSections.isEmpty {
+            VStack(spacing: 16) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 40, weight: .medium))
+                    .foregroundStyle(Color.accentColor.brandGradient)
+                    .symbolRenderingMode(.hierarchical)
+                Text("没有匹配「\(query)」的工具")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 60)
+        } else {
+            VStack(spacing: AppleTheme.space5) {
+                ForEach(filteredSections, id: \.title) { sec in
+                    VStack(alignment: .leading, spacing: AppleTheme.space3) {
+                        AppSectionTitle(title: sec.title, systemImage: sec.symbol)
+                            .padding(.horizontal, AppleTheme.space4)
+                        VStack(spacing: 10) {
+                            ForEach(sec.items) { item in
+                                searchRow(item)
+                            }
+                        }
+                        .padding(.horizontal, AppleTheme.space4)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func searchRow(_ item: HubItem) -> some View {
+        let row = AppNavRow(title: item.title, subtitle: item.subtitle, brand: item.brand)
+            .appCard()
+
+        if item.brand == .live {
+            Button {
+                recent.record(.live)
+                selectedTab = .live
+            } label: {
+                row
+            }
+            .buttonStyle(PressableButtonStyle(scale: 0.98))
+        } else {
+            NavigationLink {
+                item.open()
+                    .onAppear { recent.record(item.brand) }
+            } label: {
+                row
+            }
+            .buttonStyle(PressableButtonStyle(scale: 0.98))
+        }
+    }
+
+    // MARK: - Data
 
     private struct SectionModel {
         let title: String
@@ -197,42 +338,5 @@ struct ServicesHubView: View {
         @ViewBuilder dest: @escaping () -> AnyView
     ) -> HubItem {
         HubItem(id: id, title: title, subtitle: subtitle, brand: brand, section: "", open: dest)
-    }
-
-    @ViewBuilder
-    private func section<Content: View>(
-        _ title: String,
-        symbol: String,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            AppSectionTitle(title: title, systemImage: symbol)
-            VStack(spacing: 10) {
-                content()
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func hubButton(_ item: HubItem) -> some View {
-        if item.brand == .live {
-            Button {
-                recent.record(.live)
-                selectedTab = .live
-            } label: {
-                AppNavRow(title: item.title, subtitle: item.subtitle, brand: item.brand)
-                    .appCard()
-            }
-            .buttonStyle(PressableButtonStyle(scale: 0.98))
-        } else {
-            NavigationLink {
-                item.open()
-                    .onAppear { recent.record(item.brand) }
-            } label: {
-                AppNavRow(title: item.title, subtitle: item.subtitle, brand: item.brand)
-                    .appCard()
-            }
-            .buttonStyle(PressableButtonStyle(scale: 0.98))
-        }
     }
 }

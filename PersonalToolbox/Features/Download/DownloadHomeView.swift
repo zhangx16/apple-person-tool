@@ -38,7 +38,7 @@ struct DownloadHomeView: View {
             filesSection
         }
         .listStyle(.insetGrouped)
-        .background(AppleTheme.canvas)
+        .background(AppSurfaceBackground(accent: ServiceBrand.youtube.tint))
         // 统一「视频下载」模块：YouTube / 抖音 / B站 均为页内切换，不单独占底部 Tab
         .navigationTitle("视频下载")
         .navigationBarTitleDisplayMode(.large)
@@ -190,9 +190,14 @@ struct DownloadHomeView: View {
                     .padding(.vertical, 10)
                     .foregroundStyle(.white)
                     .background(
-                        Color.accentColor,
+                        Color.accentColor.brandGradient,
                         in: RoundedRectangle(cornerRadius: AppleTheme.controlRadius, style: .continuous)
                     )
+                    .overlay {
+                        RoundedRectangle(cornerRadius: AppleTheme.controlRadius, style: .continuous)
+                            .strokeBorder(AppStroke.highlight, lineWidth: 0.5)
+                    }
+                    .shadow(color: Color.accentColor.opacity(0.25), radius: 8, y: 3)
                 }
                 .buttonStyle(PressableButtonStyle())
                 .disabled(viewModel.isParsing || viewModel.isEnqueueing)
@@ -223,9 +228,16 @@ struct DownloadHomeView: View {
                     .padding(.vertical, 10)
                     .foregroundStyle(on ? Color.white : Color.primary)
                     .background(
-                        on ? p.brand.tint : Color(.tertiarySystemFill),
+                        on ? AnyShapeStyle(p.brand.tint.brandGradient) : AnyShapeStyle(Color(.tertiarySystemFill)),
                         in: RoundedRectangle(cornerRadius: 12, style: .continuous)
                     )
+                    .overlay {
+                        if on {
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .strokeBorder(AppStroke.highlight, lineWidth: 0.5)
+                        }
+                    }
+                    .shadow(color: on ? p.brand.tint.opacity(0.3) : .clear, radius: 8, y: 3)
                 }
                 .buttonStyle(PressableButtonStyle(scale: 0.98))
                 .accessibilityLabel(p.accessibilityLabel)

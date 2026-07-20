@@ -15,18 +15,19 @@ struct ChatThreadView: View {
     @State private var showActionRunner = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            if let banner = viewModel.errorMessage, viewModel.active?.id == conversationID {
-                errorBanner(banner)
+        ZStack(alignment: .bottom) {
+            VStack(spacing: 0) {
+                if let banner = viewModel.errorMessage, viewModel.active?.id == conversationID {
+                    errorBanner(banner)
+                }
+                if let payload = actionPayload {
+                    chatActionBanner(payload)
+                }
+                messageList
             }
-            if let payload = actionPayload {
-                chatActionBanner(payload)
-            }
-            messageList
-            Divider()
             composer
         }
-        .background(AppleTheme.canvas)
+        .background(AppSurfaceBackground(accent: Color.accentColor))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {
@@ -128,18 +129,30 @@ struct ChatThreadView: View {
             viewModel.showModelPicker = true
             Task { await viewModel.loadModels() }
         } label: {
-            HStack(spacing: 4) {
+            HStack(spacing: 5) {
+                Image(systemName: "sparkles")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.accentColor.brandGradient)
+                    .symbolEffect(.pulse, options: .repeating, isActive: viewModel.isStreaming)
                 Text(viewModel.active?.model ?? settings.preferredModel)
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
                 Image(systemName: "chevron.down")
                     .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
             }
             .foregroundStyle(.primary)
             .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .frame(minHeight: 44)
-            .background(AppleTheme.assistantBubble, in: Capsule())
+            .padding(.vertical, 7)
+            .frame(minHeight: 36)
+            .background {
+                Capsule()
+                    .fill(.ultraThinMaterial)
+            }
+            .overlay {
+                Capsule()
+                    .strokeBorder(AppStroke.highlight, lineWidth: 1)
+            }
         }
         .buttonStyle(PressableButtonStyle())
         .disabled(viewModel.isStreaming)
@@ -182,7 +195,7 @@ struct ChatThreadView: View {
                             .transition(AppleTheme.bubbleTransition(reduceMotion: reduceMotion))
                         }
                     }
-                    Color.clear.frame(height: 8).id("bottom")
+                    Color.clear.frame(height: 76).id("bottom")
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
@@ -206,21 +219,29 @@ struct ChatThreadView: View {
     private var composer: some View {
         VStack(spacing: 8) {
             if viewModel.isStreaming {
-                HStack {
-                    Button {
-                        viewModel.stop()
-                    } label: {
-                        Label("停止", systemImage: "stop.circle.fill")
-                            .font(.body.weight(.semibold))
-                            .frame(minWidth: 44, minHeight: 44)
+                Button {
+                    viewModel.stop()
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "stop.fill")
+                            .font(.caption.weight(.bold))
+                        Text("停止生成")
+                            .font(.subheadline.weight(.semibold))
                     }
-                    .buttonStyle(PressableButtonStyle())
-                    .foregroundStyle(.red)
-                    .accessibilityLabel("停止")
-                    .accessibilityHint("停止生成回复")
-                    Spacer()
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.red.brandGradient, in: Capsule())
+                    .overlay {
+                        Capsule()
+                            .strokeBorder(AppStroke.highlight, lineWidth: 0.5)
+                    }
+                    .modifier(AppShadow.near())
                 }
-                .padding(.horizontal, 14)
+                .buttonStyle(PressableButtonStyle())
+                .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                .accessibilityLabel("停止")
+                .accessibilityHint("停止生成回复")
             }
 
             HStack(alignment: .bottom, spacing: 10) {
@@ -228,11 +249,17 @@ struct ChatThreadView: View {
                     imagineVM.attach(modelContext: modelContext, settings: settings)
                     showImagine = true
                 } label: {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.title)
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(settings.isAIConfigured && !viewModel.isStreaming ? Color.accentColor : Color.secondary)
-                        .frame(width: 44, height: 44)
+                    Image(systemName: "plus")
+                        .font(.body.weight(.bold))
+                        .foregroundStyle(settings.isAIConfigured && !viewModel.isStreaming ? .white : Color.secondary)
+                        .frame(width: 36, height: 36)
+                        .background {
+                            if settings.isAIConfigured && !viewModel.isStreaming {
+                                Circle().fill(Color.accentColor.brandGradient)
+                            } else {
+                                Circle().fill(Color(.tertiarySystemFill))
+                            }
+                        }
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(PressableButtonStyle())
@@ -243,20 +270,25 @@ struct ChatThreadView: View {
                 TextField("发送消息…", text: $viewModel.input, axis: .vertical)
                     .font(.body)
                     .lineLimit(1...6)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .background(AppleTheme.assistantBubble, in: RoundedRectangle(cornerRadius: AppleTheme.controlRadius, style: .continuous))
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 8)
                     .disabled(viewModel.isStreaming)
                     .accessibilityLabel("消息输入")
 
                 Button {
                     viewModel.send()
                 } label: {
-                    Image(systemName: "arrow.up.circle.fill")
-                        .font(.title)
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(canSend ? Color.accentColor : Color.secondary)
-                        .frame(width: 44, height: 44)
+                    Image(systemName: "arrow.up")
+                        .font(.body.weight(.bold))
+                        .foregroundStyle(canSend ? .white : Color.secondary)
+                        .frame(width: 36, height: 36)
+                        .background {
+                            if canSend {
+                                Circle().fill(Color.accentColor.brandGradient)
+                            } else {
+                                Circle().fill(Color(.tertiarySystemFill))
+                            }
+                        }
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(PressableButtonStyle())
@@ -264,10 +296,21 @@ struct ChatThreadView: View {
                 .accessibilityLabel("发送")
                 .accessibilityHint("发送消息")
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(.ultraThinMaterial)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .strokeBorder(AppStroke.highlight, lineWidth: 1)
+            }
+            .modifier(AppShadow.far())
         }
-        .background(.bar)
+        .padding(.horizontal, 14)
+        .padding(.bottom, 10)
+        .animation(AppleTheme.preferredSnappy, value: viewModel.isStreaming)
     }
 
     private var canSend: Bool {
@@ -291,11 +334,16 @@ struct ChatThreadView: View {
                 .accessibilityLabel("关闭错误提示")
         }
         .foregroundStyle(.white)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 4)
-        .background(Color.orange.gradient, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .padding(.horizontal, 12)
-        .padding(.top, 8)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(Color.orange.brandGradient, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(AppStroke.highlight, lineWidth: 0.5)
+        }
+        .modifier(AppShadow.mid())
+        .padding(.horizontal, 14)
+        .padding(.top, 10)
         // Keep dismiss as its own VO target (do not combine into static text).
         .accessibilityElement(children: .contain)
     }
@@ -333,10 +381,15 @@ struct MessageBubbleView: View {
                         }
                     }
                 }
-                .background(
-                    isUser ? AppleTheme.userBubble : AppleTheme.assistantBubble,
-                    in: RoundedRectangle(cornerRadius: AppleTheme.bubbleRadius, style: .continuous)
-                )
+                .background {
+                    RoundedRectangle(cornerRadius: AppleTheme.bubbleRadius, style: .continuous)
+                        .fill(isUser ? AnyShapeStyle(AppleTheme.userBubble.brandGradient) : AnyShapeStyle(AppleTheme.assistantBubble))
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: AppleTheme.bubbleRadius, style: .continuous)
+                        .strokeBorder(AppStroke.highlight, lineWidth: 0.5)
+                }
+                .shadow(color: .black.opacity(0.04), radius: 6, y: 2)
             }
             if !isUser { Spacer(minLength: 48) }
         }

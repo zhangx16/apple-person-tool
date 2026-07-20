@@ -102,7 +102,7 @@ struct LiveHomeView: View {
             .foregroundStyle(.white)
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
-            .background(LiveUI.brand(platform).gradient, in: Capsule())
+            .background(LiveUI.brand(platform).brandGradient, in: Capsule())
             Button {
                 clipboardRoomHint = nil
             } label: {
@@ -142,6 +142,9 @@ struct LiveHomeView: View {
 
     // MARK: - Top chrome
 
+    @Namespace private var modeNamespace
+    @Namespace private var platformNamespace
+
     private var topChrome: some View {
         VStack(spacing: 14) {
             modeTabs
@@ -151,13 +154,13 @@ struct LiveHomeView: View {
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .padding(.top, 4)
-        .padding(.bottom, 10)
-        .background(.ultraThinMaterial)
+        .padding(.top, 6)
+        .padding(.bottom, 12)
+        .background(.bar)
     }
 
     private var modeTabs: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 0) {
             ForEach(MainMode.allCases) { m in
                 let on = mode == m
                 Button {
@@ -169,23 +172,30 @@ struct LiveHomeView: View {
                         Text(m.rawValue)
                             .font(.subheadline.weight(.semibold))
                     }
-                    .foregroundStyle(on ? Color.white : Color.primary.opacity(0.75))
+                    .foregroundStyle(on ? Color.white : Color.primary.opacity(0.7))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
                     .background {
                         if on {
-                            Capsule().fill(LiveUI.brand(platform).gradient)
-                        } else {
-                            Capsule().fill(Color.clear)
+                            Capsule()
+                                .fill(LiveUI.brand(platform).brandGradient)
+                                .overlay {
+                                    Capsule()
+                                        .strokeBorder(AppStroke.highlight, lineWidth: 0.5)
+                                }
+                                .shadow(color: LiveUI.brand(platform).opacity(0.3), radius: 8, y: 3)
+                                .matchedGeometryEffect(id: "modeIndicator", in: modeNamespace)
                         }
                     }
+                    .contentShape(Rectangle())
                 }
-                .buttonStyle(PressableButtonStyle())
+                .buttonStyle(.plain)
             }
         }
         .padding(4)
-        .background(Color(.tertiarySystemFill).opacity(0.85), in: Capsule())
+        .background(Color(.tertiarySystemFill), in: Capsule())
         .padding(.horizontal, 16)
+        .accessibilityElement(children: .contain)
     }
 
     private var platformScroller: some View {
@@ -209,18 +219,31 @@ struct LiveHomeView: View {
                         }
                         .padding(.horizontal, 14)
                         .padding(.vertical, 9)
-                        .foregroundStyle(on ? LiveUI.brand(p) : Color.primary.opacity(0.8))
+                        .foregroundStyle(on ? .white : Color.primary.opacity(0.8))
                         .background {
-                            Capsule()
-                                .fill(on ? LiveUI.brand(p).opacity(0.14) : Color(.secondarySystemGroupedBackground))
-                                .shadow(color: on ? LiveUI.brand(p).opacity(0.18) : .black.opacity(0.04), radius: on ? 8 : 3, y: 2)
+                            if on {
+                                Capsule()
+                                    .fill(LiveUI.brand(p).brandGradient)
+                                    .overlay {
+                                        Capsule()
+                                            .strokeBorder(AppStroke.highlight, lineWidth: 0.5)
+                                    }
+                                    .shadow(color: LiveUI.brand(p).opacity(0.35), radius: 10, y: 3)
+                                    .matchedGeometryEffect(id: "platformPill", in: platformNamespace)
+                            } else {
+                                Capsule()
+                                    .fill(Color(.secondarySystemGroupedBackground))
+                                    .shadow(color: .black.opacity(0.04), radius: 3, y: 2)
+                            }
                         }
                         .overlay {
-                            Capsule()
-                                .strokeBorder(on ? LiveUI.brand(p).opacity(0.35) : Color.clear, lineWidth: 1)
+                            if !on {
+                                Capsule()
+                                    .strokeBorder(AppStroke.subtle, lineWidth: 1)
+                            }
                         }
                     }
-                    .buttonStyle(PressableButtonStyle())
+                    .buttonStyle(PressableButtonStyle(haptic: false))
                 }
             }
             .padding(.horizontal, 16)
@@ -257,7 +280,7 @@ struct LiveHomeView: View {
                         .foregroundStyle(.white)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
-                        .background(LiveUI.brand(platform).gradient, in: Capsule())
+                        .background(LiveUI.brand(platform).brandGradient, in: Capsule())
                 }
                 .buttonStyle(PressableButtonStyle())
                 .disabled(isSearching)
@@ -548,7 +571,7 @@ private struct LiveEmptyState: View {
                         .foregroundStyle(.white)
                         .padding(.horizontal, 28)
                         .padding(.vertical, 12)
-                        .background(brand.gradient, in: Capsule())
+                        .background(brand.brandGradient, in: Capsule())
                 }
                 .buttonStyle(PressableButtonStyle())
                 .padding(.top, 4)
@@ -570,13 +593,8 @@ private struct LiveFollowCard: View {
                 ZStack(alignment: .bottomTrailing) {
                     avatar
                     if item.isLive == true {
-                        Text("LIVE")
-                            .font(.system(size: 9, weight: .heavy))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
-                            .background(Color.red, in: Capsule())
-                            .offset(x: 4, y: 4)
+                        LiveBadge(size: .small)
+                            .offset(x: 6, y: 6)
                     }
                 }
                 VStack(alignment: .leading, spacing: 5) {
@@ -588,11 +606,12 @@ private struct LiveFollowCard: View {
                         if item.isLive == true {
                             Text("直播中")
                                 .font(.caption2.weight(.bold))
-                                .foregroundStyle(.red)
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.red.brandGradient, in: Capsule())
                         } else if item.isLive == false {
-                            Text("未开播")
-                                .font(.caption2.weight(.semibold))
-                                .foregroundStyle(.secondary)
+                            StatusPill(title: "未开播", color: .secondary)
                         }
                     }
                     Text("房间 \(item.roomId)")
@@ -617,15 +636,16 @@ private struct LiveFollowCard: View {
                 Image(systemName: "play.fill")
                     .font(.caption.weight(.bold))
                     .foregroundStyle(.white)
-                    .frame(width: 36, height: 36)
-                    .background(brand.gradient, in: Circle())
+                    .frame(width: 38, height: 38)
+                    .background(brand.brandGradient, in: Circle())
+                    .overlay {
+                        Circle()
+                            .strokeBorder(AppStroke.highlight, lineWidth: 0.5)
+                    }
+                    .shadow(color: brand.opacity(0.3), radius: 8, y: 3)
             }
             .padding(14)
-            .background {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color(.secondarySystemGroupedBackground))
-                    .shadow(color: .black.opacity(0.05), radius: 10, y: 3)
-            }
+            .appCardV2(corner: 18, padding: 0)
         }
         .buttonStyle(PressableButtonStyle(scale: 0.98))
     }
@@ -651,7 +671,15 @@ private struct LiveFollowCard: View {
         }
         .frame(width: 56, height: 56)
         .clipShape(Circle())
-        .overlay(Circle().stroke(brand.opacity(0.2), lineWidth: 1.5))
+        .overlay {
+            if item.isLive == true {
+                Circle()
+                    .strokeBorder(brand.brandGradient, lineWidth: 2)
+            } else {
+                Circle()
+                    .strokeBorder(brand.opacity(0.2), lineWidth: 1.5)
+            }
+        }
     }
 
     private func formatOnline(_ n: Int) -> String {
@@ -687,7 +715,7 @@ private struct LiveStreamerCard: View {
                         .lineLimit(emphasizeName ? 1 : 2)
                         .multilineTextAlignment(.leading)
                     Text(subtitle)
-                        .font(emphasizeName ? .subheadline : .subheadline)
+                        .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                     if !meta.isEmpty {
@@ -707,11 +735,7 @@ private struct LiveStreamerCard: View {
                 trailingView
             }
             .padding(14)
-            .background {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Color(.secondarySystemGroupedBackground))
-                    .shadow(color: .black.opacity(0.05), radius: 10, y: 3)
-            }
+            .appCardV2(corner: 18, padding: 0)
         }
         .buttonStyle(PressableButtonStyle(scale: 0.98))
     }
@@ -747,7 +771,7 @@ private struct LiveStreamerCard: View {
                 .font(.caption.weight(.bold))
                 .foregroundStyle(.white)
                 .frame(width: 36, height: 36)
-                .background(brand.gradient, in: Circle())
+                .background(brand.brandGradient, in: Circle())
         case .follow(let isOn, let action):
             Button(action: action) {
                 Image(systemName: isOn ? "heart.fill" : "heart")

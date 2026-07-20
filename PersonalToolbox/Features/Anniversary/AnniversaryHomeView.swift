@@ -40,7 +40,7 @@ struct AnniversaryHomeView: View {
                 }
             }
         }
-        .background(AppleTheme.canvas)
+        .background(AppSurfaceBackground(accent: Color.accentColor))
         .navigationTitle("纪念日")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
@@ -555,7 +555,7 @@ struct PersonDetailView: View {
                 }
                 .listStyle(.insetGrouped)
                 .scrollContentBackground(.hidden)
-                .background(AppleTheme.canvas)
+                .background(AppSurfaceBackground(accent: Color.accentColor))
                 .navigationTitle(person.name)
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {

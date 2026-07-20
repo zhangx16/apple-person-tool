@@ -46,7 +46,7 @@ struct QRAssistantHomeView: View {
                 }
             }
         }
-        .background(AppleTheme.canvas)
+        .background(AppSurfaceBackground(accent: Color.accentColor))
         .navigationTitle("二维码助手")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {

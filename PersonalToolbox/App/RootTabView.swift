@@ -45,6 +45,7 @@ struct RootTabView: View {
             .preferredColorScheme(preferredScheme)
             .allowsHitTesting(isContentInteractive)
             .accessibilityHidden(!isContentInteractive)
+            .symbolVariant(selectedTab == .chat ? .fill : .none)
 
             if hideForSwitcher {
                 PrivacyCoverView()

@@ -39,7 +39,7 @@ struct MonitorHomeView: View {
                 }
             }
         }
-        .background(AppleTheme.canvas)
+        .background(AppSurfaceBackground(accent: Color.accentColor))
         .navigationTitle(hidesChromeTitle ? "" : "Sub2 管理")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

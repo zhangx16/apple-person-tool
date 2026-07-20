@@ -65,7 +65,7 @@ struct CloudflareHomeView: View {
                 .searchable(text: $search, prompt: "搜索域名")
             }
         }
-        .background(AppleTheme.canvas)
+        .background(AppSurfaceBackground(accent: Color.accentColor))
         .navigationTitle(hidesChromeTitle ? "" : "Cloudflare")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

@@ -143,7 +143,7 @@ struct IPCheckHomeView: View {
                         .foregroundStyle(.white)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
-                        .background(accent.gradient, in: Capsule())
+                        .background(accent.brandGradient, in: Capsule())
                 }
                 .buttonStyle(PressableButtonStyle())
                 .disabled(viewModel.isLoading)
@@ -213,41 +213,61 @@ struct IPCheckHomeView: View {
 
     // MARK: - Cards
 
-    /// IPSuper 风格风险系数大卡片
+    /// IPSuper 风格风险系数大卡片 — 环形仪表盘 Hero
     private func riskCoefficientHero(_ result: IPCheckResult) -> some View {
         let v = result.riskValue
         let color: Color = v >= 66 ? .red : (v >= 33 ? .orange : accent)
         let label = v >= 66 ? "高风险" : (v >= 33 ? "中风险" : "低风险")
-        return VStack(alignment: .leading, spacing: 12) {
-            HStack {
+        return HStack(spacing: 20) {
+            // 环形仪表盘
+            ZStack {
+                Circle()
+                    .stroke(color.opacity(0.15), lineWidth: 12)
+                Circle()
+                    .trim(from: 0, to: CGFloat(v) / 100)
+                    .stroke(
+                        color.brandGradient,
+                        style: StrokeStyle(lineWidth: 12, lineCap: .round)
+                    )
+                    .rotationEffect(.degrees(-90))
+                    .animation(AppleTheme.preferredGentle, value: v)
+                VStack(spacing: 2) {
+                    Text("\(v)")
+                        .font(.system(size: 36, weight: .bold, design: .rounded))
+                        .foregroundStyle(color)
+                        .monospacedDigit()
+                    Text("/ 100")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(width: 108, height: 108)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("风险系数 \(v)，满分 100，\(label)")
+
+            VStack(alignment: .leading, spacing: 10) {
                 Text(result.isLookupMode ? "查询 IP 风险系数" : "当前出口风险系数")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
-                Spacer()
                 Text(label)
                     .font(.caption.weight(.bold))
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(color, in: Capsule())
-            }
-            HStack(alignment: .lastTextBaseline, spacing: 6) {
-                Text("\(v)")
-                    .font(.system(size: 48, weight: .bold, design: .rounded))
-                    .foregroundStyle(color)
-                    .monospacedDigit()
-                Text("/ 100")
-                    .font(.title3)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 5)
+                    .background(color.brandGradient, in: Capsule())
+                    .overlay {
+                        Capsule()
+                            .strokeBorder(AppStroke.highlight, lineWidth: 0.5)
+                    }
+                    .shadow(color: color.opacity(0.3), radius: 6, y: 2)
+                Text(riskHint(v))
+                    .font(.caption)
                     .foregroundStyle(.secondary)
-                Spacer()
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            ProgressView(value: Double(v), total: 100)
-                .tint(color)
-            Text(riskHint(v))
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            Spacer(minLength: 0)
         }
-        .appCard()
+        .appCardV2()
     }
 
     private func portraitCard(_ tags: [IPPortraitTag]) -> some View {

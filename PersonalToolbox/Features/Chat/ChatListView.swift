@@ -49,7 +49,7 @@ struct ChatListView: View {
                             .font(.body.weight(.semibold))
                             .foregroundStyle(.white)
                             .frame(width: 32, height: 32)
-                            .background(Color.accentColor.gradient, in: Circle())
+                            .background(Color.accentColor.brandGradient, in: Circle())
                     }
                     .buttonStyle(PressableButtonStyle())
                     .disabled(!settings.isAIConfigured)
@@ -97,7 +97,7 @@ struct ChatListView: View {
     private var conversationList: some View {
         ScrollView {
             LazyVStack(spacing: 12) {
-                ForEach(viewModel.conversations) { conv in
+                ForEach(Array(viewModel.conversations.enumerated()), id: \.element.id) { index, conv in
                     Button {
                         path.append(conv.id)
                     } label: {
@@ -105,6 +105,7 @@ struct ChatListView: View {
                             .appCard()
                     }
                     .buttonStyle(PressableButtonStyle(scale: 0.98))
+                    .staggeredAppearance(index: index)
                     .contextMenu {
                         Button {
                             renameText = conv.title
@@ -146,14 +147,17 @@ private struct ConversationRow: View {
     var body: some View {
         HStack(spacing: 14) {
             ZStack {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.accentColor.opacity(0.14))
+                RoundedRectangle(cornerRadius: 13, style: .continuous)
+                    .fill(Color.accentColor.brandGradient)
+                RoundedRectangle(cornerRadius: 13, style: .continuous)
+                    .strokeBorder(AppStroke.highlight, lineWidth: 0.5)
                 Image(systemName: "bubble.left.and.bubble.right.fill")
                     .font(.body.weight(.semibold))
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(.white)
                     .symbolRenderingMode(.hierarchical)
             }
             .frame(width: 44, height: 44)
+            .modifier(AppShadow.near())
             .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 4) {
@@ -162,20 +166,23 @@ private struct ConversationRow: View {
                     .foregroundStyle(.primary)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
-                Text(conversation.model)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    Text(conversation.model)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                    Text("·")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                    Text(Self.relativeDate(conversation.updatedAt))
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
             }
             Spacer(minLength: 8)
-            VStack(alignment: .trailing, spacing: 6) {
-                Text(Self.relativeDate(conversation.updatedAt))
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                Image(systemName: "chevron.right")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.quaternary)
-            }
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
         }
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)

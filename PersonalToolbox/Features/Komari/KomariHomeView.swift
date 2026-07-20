@@ -12,7 +12,7 @@ struct KomariHomeView: View {
             searchBar
             content
         }
-        .background(AppleTheme.canvas)
+        .background(AppSurfaceBackground(accent: Color.accentColor))
         .navigationTitle(viewModel.siteName ?? "Komari")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -244,7 +244,7 @@ private struct KomariNodeDetailView: View {
             }
             .padding(16)
         }
-        .background(AppleTheme.canvas)
+        .background(AppSurfaceBackground(accent: Color.accentColor))
         .navigationTitle(row.node.displayName)
         .navigationBarTitleDisplayMode(.inline)
         .task {

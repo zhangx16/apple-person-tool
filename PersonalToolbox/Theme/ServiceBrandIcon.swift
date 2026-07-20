@@ -159,7 +159,11 @@ struct ServiceBrandIcon: View {
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
                     .fill(hasAsset
                           ? Color(.secondarySystemBackground)
-                          : brand.tint.opacity(0.16))
+                          : brand.tint.brandGradient)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: radius, style: .continuous)
+                            .strokeBorder(AppStroke.highlight, lineWidth: 0.5)
+                    }
             }
             Group {
                 if let asset = brand.assetName, UIImage(named: asset) != nil {
@@ -170,7 +174,7 @@ struct ServiceBrandIcon: View {
                 } else {
                     Image(systemName: brand.systemImage)
                         .font(.system(size: size * 0.44, weight: .semibold))
-                        .foregroundStyle(brand.tint)
+                        .foregroundStyle(.white)
                         .symbolRenderingMode(.hierarchical)
                 }
             }

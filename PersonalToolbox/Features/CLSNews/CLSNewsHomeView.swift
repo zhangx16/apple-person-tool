@@ -60,7 +60,7 @@ struct CLSNewsHomeView: View {
                 .scrollContentBackground(.hidden)
             }
         }
-        .background(AppleTheme.canvas)
+        .background(AppSurfaceBackground(accent: Color.accentColor))
         .navigationTitle("财联社电报")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {

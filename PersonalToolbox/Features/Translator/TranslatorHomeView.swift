@@ -26,7 +26,7 @@ struct TranslatorHomeView: View {
             .padding(16)
         }
         .scrollDismissesKeyboard(.interactively)
-        .background(AppleTheme.canvas)
+        .background(AppSurfaceBackground(accent: Color.accentColor))
         .navigationTitle("翻译器")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {

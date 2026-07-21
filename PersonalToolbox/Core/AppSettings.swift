@@ -152,6 +152,19 @@ final class AppSettings: ObservableObject {
     @Published var notifyDownloadCompleted: Bool {
         didSet { UserDefaults.standard.set(notifyDownloadCompleted, forKey: Keys.notifyDownloadCompleted) }
     }
+    /// Master switch for smart alerts (check-in / subscription / cert).
+    @Published var notifySmartAlerts: Bool {
+        didSet { UserDefaults.standard.set(notifySmartAlerts, forKey: Keys.notifySmartAlerts) }
+    }
+    @Published var notifyCheckinFailed: Bool {
+        didSet { UserDefaults.standard.set(notifyCheckinFailed, forKey: Keys.notifyCheckinFailed) }
+    }
+    @Published var notifySubscriptionDue: Bool {
+        didSet { UserDefaults.standard.set(notifySubscriptionDue, forKey: Keys.notifySubscriptionDue) }
+    }
+    @Published var notifyCertExpiry: Bool {
+        didSet { UserDefaults.standard.set(notifyCertExpiry, forKey: Keys.notifyCertExpiry) }
+    }
 
     // MARK: - 快递100 realtime API
 
@@ -227,6 +240,10 @@ final class AppSettings: ObservableObject {
         static let hideSensitiveInAppSwitcher = "hideSensitiveInAppSwitcher"
         static let requireBiometricUnlock = "requireBiometricUnlock"
         static let notifyDownloadCompleted = "notifyDownloadCompleted"
+        static let notifySmartAlerts = "notifySmartAlerts"
+        static let notifyCheckinFailed = "notifyCheckinFailed"
+        static let notifySubscriptionDue = "notifySubscriptionDue"
+        static let notifyCertExpiry = "notifyCertExpiry"
         static let kuaidi100Customer = "kuaidi100Customer"
         static let kuaidi100Key = "kuaidi100Key"
         static let kuaishouCookie = "kuaishouCookie"
@@ -297,6 +314,10 @@ final class AppSettings: ObservableObject {
         hideSensitiveInAppSwitcher = d.object(forKey: Keys.hideSensitiveInAppSwitcher) as? Bool ?? false
         requireBiometricUnlock = d.object(forKey: Keys.requireBiometricUnlock) as? Bool ?? false
         notifyDownloadCompleted = d.object(forKey: Keys.notifyDownloadCompleted) as? Bool ?? true
+        notifySmartAlerts = d.object(forKey: Keys.notifySmartAlerts) as? Bool ?? true
+        notifyCheckinFailed = d.object(forKey: Keys.notifyCheckinFailed) as? Bool ?? true
+        notifySubscriptionDue = d.object(forKey: Keys.notifySubscriptionDue) as? Bool ?? true
+        notifyCertExpiry = d.object(forKey: Keys.notifyCertExpiry) as? Bool ?? true
         // 快递100：仅从本机 UserDefaults / Keychain 读取，不在仓库中预置密钥
         kuaidi100Customer = d.string(forKey: Keys.kuaidi100Customer) ?? ""
         kuaidi100Key = KeychainStore.get(Keys.kuaidi100Key) ?? ""

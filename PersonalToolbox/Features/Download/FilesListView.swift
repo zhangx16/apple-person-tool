@@ -1,12 +1,64 @@
 import SwiftUI
 
-/// Completed downloads on the server filebrowser.
+enum DownloadFileSort: String, CaseIterable, Identifiable {
+    case name
+    case sizeDesc
+    case kind
+
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .name: return "名称"
+        case .sizeDesc: return "大小"
+        case .kind: return "类型"
+        }
+    }
+}
+
+/// Completed downloads with sort, grouping, and multi-select batch delete.
 struct FilesListView: View {
     let files: [YTFileItem]
     var downloadingPath: String?
     var onShare: (YTFileItem) -> Void
     var onPlay: ((YTFileItem) -> Void)? = nil
     var onDelete: (YTFileItem) -> Void
+    var onBatchDelete: (([YTFileItem]) -> Void)? = nil
+
+    @State private var sort: DownloadFileSort = .name
+    @State private var groupByKind = true
+    @State private var selecting = false
+    @State private var selected: Set<String> = []
+
+    private var sortedFiles: [YTFileItem] {
+        switch sort {
+        case .name:
+            return files.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        case .sizeDesc:
+            return files.sorted { ($0.size ?? 0) > ($1.size ?? 0) }
+        case .kind:
+            return files.sorted {
+                let ka = DownloadMediaKind.detect(pathOrName: $0.name).title
+                let kb = DownloadMediaKind.detect(pathOrName: $1.name).title
+                if ka != kb { return ka < kb }
+                return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+            }
+        }
+    }
+
+    private var grouped: [(String, [YTFileItem])] {
+        guard groupByKind else { return [("全部", sortedFiles)] }
+        var map: [String: [YTFileItem]] = [:]
+        var order: [String] = []
+        for f in sortedFiles {
+            let key = DownloadMediaKind.detect(pathOrName: f.name).folderTitle
+            if map[key] == nil {
+                order.append(key)
+                map[key] = []
+            }
+            map[key]?.append(f)
+        }
+        return order.compactMap { k in guard let v = map[k], !v.isEmpty else { return nil }; return (k, v) }
+    }
 
     var body: some View {
         if files.isEmpty {
@@ -16,15 +68,98 @@ struct FilesListView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.vertical, 8)
         } else {
-            ForEach(files) { file in
-                FileRowView(
-                    file: file,
-                    isDownloading: downloadingPath == file.path,
-                    onShare: { onShare(file) },
-                    onPlay: onPlay.map { handler in { handler(file) } },
-                    onDelete: { onDelete(file) }
-                )
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Picker("排序", selection: $sort) {
+                        ForEach(DownloadFileSort.allCases) { s in
+                            Text(s.title).tag(s)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                }
+                HStack {
+                    Toggle("按类型分组", isOn: $groupByKind)
+                        .font(.caption)
+                    Spacer()
+                    Button(selecting ? "完成" : "多选") {
+                        selecting.toggle()
+                        if !selecting { selected.removeAll() }
+                    }
+                    .font(.caption.weight(.semibold))
+                    if selecting, !selected.isEmpty {
+                        Button("删除 \(selected.count)", role: .destructive) {
+                            let items = files.filter { selected.contains($0.id) }
+                            if let onBatchDelete {
+                                onBatchDelete(items)
+                            } else {
+                                items.forEach(onDelete)
+                            }
+                            selected.removeAll()
+                            selecting = false
+                        }
+                        .font(.caption.weight(.semibold))
+                    }
+                }
+                .font(.caption)
+
+                ForEach(grouped, id: \.0) { group, items in
+                    if groupByKind {
+                        Text(group)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .padding(.top, 4)
+                    }
+                    ForEach(items) { file in
+                        HStack(spacing: 8) {
+                            if selecting {
+                                Image(systemName: selected.contains(file.id) ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(selected.contains(file.id) ? Color.accentColor : .secondary)
+                                    .onTapGesture {
+                                        if selected.contains(file.id) {
+                                            selected.remove(file.id)
+                                        } else {
+                                            selected.insert(file.id)
+                                        }
+                                    }
+                            }
+                            FileRowView(
+                                file: file,
+                                isDownloading: downloadingPath == file.path,
+                                onShare: { onShare(file) },
+                                onPlay: onPlay.map { handler in { handler(file) } },
+                                onDelete: { onDelete(file) }
+                            )
+                        }
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            guard selecting else { return }
+                            if selected.contains(file.id) {
+                                selected.remove(file.id)
+                            } else {
+                                selected.insert(file.id)
+                            }
+                        }
+                    }
+                }
             }
+        }
+    }
+}
+
+private extension DownloadMediaKind {
+    var title: String {
+        switch self {
+        case .video: return "video"
+        case .image: return "image"
+        case .other: return "other"
+        }
+    }
+
+    var folderTitle: String {
+        switch self {
+        case .video: return "视频"
+        case .image: return "图片"
+        case .other: return "其它"
         }
     }
 }
@@ -111,17 +246,5 @@ struct FileRowView: View {
         }
         .padding(.vertical, 4)
         .frame(minHeight: 44)
-    }
-}
-
-#Preview {
-    List {
-        FilesListView(
-            files: [
-                YTFileItem(id: "1", name: "demo.mp4", size: 120_000_000, path: "/downloads/demo.mp4")
-            ],
-            onShare: { _ in },
-            onDelete: { _ in }
-        )
     }
 }

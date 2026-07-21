@@ -414,6 +414,13 @@ struct DownloadHomeView: View {
                 },
                 onDelete: { file in
                     Task { await viewModel.deleteFile(file) }
+                },
+                onBatchDelete: { items in
+                    Task {
+                        for f in items {
+                            await viewModel.deleteFile(f)
+                        }
+                    }
                 }
             )
         } header: {

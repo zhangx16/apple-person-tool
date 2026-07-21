@@ -77,6 +77,7 @@ final class CheckinViewModel: ObservableObject {
 
         do {
             summary = try await service.summary(baseURL: base, apiToken: token)
+            CheckinHistoryStore.shared.record(from: summary)
             lastUpdated = .now
             Haptics.success()
         } catch {
@@ -241,6 +242,7 @@ struct CheckinHomeView: View {
                     .frame(minHeight: 280)
                 } else {
                     overviewCard
+                    CheckinCalendarView()
                     filterChips
                     FloatingSearchBar(text: $viewModel.search, placeholder: "搜索项目、Bot、账号…")
                         .padding(.horizontal, 2)
@@ -520,6 +522,71 @@ private struct CheckinProjectRow: View {
             else { parts.append("正常 \(c.healthyValue)") }
         }
         return parts.joined(separator: " · ")
+    }
+}
+
+// MARK: - Calendar heat (last ~5 weeks)
+
+struct CheckinCalendarView: View {
+    @ObservedObject private var history = CheckinHistoryStore.shared
+    @State private var selected: CheckinDaySnapshot?
+
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
+
+    var body: some View {
+        let days = history.recentDays(35)
+        VStack(alignment: .leading, spacing: 10) {
+            AppSectionTitle(title: "签到日历", systemImage: "calendar")
+            LazyVGrid(columns: columns, spacing: 4) {
+                ForEach(days) { day in
+                    Button {
+                        selected = day.total > 0 ? day : nil
+                    } label: {
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            .fill(color(for: day))
+                            .aspectRatio(1, contentMode: .fit)
+                            .overlay {
+                                if day.day == CheckinHistoryStore.dayString() {
+                                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                        .strokeBorder(Color.primary.opacity(0.35), lineWidth: 1)
+                                }
+                            }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("\(day.day) 正常 \(day.healthy)/\(day.total)")
+                }
+            }
+            HStack(spacing: 12) {
+                legend(Color(.tertiarySystemFill), "无数据")
+                legend(Color(hex: 0x30D158).opacity(0.35), "部分")
+                legend(Color(hex: 0x30D158), "全勤")
+                legend(Color(hex: 0xFF453A).opacity(0.75), "有失败")
+            }
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+
+            if let selected {
+                Text("\(selected.day)：正常 \(selected.healthy)/\(selected.total) · 失败 \(selected.failed) · 跳过 \(selected.skipped)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(14)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private func color(for day: CheckinDaySnapshot) -> Color {
+        if day.total == 0 { return Color(.tertiarySystemFill) }
+        if day.failed > 0 { return Color(hex: 0xFF453A).opacity(0.75) }
+        if day.healthy >= day.total { return Color(hex: 0x30D158) }
+        return Color(hex: 0x30D158).opacity(0.35 + 0.5 * day.successRate)
+    }
+
+    private func legend(_ color: Color, _ title: String) -> some View {
+        HStack(spacing: 4) {
+            RoundedRectangle(cornerRadius: 2).fill(color).frame(width: 10, height: 10)
+            Text(title)
+        }
     }
 }
 

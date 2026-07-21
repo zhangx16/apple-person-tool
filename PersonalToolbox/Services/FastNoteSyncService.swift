@@ -266,6 +266,26 @@ actor FastNoteSyncService {
         return String(data: data, encoding: .utf8) ?? ""
     }
 
+    /// Create a new markdown note under the vault root (or folder path).
+    func createNote(
+        baseURL: String,
+        token: String,
+        vault: String,
+        folder: String = "",
+        title: String
+    ) async throws -> String {
+        let safe = title
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "/", with: "-")
+        let name = safe.isEmpty ? "新笔记-\(Int(Date().timeIntervalSince1970))" : safe
+        let file = name.hasSuffix(".md") ? name : "\(name).md"
+        let folderTrim = folder.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let path = folderTrim.isEmpty ? file : "\(folderTrim)/\(file)"
+        let body = "# \(name.replacingOccurrences(of: ".md", with: ""))\n\n"
+        try await saveNote(baseURL: baseURL, token: token, vault: vault, path: path, content: body)
+        return path
+    }
+
     func saveNote(baseURL: String, token: String, vault: String, path: String, content: String) async throws {
         let payload: [String: Any] = [
             "vault": vault,

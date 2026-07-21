@@ -6,6 +6,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		000000000000000000000721 /* SmartNotifyService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000720 /* SmartNotifyService.swift */; };
+		000000000000000000000723 /* CheckinHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000722 /* CheckinHistoryStore.swift */; };
+		000000000000000000000725 /* NoteOfflineCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000724 /* NoteOfflineCache.swift */; };
 		000000000000000000000711 /* SSHTerminalSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000710 /* SSHTerminalSession.swift */; };
 		000000000000000000000713 /* SSHTerminalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000712 /* SSHTerminalView.swift */; };
 		000000000000000000000703 /* SSHRemoteRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000702 /* SSHRemoteRunner.swift */; };
@@ -128,6 +131,9 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		000000000000000000000720 /* SmartNotifyService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartNotifyService.swift; sourceTree = "<group>"; };
+		000000000000000000000722 /* CheckinHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckinHistoryStore.swift; sourceTree = "<group>"; };
+		000000000000000000000724 /* NoteOfflineCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteOfflineCache.swift; sourceTree = "<group>"; };
 		000000000000000000000710 /* SSHTerminalSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHTerminalSession.swift; sourceTree = "<group>"; };
 		000000000000000000000712 /* SSHTerminalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Life/SSHTerminalView.swift; sourceTree = "<group>"; };
 		000000000000000000000702 /* SSHRemoteRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHRemoteRunner.swift; sourceTree = "<group>"; };
@@ -347,6 +353,9 @@
 				000000000000000000000149 /* KomariService.swift */,
 				0000000000000000000005D2 /* CheckinService.swift */,
 				0000000000000000000005F2 /* ActivityEventStore.swift */,
+				000000000000000000000720 /* SmartNotifyService.swift */,
+				000000000000000000000722 /* CheckinHistoryStore.swift */,
+				000000000000000000000724 /* NoteOfflineCache.swift */,
 				0000000000000000000005F4 /* SubscriptionStore.swift */,
 				0000000000000000000005F6 /* ReminderStore.swift */,
 				0000000000000000000005F8 /* CertExpiryService.swift */,
@@ -697,6 +706,9 @@
 				0000000000000000000005E1 /* OverviewHomeView.swift in Sources */,
 				000000000000000000000613 /* AppIntentsSupport.swift in Sources */,
 				0000000000000000000005F3 /* ActivityEventStore.swift in Sources */,
+				000000000000000000000721 /* SmartNotifyService.swift in Sources */,
+				000000000000000000000723 /* CheckinHistoryStore.swift in Sources */,
+				000000000000000000000725 /* NoteOfflineCache.swift in Sources */,
 				0000000000000000000005F5 /* SubscriptionStore.swift in Sources */,
 				0000000000000000000005F7 /* ReminderStore.swift in Sources */,
 				0000000000000000000005F9 /* CertExpiryService.swift in Sources */,
@@ -871,7 +883,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 59;
+				CURRENT_PROJECT_VERSION = 60;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				CODE_SIGN_ENTITLEMENTS = PersonalToolbox/PersonalToolbox.entitlements;
@@ -897,7 +909,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 59;
+				CURRENT_PROJECT_VERSION = 60;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				CODE_SIGN_ENTITLEMENTS = PersonalToolbox/PersonalToolbox.entitlements;
@@ -923,7 +935,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 59;
+				CURRENT_PROJECT_VERSION = 60;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
@@ -948,7 +960,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 59;
+				CURRENT_PROJECT_VERSION = 60;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;

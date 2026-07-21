@@ -159,6 +159,7 @@ final class OverviewViewModel: ObservableObject {
                     .trimmingCharacters(in: .whitespacesAndNewlines)
                     .replacingOccurrences(of: "\u{00a0}", with: "")
                 checkinSummary = try await checkin.summary(baseURL: base, apiToken: token)
+                CheckinHistoryStore.shared.record(from: checkinSummary)
                 if let c = checkinSummary?.counts {
                     activityStore.log(.make(
                         title: "签到状态已更新",
@@ -168,6 +169,7 @@ final class OverviewViewModel: ObservableObject {
                         route: "checkin"
                     ))
                 }
+                SmartNotifyService.evaluate(settings: settings, checkin: checkinSummary)
             } catch {
                 // Don't block whole overview; surface soft error.
                 errorMessage = (error as? NetworkError)?.errorDescription ?? error.localizedDescription
@@ -211,6 +213,7 @@ struct OverviewHomeView: View {
                 VStack(alignment: .leading, spacing: AppleTheme.space5) {
                     heroHeader
                     onboardingSection
+                    todayTodosSection
                     attentionSection
                     activitySection
                     todayStrip
@@ -247,7 +250,13 @@ struct OverviewHomeView: View {
                 await viewModel.refresh(settings: settings)
             }
             .task {
+                _ = await LocalNotifier.ensureAuthorized()
                 await viewModel.refresh(settings: settings)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: ForegroundNotificationDelegate.routeNotification)) { note in
+                if let route = note.userInfo?["route"] as? String {
+                    navigateActivity(route)
+                }
             }
             .navigationDestination(for: OverviewViewModel.OverviewDestination.self) { dest in
                 destinationView(dest)
@@ -275,6 +284,87 @@ struct OverviewHomeView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, 4)
+    }
+
+    // MARK: - Today todos
+
+    private var todayTodos: [(title: String, subtitle: String, dest: OverviewViewModel.OverviewDestination, tint: Color)] {
+        var list: [(String, String, OverviewViewModel.OverviewDestination, Color)] = []
+        if let fails = viewModel.checkinSummary?.projects?.filter({ $0.statusKind == .failed }), !fails.isEmpty {
+            list.append((
+                "签到失败 \(fails.count) 项",
+                fails.prefix(2).map(\.displayTitle).joined(separator: "、"),
+                .checkin,
+                Color(hex: 0xFF453A)
+            ))
+        }
+        let due = SubscriptionStore.shared.items.filter { $0.daysUntilDue >= 0 && $0.daysUntilDue <= 7 }
+        if let first = due.sorted(by: { $0.daysUntilDue < $1.daysUntilDue }).first {
+            list.append((
+                "订阅到期",
+                "\(first.name) · \(first.daysUntilDue) 天",
+                .subscriptions,
+                Color(hex: 0xFF9F0A)
+            ))
+        }
+        let certs = CertExpiryStore.shared.expiringSoon
+        if let c = certs.sorted(by: { ($0.daysLeft ?? 99) < ($1.daysLeft ?? 99) }).first, let d = c.daysLeft {
+            list.append((
+                "证书告警",
+                "\(c.host) · \(d) 天",
+                .certs,
+                Color(hex: 0xFF9F0A)
+            ))
+        }
+        let rem = ReminderStore.shared.items.filter { $0.daysLeft >= 0 && $0.daysLeft <= 3 }
+        if let r = rem.first {
+            list.append((
+                "提醒",
+                "\(r.title) · \(r.daysLeft) 天",
+                .reminders,
+                Color(hex: 0x64D2FF)
+            ))
+        }
+        return list
+    }
+
+    @ViewBuilder
+    private var todayTodosSection: some View {
+        let todos = todayTodos
+        if !todos.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                AppSectionTitle(title: "今日待办", systemImage: "sun.max.fill")
+                VStack(spacing: 8) {
+                    ForEach(Array(todos.enumerated()), id: \.offset) { _, item in
+                        Button {
+                            navigate(item.dest)
+                        } label: {
+                            HStack(spacing: 12) {
+                                Circle()
+                                    .fill(item.tint)
+                                    .frame(width: 8, height: 8)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(item.title)
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(.primary)
+                                    Text(item.subtitle)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(1)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(.tertiary)
+                            }
+                            .padding(12)
+                            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        }
+                        .buttonStyle(PressableButtonStyle(scale: 0.98))
+                    }
+                }
+            }
+        }
     }
 
     // MARK: - Onboarding checklist
@@ -323,25 +413,39 @@ struct OverviewHomeView: View {
                 AppSectionTitle(title: "最近动态", systemImage: "clock.arrow.circlepath")
                 VStack(spacing: 0) {
                     ForEach(Array(viewModel.activity.prefix(8))) { ev in
-                        HStack(alignment: .top, spacing: 10) {
-                            Image(systemName: ev.systemImage)
-                                .font(.body.weight(.semibold))
-                                .foregroundStyle(Color(hex: ev.tintHex))
-                                .frame(width: 28)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(ev.title)
-                                    .font(.subheadline.weight(.semibold))
-                                Text(ev.subtitle)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(2)
-                                Text(ev.createdAt.formatted(date: .omitted, time: .shortened))
-                                    .font(.caption2)
-                                    .foregroundStyle(.tertiary)
+                        Button {
+                            if let route = ev.route {
+                                navigateActivity(route)
                             }
-                            Spacer(minLength: 0)
+                        } label: {
+                            HStack(alignment: .top, spacing: 10) {
+                                Image(systemName: ev.systemImage)
+                                    .font(.body.weight(.semibold))
+                                    .foregroundStyle(Color(hex: ev.tintHex))
+                                    .frame(width: 28)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(ev.title)
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(.primary)
+                                    Text(ev.subtitle)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(2)
+                                    Text(ev.createdAt.formatted(date: .omitted, time: .shortened))
+                                        .font(.caption2)
+                                        .foregroundStyle(.tertiary)
+                                }
+                                Spacer(minLength: 0)
+                                if ev.route != nil {
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption2.weight(.semibold))
+                                        .foregroundStyle(.tertiary)
+                                }
+                            }
+                            .padding(.vertical, 10)
+                            .contentShape(Rectangle())
                         }
-                        .padding(.vertical, 10)
+                        .buttonStyle(.plain)
                         if ev.id != viewModel.activity.prefix(8).last?.id {
                             Divider().opacity(0.35)
                         }
@@ -601,6 +705,20 @@ struct OverviewHomeView: View {
             selectedTab = .settings
         default:
             path.append(dest)
+        }
+    }
+
+    private func navigateActivity(_ route: String) {
+        switch route {
+        case "checkin": navigate(.checkin)
+        case "health": navigate(.serviceHealth)
+        case "download": navigate(.download)
+        case "subscription": navigate(.subscriptions)
+        case "certs": navigate(.certs)
+        case "reminder": navigate(.reminders)
+        case "notes": navigate(.notes)
+        case "ssh": navigate(.ssh)
+        default: break
         }
     }
 

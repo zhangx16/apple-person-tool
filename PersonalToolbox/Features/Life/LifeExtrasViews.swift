@@ -299,7 +299,11 @@ struct FastNoteHomeView: View {
     @State private var errorText: String?
     @State private var selectedPath: String?
     @State private var noteBody = ""
-    @State private var segment = 0 // 0 notes 1 files 2 tree
+    @State private var segment = 0 // 0 notes 1 files 2 tree 3 offline
+    @State private var search = ""
+    @State private var showCreate = false
+    @State private var newTitle = ""
+    @ObservedObject private var offline = NoteOfflineCache.shared
 
     var body: some View {
         Group {
@@ -319,8 +323,13 @@ struct FastNoteHomeView: View {
                             Text("笔记").tag(0)
                             Text("附件").tag(1)
                             Text("目录").tag(2)
+                            Text("离线").tag(3)
                         }
                         .pickerStyle(.segmented)
+                        if segment == 0 || segment == 3 {
+                            TextField("搜索标题 / 内容", text: $search)
+                                .textInputAutocapitalization(.never)
+                        }
                         if !currentFolder.isEmpty {
                             HStack {
                                 Text("当前：\(currentFolder)")
@@ -369,10 +378,34 @@ struct FastNoteHomeView: View {
                                 }
                             }
                         }
+                    } else if segment == 3 {
+                        Section("收藏 / 离线缓存") {
+                            let list = offline.search(search)
+                            if list.isEmpty {
+                                Text("打开过的笔记会自动缓存，可离线阅读").foregroundStyle(.secondary)
+                            }
+                            ForEach(list) { n in
+                                Button {
+                                    selectedPath = n.path
+                                    noteBody = n.content
+                                } label: {
+                                    HStack {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(n.title).foregroundStyle(.primary)
+                                            Text(n.path).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                                        }
+                                        Spacer()
+                                        if n.favorite {
+                                            Image(systemName: "star.fill").foregroundStyle(.yellow).font(.caption)
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     } else {
                         Section(currentFolder.isEmpty ? "全部笔记" : "本目录笔记") {
                             if isLoading && notes.isEmpty { ProgressView("加载…") }
-                            ForEach(notes) { n in
+                            ForEach(filteredRemoteNotes) { n in
                                 Button {
                                     selectedPath = n.path
                                     Task { await openNote(n.path ?? "") }
@@ -393,6 +426,15 @@ struct FastNoteHomeView: View {
         }
         .navigationTitle("笔记同步")
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    newTitle = ""
+                    showCreate = true
+                } label: {
+                    Image(systemName: "square.and.pencil")
+                }
+                .disabled(!settings.isFastNoteConfigured)
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     Task { await loginAndReload() }
@@ -400,6 +442,15 @@ struct FastNoteHomeView: View {
                     Image(systemName: "arrow.triangle.2.circlepath")
                 }
             }
+        }
+        .alert("新建笔记", isPresented: $showCreate) {
+            TextField("标题", text: $newTitle)
+            Button("创建") {
+                Task { await createNote() }
+            }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text(currentFolder.isEmpty ? "将创建在仓库根目录" : "将创建在 \(currentFolder)")
         }
         .sheet(item: Binding(
             get: { selectedPath.map { NotePathBox(id: $0) } },
@@ -418,14 +469,50 @@ struct FastNoteHomeView: View {
                                 Task { await saveNote(path: box.id) }
                             }
                         }
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button {
+                                offline.toggleFavorite(path: box.id)
+                            } label: {
+                                Image(systemName: offline.note(path: box.id)?.favorite == true ? "star.fill" : "star")
+                            }
+                        }
                     }
             }
         }
         .task { await loginAndReload() }
     }
 
+    private var filteredRemoteNotes: [FastNoteSyncService.NoteListItem] {
+        let q = search.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !q.isEmpty else { return notes }
+        return notes.filter {
+            $0.displayTitle.lowercased().contains(q)
+                || ($0.path ?? "").lowercased().contains(q)
+        }
+    }
+
     private struct NotePathBox: Identifiable {
         var id: String
+    }
+
+    private func createNote() async {
+        let title = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        do {
+            let path = try await FastNoteSyncService.shared.createNote(
+                baseURL: settings.fastNoteBaseURL,
+                token: settings.fastNoteToken,
+                vault: settings.fastNoteVault,
+                folder: currentFolder,
+                title: title
+            )
+            selectedPath = path
+            await openNote(path)
+            await reloadFolderContent()
+            Haptics.success()
+        } catch {
+            errorText = error.localizedDescription
+            Haptics.error()
+        }
     }
 
     private func loginAndReload() async {
@@ -512,8 +599,20 @@ struct FastNoteHomeView: View {
                 vault: settings.fastNoteVault,
                 path: path
             )
+            offline.upsert(
+                path: path,
+                vault: settings.fastNoteVault,
+                title: (path as NSString).lastPathComponent,
+                content: noteBody
+            )
         } catch {
-            errorText = error.localizedDescription
+            // Offline fallback
+            if let cached = offline.note(path: path) {
+                noteBody = cached.content
+                errorText = "离线缓存：\(error.localizedDescription)"
+            } else {
+                errorText = error.localizedDescription
+            }
         }
     }
 
@@ -524,6 +623,12 @@ struct FastNoteHomeView: View {
                 token: settings.fastNoteToken,
                 vault: settings.fastNoteVault,
                 path: path,
+                content: noteBody
+            )
+            offline.upsert(
+                path: path,
+                vault: settings.fastNoteVault,
+                title: (path as NSString).lastPathComponent,
                 content: noteBody
             )
             Haptics.success()

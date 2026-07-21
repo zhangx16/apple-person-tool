@@ -957,6 +957,20 @@ struct NotificationSettingsPage: View {
             }
 
             Section {
+                Toggle("智能提醒总开关", isOn: $settings.notifySmartAlerts)
+                Toggle("签到失败提醒", isOn: $settings.notifyCheckinFailed)
+                    .disabled(!settings.notifySmartAlerts)
+                Toggle("订阅即将到期", isOn: $settings.notifySubscriptionDue)
+                    .disabled(!settings.notifySmartAlerts)
+                Toggle("证书即将到期", isOn: $settings.notifyCertExpiry)
+                    .disabled(!settings.notifySmartAlerts)
+            } header: {
+                Text("智能提醒")
+            } footer: {
+                Text("在总览刷新时评估。同一天同类提醒会去重。点通知可跳到对应模块。")
+            }
+
+            Section {
                 LabeledContent("系统权限", value: authLabel)
                 Button("请求通知权限") {
                     Task {

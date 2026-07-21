@@ -6,6 +6,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		000000000000000000000611 /* AppGroupShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000610 /* AppGroupShared.swift */; };
+		000000000000000000000613 /* AppIntentsSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000612 /* AppIntentsSupport.swift */; };
 		0000000000000000000005F3 /* ActivityEventStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000005F2 /* ActivityEventStore.swift */; };
 		0000000000000000000005F5 /* SubscriptionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000005F4 /* SubscriptionStore.swift */; };
 		0000000000000000000005F7 /* ReminderStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000005F6 /* ReminderStore.swift */; };
@@ -124,6 +126,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		000000000000000000000610 /* AppGroupShared.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppGroupShared.swift; sourceTree = "<group>"; };
+		000000000000000000000612 /* AppIntentsSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIntentsSupport.swift; sourceTree = "<group>"; };
 		0000000000000000000005F2 /* ActivityEventStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityEventStore.swift; sourceTree = "<group>"; };
 		0000000000000000000005F4 /* SubscriptionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionStore.swift; sourceTree = "<group>"; };
 		0000000000000000000005F6 /* ReminderStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderStore.swift; sourceTree = "<group>"; };
@@ -276,6 +280,7 @@
 			isa = PBXGroup;
 			children = (
 				000000000000000000000101 /* PersonalToolboxApp.swift */,
+				000000000000000000000612 /* AppIntentsSupport.swift */,
 				000000000000000000000103 /* RootTabView.swift */,
 			);
 			path = App;
@@ -288,6 +293,7 @@
 				000000000000000000000107 /* BiometricAuth.swift */,
 				000000000000000000000109 /* Haptics.swift */,
 				0000000000000000000005F0 /* OrientationHelper.swift */,
+				000000000000000000000610 /* AppGroupShared.swift */,
 				0000000000000000000001C8 /* LocalNotifier.swift */,
 				00000000000000000000052B /* ShareHandoff.swift */,
 				000000000000000000000504 /* LocalJSONStore.swift */,
@@ -676,6 +682,8 @@
 				000000000000000000000102 /* PersonalToolboxApp.swift in Sources */,
 				000000000000000000000104 /* RootTabView.swift in Sources */,
 				0000000000000000000005E1 /* OverviewHomeView.swift in Sources */,
+				000000000000000000000611 /* AppGroupShared.swift in Sources */,
+				000000000000000000000613 /* AppIntentsSupport.swift in Sources */,
 				0000000000000000000005F3 /* ActivityEventStore.swift in Sources */,
 				0000000000000000000005F5 /* SubscriptionStore.swift in Sources */,
 				0000000000000000000005F7 /* ReminderStore.swift in Sources */,
@@ -848,7 +856,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 51;
+				CURRENT_PROJECT_VERSION = 52;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				CODE_SIGN_ENTITLEMENTS = PersonalToolbox/PersonalToolbox.entitlements;
@@ -874,7 +882,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 51;
+				CURRENT_PROJECT_VERSION = 52;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				CODE_SIGN_ENTITLEMENTS = PersonalToolbox/PersonalToolbox.entitlements;
@@ -900,7 +908,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 51;
+				CURRENT_PROJECT_VERSION = 52;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
@@ -925,7 +933,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 51;
+				CURRENT_PROJECT_VERSION = 52;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;

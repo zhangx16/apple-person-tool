@@ -256,9 +256,20 @@ struct CertMonitorHomeView: View {
                                 .font(.caption)
                                 .foregroundStyle(d <= 14 ? Color.red : .secondary)
                         } else {
-                            Text("未设置到期日 · 可编辑笔记")
+                            Text("未解析到到期日 · 可手动添加时填写")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
+                        }
+                        if let issuer = item.issuer, !issuer.isEmpty {
+                            Text("颁发：\(issuer)")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                                .lineLimit(1)
+                        }
+                        if let ok = item.lastOK {
+                            Text(ok ? "最近探测：可达" : "最近探测：失败")
+                                .font(.caption2)
+                                .foregroundStyle(ok ? Color.green : Color.orange)
                         }
                         if let err = item.error {
                             Text(err).font(.caption2).foregroundStyle(.tertiary)
@@ -276,15 +287,19 @@ struct CertMonitorHomeView: View {
     }
 }
 
-// MARK: - Fast Note Sync
+// MARK: - Fast Note Sync (folders + notes + attachments)
 
 struct FastNoteHomeView: View {
     @EnvironmentObject private var settings: AppSettings
+    @State private var folders: [FastNoteSyncService.FolderNode] = []
     @State private var notes: [FastNoteSyncService.NoteListItem] = []
+    @State private var files: [FastNoteSyncService.AttachmentItem] = []
+    @State private var currentFolder = ""
     @State private var isLoading = false
     @State private var errorText: String?
     @State private var selectedPath: String?
     @State private var noteBody = ""
+    @State private var segment = 0 // 0 notes 1 files 2 tree
 
     var body: some View {
         Group {
@@ -292,33 +307,88 @@ struct FastNoteHomeView: View {
                 ContentUnavailableView(
                     "配置笔记同步",
                     systemImage: "note.text",
-                    description: Text("设置 Base URL、账号密码后登录。服务端为 Fast Note Sync（可与 Obsidian 插件共用）。")
+                    description: Text("设置 Base URL、账号密码后登录。服务端为 Fast Note Sync（可与 Obsidian 插件共用 REST）。")
                 )
             } else {
                 List {
                     if let errorText {
                         Text(errorText).foregroundStyle(.red).font(.caption)
                     }
-                    Section("笔记") {
-                        if isLoading && notes.isEmpty {
-                            ProgressView("加载…")
+                    Section {
+                        Picker("视图", selection: $segment) {
+                            Text("笔记").tag(0)
+                            Text("附件").tag(1)
+                            Text("目录").tag(2)
                         }
-                        ForEach(notes) { n in
-                            Button {
-                                selectedPath = n.path
-                                Task { await openNote(n.path ?? "") }
-                            } label: {
+                        .pickerStyle(.segmented)
+                        if !currentFolder.isEmpty {
+                            HStack {
+                                Text("当前：\(currentFolder)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Button("回到根目录") {
+                                    currentFolder = ""
+                                    Task { await reloadFolderContent() }
+                                }
+                                .font(.caption.weight(.semibold))
+                            }
+                        }
+                    }
+                    if segment == 2 {
+                        Section("文件夹树") {
+                            if folders.isEmpty {
+                                Text(isLoading ? "加载目录…" : "无文件夹或接口不可用，仍可浏览全部笔记")
+                                    .foregroundStyle(.secondary)
+                            }
+                            OutlineGroup(folders, children: \.children) { node in
+                                Button {
+                                    currentFolder = node.path
+                                    segment = 0
+                                    Task { await reloadFolderContent() }
+                                } label: {
+                                    Label(node.name, systemImage: "folder")
+                                }
+                            }
+                        }
+                    } else if segment == 1 {
+                        Section("附件") {
+                            if isLoading && files.isEmpty { ProgressView() }
+                            ForEach(files) { f in
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(n.displayTitle).foregroundStyle(.primary)
-                                    if let p = n.path {
-                                        Text(p).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                                    Text(f.name)
+                                    Text(f.path)
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(1)
+                                    if let s = f.size {
+                                        Text(ByteCountFormatter.string(fromByteCount: Int64(s), countStyle: .file))
+                                            .font(.caption2)
+                                            .foregroundStyle(.tertiary)
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        Section(currentFolder.isEmpty ? "全部笔记" : "本目录笔记") {
+                            if isLoading && notes.isEmpty { ProgressView("加载…") }
+                            ForEach(notes) { n in
+                                Button {
+                                    selectedPath = n.path
+                                    Task { await openNote(n.path ?? "") }
+                                } label: {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(n.displayTitle).foregroundStyle(.primary)
+                                        if let p = n.path {
+                                            Text(p).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                                        }
                                     }
                                 }
                             }
                         }
                     }
                 }
-                .refreshable { await reload() }
+                .refreshable { await loginAndReload() }
             }
         }
         .navigationTitle("笔记同步")
@@ -372,37 +442,59 @@ struct FastNoteHomeView: View {
                 )
                 await MainActor.run { settings.fastNoteToken = token }
             }
-            await reload()
+            await reloadAll()
         } catch {
             errorText = error.localizedDescription
         }
     }
 
-    private func reload() async {
+    private func reloadAll() async {
         guard !settings.fastNoteToken.isEmpty else { return }
         isLoading = true
         defer { isLoading = false }
         do {
-            notes = try await FastNoteSyncService.shared.listNotes(
+            async let tree = FastNoteSyncService.shared.folderTree(
                 baseURL: settings.fastNoteBaseURL,
                 token: settings.fastNoteToken
             )
+            folders = (try? await tree) ?? []
+            await reloadFolderContent()
         } catch {
-            // token expired → re-login once
-            do {
-                let token = try await FastNoteSyncService.shared.login(
-                    baseURL: settings.fastNoteBaseURL,
-                    username: settings.fastNoteUsername,
-                    password: settings.fastNotePassword
+            await reauthAndRetry()
+        }
+    }
+
+    private func reloadFolderContent() async {
+        let token = settings.fastNoteToken
+        let base = settings.fastNoteBaseURL
+        do {
+            if currentFolder.isEmpty {
+                notes = try await FastNoteSyncService.shared.listNotes(baseURL: base, token: token)
+                files = []
+            } else {
+                notes = try await FastNoteSyncService.shared.notesInFolder(
+                    baseURL: base, token: token, path: currentFolder
                 )
-                await MainActor.run { settings.fastNoteToken = token }
-                notes = try await FastNoteSyncService.shared.listNotes(
-                    baseURL: settings.fastNoteBaseURL,
-                    token: token
-                )
-            } catch {
-                errorText = error.localizedDescription
+                files = (try? await FastNoteSyncService.shared.filesInFolder(
+                    baseURL: base, token: token, path: currentFolder
+                )) ?? []
             }
+        } catch {
+            errorText = error.localizedDescription
+        }
+    }
+
+    private func reauthAndRetry() async {
+        do {
+            let token = try await FastNoteSyncService.shared.login(
+                baseURL: settings.fastNoteBaseURL,
+                username: settings.fastNoteUsername,
+                password: settings.fastNotePassword
+            )
+            await MainActor.run { settings.fastNoteToken = token }
+            await reloadAll()
+        } catch {
+            errorText = error.localizedDescription
         }
     }
 
@@ -472,20 +564,22 @@ struct SSHHomeView: View {
                     Text("添加常用 SSH 主机").foregroundStyle(.secondary)
                 }
                 ForEach(store.hosts) { h in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(h.name).font(.headline)
-                        Text("\(h.username)@\(h.host):\(h.port)")
-                            .font(.caption.monospaced())
-                            .foregroundStyle(.secondary)
+                    NavigationLink {
+                        SSHHostDetailView(host: h)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(h.name).font(.headline)
+                            Text("\(h.username)@\(h.host):\(h.port)")
+                                .font(.caption.monospaced())
+                                .foregroundStyle(.secondary)
+                            Text("\(h.presets.count) 条预设命令")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
                     }
                     .swipeActions {
                         Button(role: .destructive) { store.delete(id: h.id) } label: {
                             Label("删除", systemImage: "trash")
-                        }
-                    }
-                    .contextMenu {
-                        if let url = h.sshURL {
-                            Link("用系统/第三方打开 ssh://", destination: url)
                         }
                     }
                 }
@@ -543,6 +637,7 @@ private struct SSHEditorSheet: View {
                             port: Int(port) ?? 22,
                             username: username,
                             notes: notes,
+                            presets: SSHHostStore.defaultPresets,
                             createdAt: Date()
                         )
                         guard !item.host.isEmpty else { return }
@@ -553,6 +648,73 @@ private struct SSHEditorSheet: View {
                 }
             }
         }
+    }
+}
+
+struct SSHHostDetailView: View {
+    @State var host: SSHHost
+    @State private var newTitle = ""
+    @State private var newCommand = ""
+
+    var body: some View {
+        List {
+            Section("连接") {
+                LabeledContent("目标", value: "\(host.username)@\(host.host):\(host.port)")
+                if let url = host.sshURL {
+                    Link("用 ssh:// 打开（Termius / Blink 等）", destination: url)
+                }
+                Button {
+                    UIPasteboard.general.string = host.cli()
+                    Haptics.success()
+                } label: {
+                    Label("复制 ssh 登录命令", systemImage: "doc.on.doc")
+                }
+            }
+            Section {
+                Text("远程执行需 Citadel / Blink。此处复制命令到终端 App 运行。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Section("预设命令") {
+                ForEach(host.presets) { p in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(p.title).font(.subheadline.weight(.semibold))
+                        Text(p.command).font(.caption.monospaced()).foregroundStyle(.secondary)
+                    }
+                    .swipeActions {
+                        Button {
+                            UIPasteboard.general.string = host.cli(for: p)
+                            Haptics.success()
+                        } label: {
+                            Label("复制", systemImage: "doc.on.doc")
+                        }
+                        .tint(.blue)
+                        Button(role: .destructive) {
+                            host.presets.removeAll { $0.id == p.id }
+                            SSHHostStore.shared.upsert(host)
+                        } label: {
+                            Label("删除", systemImage: "trash")
+                        }
+                    }
+                }
+                VStack(alignment: .leading, spacing: 8) {
+                    TextField("标题", text: $newTitle)
+                    TextField("命令", text: $newCommand)
+                        .textInputAutocapitalization(.never)
+                        .font(.caption.monospaced())
+                    Button("添加预设") {
+                        let t = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+                        let c = newCommand.trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !t.isEmpty, !c.isEmpty else { return }
+                        host.presets.append(SSHPreset(id: UUID().uuidString, title: t, command: c))
+                        SSHHostStore.shared.upsert(host)
+                        newTitle = ""
+                        newCommand = ""
+                    }
+                }
+            }
+        }
+        .navigationTitle(host.name)
     }
 }
 

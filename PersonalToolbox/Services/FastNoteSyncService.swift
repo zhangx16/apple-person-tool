@@ -1,16 +1,14 @@
 import Foundation
 
 /// Client for haierkeys/fast-note-sync-service REST API.
-/// Docs: https://github.com/haierkeys/fast-note-sync-service/blob/master/docs/REST_API.md
-/// Auth header: `Authorization: {token}` (no Bearer prefix per upstream docs).
+///
+/// Auth findings (this deployment):
+/// - Login **must** use query `client=webgui` + JSON body `{credentials,password}`
+///   otherwise server returns code 314 "Auth token Client restricted".
+/// - Subsequent APIs accept header `token: <jwt>` or `Authorization: Bearer <jwt>`.
+/// - Note list requires `vault` (e.g. `zxin`).
 actor FastNoteSyncService {
     static let shared = FastNoteSyncService()
-    private let client = NetworkClient.shared
-
-    struct LoginResult: Decodable {
-        var token: String?
-        // some deployments nest token under data
-    }
 
     struct NoteListItem: Codable, Identifiable, Hashable {
         var id: String { path ?? pathHash ?? UUID().uuidString }
@@ -23,14 +21,17 @@ actor FastNoteSyncService {
         enum CodingKeys: String, CodingKey {
             case path, title, size
             case pathHash = "path_hash"
+            case pathHashCamel = "pathHash"
             case updatedAt = "updated_at"
             case updatedAtCamel = "updatedAt"
+            case mtime
         }
 
         init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
             path = try c.decodeIfPresent(String.self, forKey: .path)
-            pathHash = try c.decodeIfPresent(String.self, forKey: .pathHash)
+            pathHash = (try? c.decodeIfPresent(String.self, forKey: .pathHash))
+                ?? (try? c.decodeIfPresent(String.self, forKey: .pathHashCamel))
             title = try c.decodeIfPresent(String.self, forKey: .title)
             size = try c.decodeIfPresent(Int.self, forKey: .size)
             updatedAt = (try? c.decodeIfPresent(String.self, forKey: .updatedAt))
@@ -48,107 +49,190 @@ actor FastNoteSyncService {
 
         var displayTitle: String {
             if let t = title, !t.isEmpty { return t }
-            if let p = path, !p.isEmpty {
-                return (p as NSString).lastPathComponent
-            }
+            if let p = path, !p.isEmpty { return (p as NSString).lastPathComponent }
             return "未命名笔记"
         }
     }
 
-    private func headers(token: String?) -> [String: String] {
-        var h = ["Content-Type": "application/json", "Accept": "application/json"]
-        if let token, !token.isEmpty {
-            // Upstream docs: Authorization: {token} (not Bearer)
-            h["Authorization"] = token
-            h["token"] = token
-        }
-        return h
+    struct FolderNode: Identifiable, Hashable {
+        var id: String { path }
+        var path: String
+        var name: String
+        var children: [FolderNode]?
+    }
+
+    struct AttachmentItem: Identifiable, Hashable {
+        var id: String { path }
+        var path: String
+        var name: String
+        var size: Int?
     }
 
     private func normalizeBase(_ base: String) -> String {
         var b = base.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Users sometimes paste the webgui URL; strip it for API base.
+        if b.hasSuffix("/webgui") { b = String(b.dropLast("/webgui".count)) }
+        if b.hasSuffix("/webgui/") { b = String(b.dropLast("/webgui/".count)) }
         while b.hasSuffix("/") { b.removeLast() }
         return b
     }
 
-    /// Login → token string.
-    /// Upstream expects `credentials` + `password`, and `client=webgui` (login is webgui-restricted).
+    private func authHeaders(token: String?) -> [String: String] {
+        var h: [String: String] = [
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        ]
+        if let token, !token.isEmpty {
+            // Both forms observed working on this deployment.
+            h["token"] = token
+            h["Authorization"] = "Bearer \(token)"
+        }
+        return h
+    }
+
+    /// Low-level request that always builds URL with query items.
+    private func request(
+        baseURL: String,
+        path: String,
+        method: String,
+        token: String? = nil,
+        query: [URLQueryItem] = [],
+        body: Data? = nil
+    ) async throws -> (Data, HTTPURLResponse) {
+        let base = normalizeBase(baseURL)
+        guard var comps = URLComponents(string: base + (path.hasPrefix("/") ? path : "/" + path)) else {
+            throw NetworkError.invalidURL
+        }
+        if !query.isEmpty {
+            comps.queryItems = (comps.queryItems ?? []) + query
+        }
+        guard let url = comps.url else { throw NetworkError.invalidURL }
+
+        var req = URLRequest(url: url)
+        req.httpMethod = method
+        req.httpBody = body
+        req.timeoutInterval = 30
+        for (k, v) in authHeaders(token: token) {
+            req.setValue(v, forHTTPHeaderField: k)
+        }
+
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        guard let http = resp as? HTTPURLResponse else { throw NetworkError.invalidResponse }
+        return (data, http)
+    }
+
+    private func parseBusinessError(_ data: Data) -> String? {
+        guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+        if let status = obj["status"] as? Bool, status == false {
+            let msg = (obj["message"] as? String) ?? "请求失败"
+            if let details = obj["details"] as? String, !details.isEmpty {
+                return "\(msg)（\(details)）"
+            }
+            if let dataStr = obj["data"] as? String, !dataStr.isEmpty {
+                return "\(msg)（\(dataStr)）"
+            }
+            return msg
+        }
+        return nil
+    }
+
+    // MARK: - Login
+
+    /// Login → JWT string.
+    /// Critical: `client=webgui` **must** be on the query string or server returns 314 Client restricted.
     func login(baseURL: String, username: String, password: String) async throws -> String {
+        let cred = username.trimmingCharacters(in: .whitespacesAndNewlines)
+        let pass = password
+        guard !cred.isEmpty, !pass.isEmpty else {
+            throw NetworkError.message("请填写用户名和密码")
+        }
+
         let payload: [String: Any] = [
-            "credentials": username,
-            "password": password
+            "credentials": cred,
+            "password": pass
         ]
         let body = try JSONSerialization.data(withJSONObject: payload)
-        let (data, http) = try await client.data(
-            base: normalizeBase(baseURL),
-            path: "/api/user/login",
-            method: "POST",
-            headers: headers(token: nil),
-            body: body,
-            query: [
-                .init(name: "client", value: "webgui"),
-                .init(name: "lang", value: "zh-CN")
-            ]
-        )
+
+        // Build URL with client in the string so it cannot be dropped.
+        let base = normalizeBase(baseURL)
+        guard let url = URL(string: base + "/api/user/login?client=webgui&lang=zh-CN") else {
+            throw NetworkError.invalidURL
+        }
+
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.httpBody = body
+        req.timeoutInterval = 30
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue("application/json", forHTTPHeaderField: "Accept")
+        // Some reverse proxies inspect User-Agent; mimic browser webgui lightly.
+        req.setValue("XINTool/1.0 (webgui)", forHTTPHeaderField: "User-Agent")
+
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        guard let http = resp as? HTTPURLResponse else { throw NetworkError.invalidResponse }
+
+        if let biz = parseBusinessError(data) {
+            throw NetworkError.message(biz)
+        }
         guard (200..<300).contains(http.statusCode) else {
             throw NetworkClient.httpError(status: http.statusCode, body: data)
         }
+
         if let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-            // status:false → business error
-            if let status = obj["status"] as? Bool, status == false {
-                let msg = (obj["message"] as? String) ?? "登录失败"
-                let details = (obj["details"] as? String).map { " (\($0))" } ?? ""
-                throw NetworkError.message(msg + details)
-            }
-            if let token = obj["data"] as? String, !token.isEmpty { return token }
             if let dataObj = obj["data"] as? [String: Any] {
                 if let token = dataObj["token"] as? String, !token.isEmpty { return token }
-                if let token = dataObj["Token"] as? String, !token.isEmpty { return token }
             }
+            if let token = obj["data"] as? String, !token.isEmpty { return token }
             if let token = obj["token"] as? String, !token.isEmpty { return token }
         }
         throw NetworkError.message("登录成功但未返回 token")
     }
 
-    func listNotes(baseURL: String, token: String, page: Int = 1, pageSize: Int = 50) async throws -> [NoteListItem] {
-        let (data, http) = try await client.data(
-            base: normalizeBase(baseURL),
+    // MARK: - Notes
+
+    func listNotes(
+        baseURL: String,
+        token: String,
+        vault: String,
+        page: Int = 1,
+        pageSize: Int = 50
+    ) async throws -> [NoteListItem] {
+        let vaultName = vault.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !vaultName.isEmpty else { throw NetworkError.message("请填写仓库名 vault（如 zxin）") }
+
+        let (data, http) = try await request(
+            baseURL: baseURL,
             path: "/api/notes",
             method: "GET",
-            headers: headers(token: token),
+            token: token,
             query: [
+                .init(name: "vault", value: vaultName),
                 .init(name: "page", value: "\(page)"),
-                .init(name: "page_size", value: "\(pageSize)")
+                .init(name: "page_size", value: "\(pageSize)"),
+                .init(name: "pageSize", value: "\(pageSize)")
             ]
         )
+        if let biz = parseBusinessError(data) { throw NetworkError.message(biz) }
         guard (200..<300).contains(http.statusCode) else {
             throw NetworkClient.httpError(status: http.statusCode, body: data)
         }
-        // Flexible parse
-        if let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
-            let payload = obj["data"]
-            var listAny: [[String: Any]] = []
-            if let arr = payload as? [[String: Any]] {
-                listAny = arr
-            } else if let dict = payload as? [String: Any], let arr = dict["list"] as? [[String: Any]] {
-                listAny = arr
-            }
-            return listAny.compactMap { dict in
-                guard let raw = try? JSONSerialization.data(withJSONObject: dict) else { return nil }
-                return try? JSONDecoder().decode(NoteListItem.self, from: raw)
-            }
-        }
-        return []
+        return parseNoteList(data)
     }
 
-    func getNote(baseURL: String, token: String, path: String) async throws -> String {
-        let (data, http) = try await client.data(
-            base: normalizeBase(baseURL),
+    func getNote(baseURL: String, token: String, vault: String, path: String) async throws -> String {
+        let (data, http) = try await request(
+            baseURL: baseURL,
             path: "/api/note",
             method: "GET",
-            headers: headers(token: token),
-            query: [.init(name: "path", value: path)]
+            token: token,
+            query: [
+                .init(name: "vault", value: vault),
+                .init(name: "path", value: path)
+            ]
         )
+        if let biz = parseBusinessError(data) { throw NetworkError.message(biz) }
         guard (200..<300).contains(http.statusCode) else {
             throw NetworkClient.httpError(status: http.statusCode, body: data)
         }
@@ -162,92 +246,82 @@ actor FastNoteSyncService {
         return String(data: data, encoding: .utf8) ?? ""
     }
 
-    func saveNote(baseURL: String, token: String, path: String, content: String) async throws {
-        let payload: [String: Any] = ["path": path, "content": content]
+    func saveNote(baseURL: String, token: String, vault: String, path: String, content: String) async throws {
+        let payload: [String: Any] = [
+            "vault": vault,
+            "path": path,
+            "content": content
+        ]
         let body = try JSONSerialization.data(withJSONObject: payload)
-        let (data, http) = try await client.data(
-            base: normalizeBase(baseURL),
+        let (data, http) = try await request(
+            baseURL: baseURL,
             path: "/api/note",
             method: "POST",
-            headers: headers(token: token),
+            token: token,
             body: body
         )
+        if let biz = parseBusinessError(data) { throw NetworkError.message(biz) }
         guard (200..<300).contains(http.statusCode) else {
             throw NetworkClient.httpError(status: http.statusCode, body: data)
         }
-        if let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-           let status = obj["status"] as? Bool, status == false {
-            throw NetworkError.message((obj["message"] as? String) ?? "保存失败")
-        }
     }
 
-    // MARK: Folders & attachments
-
-    struct FolderNode: Identifiable, Hashable {
-        var id: String { path }
-        var path: String
-        var name: String
-        /// `nil` = leaf (required by `OutlineGroup`).
-        var children: [FolderNode]?
-    }
-
-    struct AttachmentItem: Identifiable, Hashable {
-        var id: String { path }
-        var path: String
-        var name: String
-        var size: Int?
-    }
-
-    func folderTree(baseURL: String, token: String) async throws -> [FolderNode] {
-        let (data, http) = try await client.data(
-            base: normalizeBase(baseURL),
+    func folderTree(baseURL: String, token: String, vault: String) async throws -> [FolderNode] {
+        let (data, http) = try await request(
+            baseURL: baseURL,
             path: "/api/folder/tree",
             method: "GET",
-            headers: headers(token: token)
+            token: token,
+            query: [.init(name: "vault", value: vault)]
         )
-        guard (200..<300).contains(http.statusCode) else {
-            throw NetworkClient.httpError(status: http.statusCode, body: data)
+        if let biz = parseBusinessError(data) {
+            // Folder APIs may be optional — return empty instead of failing list
+            if biz.contains("Not Found") { return [] }
+            throw NetworkError.message(biz)
         }
-        guard let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            return []
-        }
-        let root = obj["data"]
-        return parseFolderNodes(root, parentPath: "")
+        guard (200..<300).contains(http.statusCode) else { return [] }
+        guard let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { return [] }
+        return parseFolderNodes(obj["data"], parentPath: "")
     }
 
-    func notesInFolder(baseURL: String, token: String, path: String, page: Int = 1) async throws -> [NoteListItem] {
-        let (data, http) = try await client.data(
-            base: normalizeBase(baseURL),
+    func notesInFolder(baseURL: String, token: String, vault: String, path: String, page: Int = 1) async throws -> [NoteListItem] {
+        let (data, http) = try await request(
+            baseURL: baseURL,
             path: "/api/folder/notes",
             method: "GET",
-            headers: headers(token: token),
+            token: token,
             query: [
+                .init(name: "vault", value: vault),
                 .init(name: "path", value: path),
                 .init(name: "page", value: "\(page)"),
                 .init(name: "page_size", value: "50")
             ]
         )
+        if let biz = parseBusinessError(data) { throw NetworkError.message(biz) }
         guard (200..<300).contains(http.statusCode) else {
             throw NetworkClient.httpError(status: http.statusCode, body: data)
         }
         return parseNoteList(data)
     }
 
-    func filesInFolder(baseURL: String, token: String, path: String) async throws -> [AttachmentItem] {
-        let (data, http) = try await client.data(
-            base: normalizeBase(baseURL),
+    func filesInFolder(baseURL: String, token: String, vault: String, path: String) async throws -> [AttachmentItem] {
+        let (data, http) = try await request(
+            baseURL: baseURL,
             path: "/api/folder/files",
             method: "GET",
-            headers: headers(token: token),
+            token: token,
             query: [
+                .init(name: "vault", value: vault),
                 .init(name: "path", value: path),
                 .init(name: "page", value: "1"),
                 .init(name: "page_size", value: "50")
             ]
         )
-        guard (200..<300).contains(http.statusCode) else {
-            throw NetworkClient.httpError(status: http.statusCode, body: data)
+        if let biz = parseBusinessError(data) {
+            if biz.contains("Not Found") || biz.contains("Not logged") { return [] }
+            throw NetworkError.message(biz)
         }
+        guard (200..<300).contains(http.statusCode) else { return [] }
         guard let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { return [] }
         var listAny: [[String: Any]] = []
         if let arr = obj["data"] as? [[String: Any]] {
@@ -256,13 +330,14 @@ actor FastNoteSyncService {
             listAny = arr
         }
         return listAny.compactMap { dict in
-            let p = (dict["path"] as? String) ?? (dict["Path"] as? String) ?? ""
+            let p = (dict["path"] as? String) ?? ""
             guard !p.isEmpty else { return nil }
             let name = (dict["name"] as? String) ?? (p as NSString).lastPathComponent
-            let size = dict["size"] as? Int
-            return AttachmentItem(path: p, name: name, size: size)
+            return AttachmentItem(path: p, name: name, size: dict["size"] as? Int)
         }
     }
+
+    // MARK: - Parse helpers
 
     private func parseNoteList(_ data: Data) -> [NoteListItem] {
         guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return [] }
@@ -281,7 +356,6 @@ actor FastNoteSyncService {
 
     private func parseFolderNodes(_ node: Any?, parentPath: String) -> [FolderNode] {
         guard let node else { return [] }
-        // data may be array of folders or nested { name, path, children }
         if let arr = node as? [Any] {
             return arr.flatMap { parseFolderNodes($0, parentPath: parentPath) }
         }
@@ -293,12 +367,8 @@ actor FastNoteSyncService {
         }
         let childrenRaw = dict["children"] ?? dict["Children"] ?? dict["folders"]
         let children = parseFolderNodes(childrenRaw, parentPath: path)
-        if path.isEmpty && name.isEmpty {
-            return children
-        }
-        if name.isEmpty && !children.isEmpty {
-            return children
-        }
+        if path.isEmpty && name.isEmpty { return children }
+        if name.isEmpty && !children.isEmpty { return children }
         return [
             FolderNode(
                 path: path,

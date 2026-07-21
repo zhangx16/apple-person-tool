@@ -89,6 +89,10 @@ final class AppSettings: ObservableObject {
     @Published var fastNoteToken: String {
         didSet { KeychainStore.set(fastNoteToken, for: Keys.fastNoteToken) }
     }
+    /// Note vault name (required by Fast Note Sync REST, e.g. `zxin`).
+    @Published var fastNoteVault: String {
+        didSet { UserDefaults.standard.set(fastNoteVault, forKey: Keys.fastNoteVault) }
+    }
 
     /// Optional Next Terminal / web SSH portal URL.
     @Published var nextTerminalURL: String {
@@ -210,6 +214,7 @@ final class AppSettings: ObservableObject {
         static let fastNoteUsername = "fastNoteUsername"
         static let fastNotePassword = "fastNotePassword"
         static let fastNoteToken = "fastNoteToken"
+        static let fastNoteVault = "fastNoteVault"
         static let nextTerminalURL = "nextTerminalURL"
         static let cloudflareAPIToken = "cloudflareAPIToken"
         static let cloudflareEmail = "cloudflareEmail"
@@ -278,6 +283,7 @@ final class AppSettings: ObservableObject {
         fastNoteUsername = d.string(forKey: Keys.fastNoteUsername) ?? ""
         fastNotePassword = KeychainStore.get(Keys.fastNotePassword) ?? ""
         fastNoteToken = KeychainStore.get(Keys.fastNoteToken) ?? ""
+        fastNoteVault = d.string(forKey: Keys.fastNoteVault) ?? "zxin"
         nextTerminalURL = d.string(forKey: Keys.nextTerminalURL) ?? ""
         cloudflareAPIToken = KeychainStore.get(Keys.cloudflareAPIToken) ?? ""
         cloudflareEmail = d.string(forKey: Keys.cloudflareEmail) ?? ""

@@ -678,18 +678,24 @@ struct FastNoteSettingsPage: View {
                 TextField("Base URL", text: $settings.fastNoteBaseURL)
                     .textInputAutocapitalization(.never)
                     .keyboardType(.URL)
-                TextField("用户名", text: $settings.fastNoteUsername)
+                TextField("用户名 / 邮箱", text: $settings.fastNoteUsername)
                     .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
                 SecureField("密码", text: $settings.fastNotePassword)
                     .privacySensitive()
+                TextField("仓库 vault", text: $settings.fastNoteVault)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
             } header: {
                 Text("Fast Note Sync Service")
             } footer: {
-                Text("与 Obsidian「Fast Note Sync」插件共用同一后端。App 通过 REST API 读写笔记，无需安装 Obsidian。文档：haierkeys/fast-note-sync-service。")
+                Text("Base URL 用 https://sync.996616.xyz（不要带 /webgui）。登录必须带 client=webgui；仓库名默认 zxin。")
             }
             Section {
                 Button("登录并缓存 Token") {
                     Task {
+                        // Clear stale token so we always hit login with webgui client.
+                        settings.fastNoteToken = ""
                         do {
                             let token = try await FastNoteSyncService.shared.login(
                                 baseURL: settings.fastNoteBaseURL,
@@ -697,7 +703,14 @@ struct FastNoteSettingsPage: View {
                                 password: settings.fastNotePassword
                             )
                             settings.fastNoteToken = token
-                            probe = "登录成功"
+                            // Quick list probe so user knows vault is correct
+                            let notes = try await FastNoteSyncService.shared.listNotes(
+                                baseURL: settings.fastNoteBaseURL,
+                                token: token,
+                                vault: settings.fastNoteVault,
+                                pageSize: 3
+                            )
+                            probe = "登录成功 · vault=\(settings.fastNoteVault) · 笔记 \(notes.count)+ 条"
                             Haptics.success()
                         } catch {
                             probe = error.localizedDescription

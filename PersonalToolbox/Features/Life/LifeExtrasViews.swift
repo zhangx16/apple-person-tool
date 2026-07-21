@@ -453,9 +453,11 @@ struct FastNoteHomeView: View {
         isLoading = true
         defer { isLoading = false }
         do {
+            let vault = settings.fastNoteVault
             async let tree = FastNoteSyncService.shared.folderTree(
                 baseURL: settings.fastNoteBaseURL,
-                token: settings.fastNoteToken
+                token: settings.fastNoteToken,
+                vault: vault
             )
             folders = (try? await tree) ?? []
             await reloadFolderContent()
@@ -467,16 +469,19 @@ struct FastNoteHomeView: View {
     private func reloadFolderContent() async {
         let token = settings.fastNoteToken
         let base = settings.fastNoteBaseURL
+        let vault = settings.fastNoteVault
         do {
             if currentFolder.isEmpty {
-                notes = try await FastNoteSyncService.shared.listNotes(baseURL: base, token: token)
+                notes = try await FastNoteSyncService.shared.listNotes(
+                    baseURL: base, token: token, vault: vault
+                )
                 files = []
             } else {
                 notes = try await FastNoteSyncService.shared.notesInFolder(
-                    baseURL: base, token: token, path: currentFolder
+                    baseURL: base, token: token, vault: vault, path: currentFolder
                 )
                 files = (try? await FastNoteSyncService.shared.filesInFolder(
-                    baseURL: base, token: token, path: currentFolder
+                    baseURL: base, token: token, vault: vault, path: currentFolder
                 )) ?? []
             }
         } catch {
@@ -504,6 +509,7 @@ struct FastNoteHomeView: View {
             noteBody = try await FastNoteSyncService.shared.getNote(
                 baseURL: settings.fastNoteBaseURL,
                 token: settings.fastNoteToken,
+                vault: settings.fastNoteVault,
                 path: path
             )
         } catch {
@@ -516,6 +522,7 @@ struct FastNoteHomeView: View {
             try await FastNoteSyncService.shared.saveNote(
                 baseURL: settings.fastNoteBaseURL,
                 token: settings.fastNoteToken,
+                vault: settings.fastNoteVault,
                 path: path,
                 content: noteBody
             )

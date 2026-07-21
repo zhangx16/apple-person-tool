@@ -55,8 +55,11 @@ final class CheckinViewModel: ObservableObject {
     }
 
     func load(settings: AppSettings) async {
-        let base = settings.checkinBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        let token = settings.checkinAPIToken.trimmingCharacters(in: .whitespacesAndNewlines)
+        var base = settings.checkinBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        while base.hasSuffix("/") { base.removeLast() }
+        let token = settings.checkinAPIToken
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "\u{00a0}", with: "")
         guard !base.isEmpty, !token.isEmpty else {
             errorMessage = "请先在「设置 → 签到服务」填写 Base URL 与 API Token"
             summary = nil

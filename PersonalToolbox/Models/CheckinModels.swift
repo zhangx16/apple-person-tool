@@ -130,8 +130,36 @@ struct CheckinTelegramMeta: Codable, Equatable {
 struct CheckinEmbykeeperMeta: Codable, Equatable {
     var installed: Bool?
     var configPresent: Bool?
+    /// Session file count (server may send Int, or historically a [String] list).
     var sessionFiles: Int?
     var sessionStringCount: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case installed, configPresent, sessionFiles, sessionStringCount
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        installed = try c.decodeIfPresent(Bool.self, forKey: .installed)
+        configPresent = try c.decodeIfPresent(Bool.self, forKey: .configPresent)
+        sessionStringCount = try c.decodeIfPresent(Int.self, forKey: .sessionStringCount)
+        // Tolerate both Int count and [String] filenames from older server builds.
+        if let n = try? c.decodeIfPresent(Int.self, forKey: .sessionFiles) {
+            sessionFiles = n
+        } else if let arr = try? c.decodeIfPresent([String].self, forKey: .sessionFiles) {
+            sessionFiles = arr.count
+        } else {
+            sessionFiles = nil
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encodeIfPresent(installed, forKey: .installed)
+        try c.encodeIfPresent(configPresent, forKey: .configPresent)
+        try c.encodeIfPresent(sessionFiles, forKey: .sessionFiles)
+        try c.encodeIfPresent(sessionStringCount, forKey: .sessionStringCount)
+    }
 }
 
 struct CheckinHealth: Codable, Equatable {

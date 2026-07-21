@@ -147,4 +147,22 @@ actor CheckinService {
             method: "DELETE"
         )
     }
+
+    /// Remove one phone from a single bot project (keeps the TG account for other bots).
+    func removeTelegramBotPhone(
+        baseURL: String,
+        apiToken: String,
+        botUsername: String,
+        phone: String
+    ) async throws {
+        let user = botUsername.replacingOccurrences(of: "@", with: "")
+        let u = user.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? user
+        let p = phone.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? phone
+        _ = try await requestData(
+            baseURL: baseURL,
+            apiToken: apiToken,
+            path: "/api/v1/telegram/bots/\(u)/phones/\(p)",
+            method: "DELETE"
+        )
+    }
 }

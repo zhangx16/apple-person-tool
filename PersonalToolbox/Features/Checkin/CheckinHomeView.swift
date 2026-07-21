@@ -794,20 +794,45 @@ struct CheckinProjectDetailView: View {
                     labelChip("剩余", left)
                 }
             }
+            // Multi-account: always allow removing a single account from this project.
             HStack(spacing: 12) {
                 if !working.isTelegram {
-                    Button("编辑") { editingWebsite = account }
-                        .font(.caption.weight(.semibold))
+                    Button {
+                        editingWebsite = account
+                    } label: {
+                        Label("编辑", systemImage: "pencil")
+                    }
+                    .font(.caption.weight(.semibold))
                 }
                 Spacer()
-                Button("删除", role: .destructive) {
-                    accountPendingDelete = account
+                if working.accountList.count > 1 || !working.isTelegram {
+                    Button(role: .destructive) {
+                        accountPendingDelete = account
+                    } label: {
+                        Label("删除此账号", systemImage: "trash")
+                    }
+                    .font(.caption.weight(.semibold))
                 }
-                .font(.caption.weight(.semibold))
             }
-            .padding(.top, 2)
+            .padding(.top, 4)
         }
         .appCard()
+        .contextMenu {
+            if !working.isTelegram {
+                Button {
+                    editingWebsite = account
+                } label: {
+                    Label("编辑账号", systemImage: "pencil")
+                }
+            }
+            if working.accountList.count > 1 || !working.isTelegram {
+                Button(role: .destructive) {
+                    accountPendingDelete = account
+                } label: {
+                    Label("删除此账号", systemImage: "trash")
+                }
+            }
+        }
     }
 
     private func labelChip(_ k: String, _ v: String) -> some View {
@@ -877,36 +902,48 @@ struct CheckinProjectDetailView: View {
         }
         do {
             if working.isTelegram {
-                // Prefer phone-level delete when available; otherwise delete whole bot.
-                if let phone = account.phone, !phone.isEmpty {
-                    try await CheckinService.shared.deleteTelegramPhone(
-                        baseURL: creds.base,
-                        apiToken: creds.token,
-                        phone: phone
-                    )
-                } else if let user = working.botUsername {
-                    try await CheckinService.shared.deleteTelegramBot(
-                        baseURL: creds.base,
-                        apiToken: creds.token,
-                        botUsername: user
-                    )
-                    onChanged?()
-                    dismiss()
+                // Remove this phone from **this bot only** (other bots keep the account).
+                let phone = account.phone?.trimmingCharacters(in: .whitespacesAndNewlines)
+                    ?? account.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard let user = working.botUsername, !user.isEmpty, !phone.isEmpty else {
+                    banner = "无法识别要删除的账号"
                     return
                 }
+                try await CheckinService.shared.removeTelegramBotPhone(
+                    baseURL: creds.base,
+                    apiToken: creds.token,
+                    botUsername: user,
+                    phone: phone
+                )
             } else {
+                // Website: delete one account id under this provider project.
                 try await CheckinService.shared.deleteAccount(
                     baseURL: creds.base,
                     apiToken: creds.token,
                     id: account.id
                 )
             }
-            working.accounts = working.accountList.filter { $0.id != account.id }
-            if working.accountList.isEmpty {
+            var nextAccounts = working.accountList.filter { $0.id != account.id }
+            // Also drop by phone for TG result rows with different id shapes.
+            if working.isTelegram, let phone = account.phone, !phone.isEmpty {
+                nextAccounts = nextAccounts.filter { ($0.phone ?? "") != phone }
+            }
+            working.accounts = nextAccounts
+            working.accountCount = nextAccounts.count
+            recomputeWorkingCounts(from: nextAccounts)
+            if nextAccounts.isEmpty {
+                // Last account removed: drop the whole project shell when TG bot has none left.
+                if working.isTelegram, let user = working.botUsername {
+                    try? await CheckinService.shared.deleteTelegramBot(
+                        baseURL: creds.base,
+                        apiToken: creds.token,
+                        botUsername: user
+                    )
+                }
                 onChanged?()
                 dismiss()
             } else {
-                banner = "已删除 \(account.displayName)"
+                banner = "已从本项目移除 \(account.displayName)"
                 onChanged?()
             }
             Haptics.success()
@@ -914,6 +951,44 @@ struct CheckinProjectDetailView: View {
             banner = (error as? NetworkError)?.errorDescription ?? error.localizedDescription
             Haptics.error()
         }
+    }
+
+    private func recomputeWorkingCounts(from accounts: [CheckinItem]) {
+        var success = 0, already = 0, failed = 0, skipped = 0, unknown = 0, pending = 0
+        for a in accounts {
+            switch a.statusKind {
+            case .success: success += 1
+            case .already: already += 1
+            case .failed: failed += 1
+            case .skipped: skipped += 1
+            case .pending: pending += 1
+            case .unknown: unknown += 1
+            }
+        }
+        working.counts = CheckinCounts(
+            total: accounts.count,
+            projectTotal: 1,
+            success: success,
+            already: already,
+            failed: failed,
+            skipped: skipped,
+            unknown: unknown,
+            pending: pending,
+            healthy: success + already
+        )
+        if failed > 0 {
+            working.status = "failed"
+        } else if accounts.allSatisfy({ $0.statusKind == .skipped }) {
+            working.status = "skipped"
+        } else if accounts.allSatisfy({ $0.statusKind == .already }) {
+            working.status = "already"
+        } else if accounts.allSatisfy({ $0.statusKind == .success || $0.statusKind == .already }) {
+            working.status = "success"
+        }
+        working.message = "\(accounts.count) 账号 · \(success + already) 正常 · \(failed) 失败"
+        working.subtitle = working.isTelegram
+            ? working.displaySubtitle
+            : "\(accounts.count) 个账号"
     }
 
     private func saveBotName() async {

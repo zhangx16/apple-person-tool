@@ -1,7 +1,7 @@
 import AppIntents
 import Foundation
 
-// MARK: - App Intents (Shortcuts / Siri) — Xcode 15.4 / iOS 17 SDK
+// MARK: - App Intents (Shortcuts)
 
 @available(iOS 16.0, *)
 struct OpenOverviewIntent: AppIntent {
@@ -68,42 +68,41 @@ struct RefreshStatusIntent: AppIntent {
 
 @available(iOS 16.0, *)
 struct ToolboxAppShortcuts: AppShortcutsProvider {
+    @AppShortcutsBuilder
     static var appShortcuts: [AppShortcut] {
-        [
-            AppShortcut(
-                intent: OpenOverviewIntent(),
-                phrases: [
-                    "打开 \(.applicationName) 总览",
-                    "打开总览 \(.applicationName)"
-                ],
-                shortTitle: "总览",
-                systemImageName: "square.grid.2x2"
-            ),
-            AppShortcut(
-                intent: OpenCheckinIntent(),
-                phrases: [
-                    "打开 \(.applicationName) 签到",
-                    "查看签到 \(.applicationName)"
-                ],
-                shortTitle: "签到",
-                systemImageName: "checkmark.seal"
-            ),
-            AppShortcut(
-                intent: CaptureClipboardIntent(),
-                phrases: [
-                    "捕获剪贴板 \(.applicationName)"
-                ],
-                shortTitle: "捕获剪贴板",
-                systemImageName: "doc.on.clipboard"
-            ),
-            AppShortcut(
-                intent: RefreshStatusIntent(),
-                phrases: [
-                    "刷新 \(.applicationName) 状态"
-                ],
-                shortTitle: "刷新状态",
-                systemImageName: "heart.text.square"
-            )
-        ]
+        AppShortcut(
+            intent: OpenOverviewIntent(),
+            phrases: [
+                "打开 \(.applicationName) 总览",
+                "打开总览 \(.applicationName)"
+            ],
+            shortTitle: "总览",
+            systemImageName: "square.grid.2x2"
+        )
+        AppShortcut(
+            intent: OpenCheckinIntent(),
+            phrases: [
+                "打开 \(.applicationName) 签到",
+                "查看签到 \(.applicationName)"
+            ],
+            shortTitle: "签到",
+            systemImageName: "checkmark.seal"
+        )
+        AppShortcut(
+            intent: CaptureClipboardIntent(),
+            phrases: [
+                "捕获剪贴板 \(.applicationName)"
+            ],
+            shortTitle: "捕获剪贴板",
+            systemImageName: "doc.on.clipboard"
+        )
+        AppShortcut(
+            intent: RefreshStatusIntent(),
+            phrases: [
+                "刷新 \(.applicationName) 状态"
+            ],
+            shortTitle: "刷新状态",
+            systemImageName: "heart.text.square"
+        )
     }
 }

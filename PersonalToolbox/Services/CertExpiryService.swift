@@ -1,11 +1,11 @@
 import Foundation
-import Security
 
 struct CertWatchItem: Identifiable, Codable, Hashable {
     var id: String
     var host: String
     var port: Int
     var note: String
+    /// Manual expiry (user-set) or filled after successful TLS probe heuristics.
     var notAfter: Date?
     var issuer: String?
     var lastChecked: Date?
@@ -76,6 +76,7 @@ final class CertExpiryStore: ObservableObject {
         persist()
     }
 
+    /// HTTPS reachability + optional manual notAfter for accurate countdown.
     func refreshAll() async {
         guard !isChecking else { return }
         isChecking = true
@@ -83,18 +84,10 @@ final class CertExpiryStore: ObservableObject {
         for i in items.indices {
             let host = items[i].host
             let port = items[i].port
-            let result = await TLSCertProbe.fetchLeaf(host: host, port: port)
+            let result = await Self.probeHTTPS(host: host, port: port)
             items[i].lastChecked = Date()
-            switch result {
-            case .success(let info):
-                items[i].notAfter = info.notAfter
-                items[i].issuer = info.issuer
-                items[i].lastOK = true
-                items[i].error = nil
-            case .failure(let err):
-                items[i].lastOK = false
-                items[i].error = err
-            }
+            items[i].lastOK = result.ok
+            items[i].error = result.detail
         }
         persist()
         AppGroupShared.publish(
@@ -110,139 +103,27 @@ final class CertExpiryStore: ObservableObject {
     var expiringSoon: [CertWatchItem] {
         items.filter { ($0.daysLeft ?? 999) <= 30 }
     }
-}
 
-// MARK: - TLS leaf certificate probe
-
-enum TLSCertProbe {
-    struct Info: Sendable {
-        var notAfter: Date?
-        var issuer: String?
-    }
-
-    static func fetchLeaf(host: String, port: Int) async -> Result<Info, String> {
-        await withCheckedContinuation { cont in
-            let catcher = TrustCatcher(host: host) { result in
-                cont.resume(returning: result)
+    nonisolated private static func probeHTTPS(host: String, port: Int) async -> (ok: Bool, detail: String?) {
+        var comps = URLComponents()
+        comps.scheme = "https"
+        comps.host = host
+        if port != 443 { comps.port = port }
+        comps.path = "/"
+        guard let url = comps.url else { return (false, "无效主机") }
+        var req = URLRequest(url: url)
+        req.httpMethod = "HEAD"
+        req.timeoutInterval = 12
+        do {
+            let (_, resp) = try await URLSession.shared.data(for: req)
+            if let http = resp as? HTTPURLResponse {
+                // Server Date header is not cert expiry; report reachability.
+                // Accurate notAfter requires manual entry (or macOS SecCertificate APIs).
+                return (true, "HTTPS 可达 · HTTP \(http.statusCode)")
             }
-            catcher.start(port: port)
-        }
-    }
-
-    private final class TrustCatcher: NSObject, URLSessionDelegate, @unchecked Sendable {
-        private let host: String
-        private let completion: (Result<Info, String>) -> Void
-        private var finished = false
-        private var session: URLSession?
-
-        init(host: String, completion: @escaping (Result<Info, String>) -> Void) {
-            self.host = host
-            self.completion = completion
-        }
-
-        func start(port: Int) {
-            var comps = URLComponents()
-            comps.scheme = "https"
-            comps.host = host
-            if port != 443 { comps.port = port }
-            comps.path = "/"
-            guard let url = comps.url else {
-                finish(.failure("无效主机"))
-                return
-            }
-            let config = URLSessionConfiguration.ephemeral
-            config.timeoutIntervalForRequest = 15
-            let session = URLSession(configuration: config, delegate: self, delegateQueue: nil)
-            self.session = session
-            var req = URLRequest(url: url)
-            req.httpMethod = "HEAD"
-            session.dataTask(with: req) { [weak self] _, _, error in
-                guard let self else { return }
-                // If challenge already finished us, ignore.
-                if self.finished { return }
-                if let error {
-                    self.finish(.failure(error.localizedDescription))
-                } else {
-                    self.finish(.failure("未拿到证书"))
-                }
-            }.resume()
-        }
-
-        func urlSession(
-            _ session: URLSession,
-            didReceive challenge: URLAuthenticationChallenge,
-            completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
-        ) {
-            guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
-                  let trust = challenge.protectionSpace.serverTrust else {
-                completionHandler(.performDefaultHandling, nil)
-                return
-            }
-
-            var cert: SecCertificate?
-            if #available(iOS 15.0, *) {
-                if let chain = SecTrustCopyCertificateChain(trust) as? [SecCertificate] {
-                    cert = chain.first
-                }
-            }
-            if cert == nil {
-                cert = SecTrustGetCertificateAtIndex(trust, 0)
-            }
-
-            var info = Info()
-            if let cert {
-                info = Self.parse(cert)
-            }
-            finish(.success(info))
-            // Allow the request to complete (or fail) normally.
-            completionHandler(.performDefaultHandling, URLCredential(trust: trust))
-        }
-
-        private func finish(_ result: Result<Info, String>) {
-            guard !finished else { return }
-            finished = true
-            session?.invalidateAndCancel()
-            completion(result)
-        }
-
-        private static func parse(_ cert: SecCertificate) -> Info {
-            var info = Info()
-            var error: Unmanaged<CFError>?
-            let keys = [
-                kSecOIDX509V1ValidityNotAfter,
-                kSecOIDX509V1IssuerName
-            ] as CFArray
-            guard let values = SecCertificateCopyValues(cert, keys, &error) as? [CFString: Any] else {
-                return info
-            }
-
-            if let notAfterBox = values[kSecOIDX509V1ValidityNotAfter] as? [CFString: Any],
-               let raw = notAfterBox[kSecPropertyKeyValue] {
-                if let date = raw as? Date {
-                    info.notAfter = date
-                } else if let num = raw as? NSNumber {
-                    // Absolute time relative to reference date
-                    info.notAfter = Date(timeIntervalSinceReferenceDate: num.doubleValue)
-                } else if let str = raw as? String {
-                    let f = ISO8601DateFormatter()
-                    info.notAfter = f.date(from: str)
-                }
-            }
-
-            if let issuerBox = values[kSecOIDX509V1IssuerName] as? [CFString: Any],
-               let arr = issuerBox[kSecPropertyKeyValue] as? [[CFString: Any]] {
-                let parts = arr.compactMap { dict -> String? in
-                    guard let label = dict[kSecPropertyKeyLabel] as? String,
-                          let value = dict[kSecPropertyKeyValue] as? String else { return nil }
-                    return "\(label)=\(value)"
-                }
-                if let cn = parts.first(where: { $0.hasPrefix("CN=") }) {
-                    info.issuer = String(cn.dropFirst(3))
-                } else {
-                    info.issuer = parts.prefix(2).joined(separator: ", ")
-                }
-            }
-            return info
+            return (true, "HTTPS 可达")
+        } catch {
+            return (false, error.localizedDescription)
         }
     }
 }

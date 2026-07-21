@@ -794,6 +794,7 @@ struct BackupExportView: View {
     }
 }
 
+@MainActor
 enum SettingsBackup {
     static func exportJSON(settings: AppSettings) -> String {
         let dict: [String: Any] = [

@@ -516,6 +516,7 @@
 				000000000000000000000316 /* IPCheck */,
 				000000000000000000000308 /* Download */,
 				000000000000000000000309 /* Settings */,
+				0000000000000000000005FE /* LifeExtrasViews.swift */,
 			);
 			path = Features;
 			sourceTree = "<group>";

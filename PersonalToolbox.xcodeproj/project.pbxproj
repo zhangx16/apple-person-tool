@@ -134,7 +134,7 @@
 		0000000000000000000005F8 /* CertExpiryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CertExpiryService.swift; sourceTree = "<group>"; };
 		0000000000000000000005FA /* FastNoteSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastNoteSyncService.swift; sourceTree = "<group>"; };
 		0000000000000000000005FC /* SSHHostStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHHostStore.swift; sourceTree = "<group>"; };
-		0000000000000000000005FE /* LifeExtrasViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Features/Life/LifeExtrasViews.swift; sourceTree = "<group>"; };
+		0000000000000000000005FE /* LifeExtrasViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Life/LifeExtrasViews.swift; sourceTree = "<group>"; };
 		0000000000000000000005F0 /* OrientationHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrientationHelper.swift; sourceTree = "<group>"; };
 		0000000000000000000005E0 /* OverviewHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewHomeView.swift; sourceTree = "<group>"; };
 		000000000000000000000560 /* LiveTarsCodec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveTarsCodec.swift; sourceTree = "<group>"; };
@@ -249,14 +249,6 @@
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
-		000000000000000000000600 /* Life */ = {
-			isa = PBXGroup;
-			children = (
-				0000000000000000000005FE /* LifeExtrasViews.swift */,
-			);
-			path = Life;
-			sourceTree = "<group>";
-		};
 		0000000000000000000005E2 /* Overview */ = {
 			isa = PBXGroup;
 			children = (

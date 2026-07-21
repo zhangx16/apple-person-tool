@@ -130,14 +130,18 @@ jobs:
           } 2>&1 | tee -a "$LOG"
 
       - name: Resolve schemes
+        continue-on-error: true
         run: |
+          set +e
           if [ -f PersonalToolbox.xcworkspace/contents.xcworkspacedata ]; then
+            echo "HAS_WORKSPACE=1" >> "$GITHUB_ENV"
             xcodebuild -workspace PersonalToolbox.xcworkspace -list
           else
+            echo "HAS_WORKSPACE=0" >> "$GITHUB_ENV"
             echo "No CocoaPods workspace — using PersonalToolbox.xcodeproj"
             xcodebuild -project PersonalToolbox.xcodeproj -list
-            echo "HAS_WORKSPACE=0" >> "$GITHUB_ENV"
           fi
+          exit 0
 
       - name: Configure Share Extension (optional)
         env:

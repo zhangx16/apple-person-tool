@@ -149,6 +149,12 @@ jobs:
           SHARE_PROVISION_PROFILE_SPECIFIER: ${{ secrets.SHARE_PROVISION_PROFILE_SPECIFIER }}
         run: bash scripts/ci-configure-share-extension.sh
 
+      - name: Configure Widget / App Groups (optional)
+        env:
+          ENABLE_APP_GROUPS: ${{ secrets.ENABLE_APP_GROUPS }}
+          WIDGET_BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.WIDGET_BUILD_PROVISION_PROFILE_BASE64 }}
+          WIDGET_PROVISION_PROFILE_SPECIFIER: ${{ secrets.WIDGET_PROVISION_PROFILE_SPECIFIER }}
+        run: bash scripts/ci-strip-extensions-if-needed.sh
       - name: Archive
         run: |
           set -euo pipefail

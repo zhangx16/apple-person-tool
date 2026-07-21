@@ -822,23 +822,20 @@ final class ChatViewModel: ObservableObject {
     private func installLifecycleObservers() {
         guard lifecycleObservers.isEmpty else { return }
         let center = NotificationCenter.default
+        // `queue: .main` already hops to the main actor — avoid nested Task capturing weak self.
         let bg = center.addObserver(
             forName: UIApplication.didEnterBackgroundNotification,
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            Task { @MainActor in
-                self?.handleDidEnterBackground()
-            }
+            self?.handleDidEnterBackground()
         }
         let fg = center.addObserver(
             forName: UIApplication.willEnterForegroundNotification,
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            Task { @MainActor in
-                self?.handleWillEnterForeground()
-            }
+            self?.handleWillEnterForeground()
         }
         lifecycleObservers = [bg, fg]
     }

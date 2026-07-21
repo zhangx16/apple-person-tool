@@ -532,7 +532,7 @@ struct CheckinProjectDetailView: View {
     @EnvironmentObject private var settings: AppSettings
     @Environment(\.dismiss) private var dismiss
 
-    @State private var working = project
+    @State private var working: CheckinProject
     @State private var isBusy = false
     @State private var banner: String?
     @State private var confirmDeleteProject = false
@@ -541,27 +541,88 @@ struct CheckinProjectDetailView: View {
     @State private var editingBot = false
     @State private var botNameDraft = ""
 
+    init(project: CheckinProject, onChanged: (() -> Void)? = nil) {
+        self.project = project
+        self.onChanged = onChanged
+        _working = State(initialValue: project)
+    }
+
     var body: some View {
+        scrollContent
+            .background(AppSurfaceBackground(accent: working.statusKind.color))
+            .navigationTitle(working.isTelegram ? "Bot 签到" : "项目详情")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { toolbarContent }
+            .confirmationDialog(
+                working.isTelegram ? "删除 Bot 签到任务？" : "删除全部网站账号？",
+                isPresented: $confirmDeleteProject,
+                titleVisibility: .visible
+            ) {
+                Button("删除", role: .destructive) {
+                    Task { await deleteProject() }
+                }
+                Button("取消", role: .cancel) {}
+            } message: {
+                Text(deleteProjectMessage)
+            }
+            .confirmationDialog(
+                "删除此账号？",
+                isPresented: Binding(
+                    get: { accountPendingDelete != nil },
+                    set: { if !$0 { accountPendingDelete = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                Button("删除", role: .destructive) {
+                    if let acc = accountPendingDelete {
+                        Task { await deleteAccount(acc) }
+                    }
+                }
+                Button("取消", role: .cancel) { accountPendingDelete = nil }
+            } message: {
+                Text(accountPendingDelete.map { "\($0.displayName) 将被删除。" } ?? "")
+            }
+            .sheet(item: $editingWebsite) { item in
+                NavigationStack {
+                    CheckinWebsiteAccountEditor(accountID: item.id) {
+                        editingWebsite = nil
+                        onChanged?()
+                        banner = "已保存"
+                    }
+                    .environmentObject(settings)
+                }
+                .presentationDetents([.large, .medium])
+            }
+            .sheet(isPresented: $editingBot) {
+                botEditSheet
+            }
+            .overlay {
+                if isBusy {
+                    ProgressView()
+                        .padding(20)
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+            }
+    }
+
+    private var deleteProjectMessage: String {
+        if working.isTelegram {
+            return "将从 glados-checkin-web 配置中移除 @\(working.botUsername ?? "")，并清除相关结果。"
+        }
+        return "将删除该站点下全部 \(working.accountList.count) 个签到账号，不可恢复。"
+    }
+
+    private var scrollContent: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 headerCard
-
                 if let banner, !banner.isEmpty {
                     Text(banner)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 4)
                 }
-
-                if let c = working.counts {
-                    HStack(spacing: 8) {
-                        miniStat("成功", c.successValue, Color(hex: 0x30D158))
-                        miniStat("已签", c.alreadyValue, Color(hex: 0x64D2FF))
-                        miniStat("失败", c.failedValue, Color(hex: 0xFF453A))
-                        miniStat("跳过", c.skippedValue, Color(hex: 0xFF9F0A))
-                    }
-                }
-
+                statsRow
                 AppSectionTitle(
                     title: "账号 (\(working.accountList.count))",
                     systemImage: "person.2.fill"
@@ -571,111 +632,77 @@ struct CheckinProjectDetailView: View {
                         accountCard(account)
                     }
                 }
-
-                Button(role: .destructive) {
-                    confirmDeleteProject = true
-                } label: {
-                    Label(
-                        working.isTelegram ? "删除此 Bot 签到任务" : "删除此网站全部账号",
-                        systemImage: "trash"
-                    )
-                    .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(GhostButtonStyle(tint: Color(hex: 0xFF453A)))
-                .disabled(isBusy)
-                .padding(.top, 8)
+                deleteProjectButton
             }
             .padding(16)
         }
-        .background(AppSurfaceBackground(accent: working.statusKind.color))
-        .navigationTitle(working.isTelegram ? "Bot 签到" : "项目详情")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            if working.isTelegram {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("编辑") {
-                        botNameDraft = working.botName ?? working.displayTitle
-                        editingBot = true
-                    }
-                    .disabled(isBusy)
-                }
+    }
+
+    @ViewBuilder
+    private var statsRow: some View {
+        if let c = working.counts {
+            HStack(spacing: 8) {
+                miniStat("成功", c.successValue, Color(hex: 0x30D158))
+                miniStat("已签", c.alreadyValue, Color(hex: 0x64D2FF))
+                miniStat("失败", c.failedValue, Color(hex: 0xFF453A))
+                miniStat("跳过", c.skippedValue, Color(hex: 0xFF9F0A))
             }
         }
-        .confirmationDialog(
-            working.isTelegram ? "删除 Bot 签到任务？" : "删除全部网站账号？",
-            isPresented: $confirmDeleteProject,
-            titleVisibility: .visible
-        ) {
-            Button("删除", role: .destructive) {
-                Task { await deleteProject() }
-            }
-            Button("取消", role: .cancel) {}
-        } message: {
-            Text(working.isTelegram
-                 ? "将从 glados-checkin-web 配置中移除 @\(working.botUsername ?? "")，并清除相关结果。"
-                 : "将删除该站点下全部 \(working.accountList.count) 个签到账号，不可恢复。")
+    }
+
+    private var deleteProjectButton: some View {
+        Button(role: .destructive) {
+            confirmDeleteProject = true
+        } label: {
+            Label(
+                working.isTelegram ? "删除此 Bot 签到任务" : "删除此网站全部账号",
+                systemImage: "trash"
+            )
+            .frame(maxWidth: .infinity)
         }
-        .confirmationDialog(
-            "删除此账号？",
-            isPresented: Binding(
-                get: { accountPendingDelete != nil },
-                set: { if !$0 { accountPendingDelete = nil } }
-            ),
-            titleVisibility: .visible
-        ) {
-            Button("删除", role: .destructive) {
-                if let acc = accountPendingDelete {
-                    Task { await deleteAccount(acc) }
+        .buttonStyle(GhostButtonStyle(tint: Color(hex: 0xFF453A)))
+        .disabled(isBusy)
+        .padding(.top, 8)
+    }
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        if working.isTelegram {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("编辑") {
+                    botNameDraft = working.botName ?? working.displayTitle
+                    editingBot = true
                 }
+                .disabled(isBusy)
             }
-            Button("取消", role: .cancel) { accountPendingDelete = nil }
-        } message: {
-            Text(accountPendingDelete.map { "\($0.displayName) 将被删除。" } ?? "")
         }
-        .sheet(item: $editingWebsite) { item in
-            NavigationStack {
-                CheckinWebsiteAccountEditor(accountID: item.id) {
-                    editingWebsite = nil
-                    onChanged?()
-                    banner = "已保存"
-                }
-                .environmentObject(settings)
-            }
-            .presentationDetents([.large, .medium])
-        }
-        .sheet(isPresented: $editingBot) {
-            NavigationStack {
-                Form {
-                    Section("Bot 信息") {
-                        TextField("显示名称", text: $botNameDraft)
-                        if let u = working.botUsername {
-                            LabeledContent("用户名", value: "@\(u)")
-                        }
-                    }
-                }
-                .navigationTitle("编辑 Bot")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("取消") { editingBot = false }
-                    }
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("保存") {
-                            Task { await saveBotName() }
-                        }
-                        .disabled(isBusy || botNameDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+    }
+
+    private var botEditSheet: some View {
+        NavigationStack {
+            Form {
+                Section("Bot 信息") {
+                    TextField("显示名称", text: $botNameDraft)
+                    if let u = working.botUsername {
+                        LabeledContent("用户名", value: "@\(u)")
                     }
                 }
             }
-            .presentationDetents([.medium])
-        }
-        .overlay {
-            if isBusy {
-                ProgressView()
-                    .padding(20)
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .navigationTitle("编辑 Bot")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("取消") { editingBot = false }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("保存") {
+                        Task { await saveBotName() }
+                    }
+                    .disabled(isBusy || botNameDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
             }
         }
+        .presentationDetents([.medium])
     }
 
     private var headerCard: some View {

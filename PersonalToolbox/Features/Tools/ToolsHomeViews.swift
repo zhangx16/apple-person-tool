@@ -8,71 +8,114 @@ struct ClipboardHomeView: View {
     @State private var toast: String?
 
     var body: some View {
-        List {
-            Section {
-                HStack {
+        ScrollView {
+            VStack(alignment: .leading, spacing: AppleTheme.space5) {
+                VStack(alignment: .leading, spacing: 12) {
                     TextField("手动添加文本", text: $draft, axis: .vertical)
                         .lineLimit(2...4)
-                    Button("添加") {
-                        store.addManual(draft)
-                        draft = ""
-                        Haptics.light()
-                    }
-                    .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
-                Button {
-                    if store.capturePasteboard() != nil {
-                        toast = "已从剪贴板捕获"
-                        Haptics.success()
-                    } else {
-                        toast = "剪贴板为空或与上一条相同"
-                        Haptics.error()
-                    }
-                } label: {
-                    Label("从系统剪贴板捕获", systemImage: "doc.on.clipboard")
-                }
-            } footer: {
-                Text("保存历史并可识别链接 / 快递单号 / 验证码，跳转对应工具。")
-            }
-
-            if let toast {
-                Section { Text(toast).font(.caption).foregroundStyle(.secondary) }
-            }
-
-            Section("历史 (\(store.items.count))") {
-                if store.items.isEmpty {
-                    Text("暂无记录").foregroundStyle(.secondary)
-                } else {
-                    ForEach(store.items) { item in
-                        NavigationLink {
-                            ClipboardDetailView(item: item)
+                        .padding(12)
+                        .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    HStack(spacing: 10) {
+                        Button {
+                            store.addManual(draft)
+                            draft = ""
+                            Haptics.light()
                         } label: {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(item.preview)
-                                    .font(.subheadline)
-                                    .lineLimit(3)
-                                Text(item.createdAt.formatted(date: .abbreviated, time: .shortened))
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                            }
-                            .padding(.vertical, 2)
+                            Label("添加", systemImage: "plus")
                         }
-                        .swipeActions {
-                            Button(role: .destructive) { store.delete(id: item.id) } label: {
-                                Label("删除", systemImage: "trash")
-                            }
-                            Button {
-                                store.copyToPasteboard(item.text)
+                        .buttonStyle(PrimaryButtonStyle())
+                        .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .opacity(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.45 : 1)
+
+                        Button {
+                            if store.capturePasteboard() != nil {
+                                toast = "已从剪贴板捕获"
                                 Haptics.success()
-                            } label: {
-                                Label("复制", systemImage: "doc.on.doc")
+                            } else {
+                                toast = "剪贴板为空或与上一条相同"
+                                Haptics.error()
                             }
-                            .tint(.blue)
+                        } label: {
+                            Label("捕获", systemImage: "doc.on.clipboard")
+                        }
+                        .buttonStyle(GhostButtonStyle())
+                    }
+                    Text("保存历史并可识别链接 / 快递单号 / 验证码。")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+                .appCardV2()
+
+                if let toast {
+                    StatusPill(title: toast, color: .accentColor, systemImage: "info.circle.fill")
+                        .padding(.horizontal, 4)
+                }
+
+                AppSectionTitle(title: "历史 (\(store.items.count))", systemImage: "clock")
+                if store.items.isEmpty {
+                    EmptyStateView(
+                        symbol: "doc.on.clipboard",
+                        title: "还没有记录",
+                        message: "从系统剪贴板捕获，或手动添加文本。",
+                        pathHint: "服务 → 剪贴板工具箱",
+                        actionTitle: "从剪贴板捕获",
+                        action: {
+                            if store.capturePasteboard() != nil {
+                                toast = "已从剪贴板捕获"
+                                Haptics.success()
+                            } else {
+                                toast = "剪贴板为空或与上一条相同"
+                                Haptics.error()
+                            }
+                        }
+                    )
+                    .frame(minHeight: 220)
+                } else {
+                    LazyVStack(spacing: 10) {
+                        ForEach(store.items) { item in
+                            NavigationLink {
+                                ClipboardDetailView(item: item)
+                            } label: {
+                                HStack(alignment: .top, spacing: 12) {
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        Text(item.preview)
+                                            .font(.subheadline.weight(.medium))
+                                            .foregroundStyle(.primary)
+                                            .lineLimit(3)
+                                            .multilineTextAlignment(.leading)
+                                        Text(item.createdAt.formatted(date: .abbreviated, time: .shortened))
+                                            .font(.caption2)
+                                            .foregroundStyle(.tertiary)
+                                    }
+                                    Spacer(minLength: 0)
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(.tertiary)
+                                }
+                                .appCard()
+                            }
+                            .buttonStyle(PressableButtonStyle(scale: 0.98))
+                            .contextMenu {
+                                Button {
+                                    store.copyToPasteboard(item.text)
+                                    Haptics.success()
+                                } label: {
+                                    Label("复制", systemImage: "doc.on.doc")
+                                }
+                                Button(role: .destructive) {
+                                    store.delete(id: item.id)
+                                } label: {
+                                    Label("删除", systemImage: "trash")
+                                }
+                            }
                         }
                     }
                 }
             }
+            .padding(16)
+            .padding(.bottom, 24)
         }
+        .background(AppSurfaceBackground(accent: ServiceBrand.clipboard.tint))
         .navigationTitle("剪贴板")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -137,48 +180,72 @@ struct QuickActionsHomeView: View {
     }
 
     var body: some View {
-        List {
-            Section {
-                TextField("粘贴链接、单号或任意文本", text: $input, axis: .vertical)
-                    .lineLimit(3...8)
-                Button {
-                    if let item = clipboard.capturePasteboard() {
-                        input = item.text
-                        Haptics.light()
+        ScrollView {
+            VStack(alignment: .leading, spacing: AppleTheme.space5) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("输入")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    TextField("粘贴链接、单号或任意文本", text: $input, axis: .vertical)
+                        .lineLimit(3...8)
+                        .padding(12)
+                        .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    Button {
+                        if let item = clipboard.capturePasteboard() {
+                            input = item.text
+                            Haptics.light()
+                        }
+                    } label: {
+                        Label("填入剪贴板", systemImage: "doc.on.clipboard")
                     }
-                } label: {
-                    Label("填入剪贴板", systemImage: "doc.on.clipboard")
+                    .buttonStyle(GhostButtonStyle())
+                    Text("根据内容推荐：下载、翻译、快递、RSS 等。")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
                 }
-            } header: {
-                Text("输入")
-            } footer: {
-                Text("根据内容推荐：下载、翻译、快递、RSS 等。完整系统分享扩展需额外 Target，此处为应用内快捷动作中心。")
-            }
+                .appCardV2()
 
-            Section("推荐动作") {
+                AppSectionTitle(title: "推荐动作", systemImage: "bolt.fill")
                 if suggestions.isEmpty {
-                    Text("输入内容后显示可执行动作").foregroundStyle(.secondary)
+                    Text("输入内容后显示可执行动作")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .appCard()
                 } else {
-                    ForEach(Array(suggestions.enumerated()), id: \.offset) { _, payload in
-                        NavigationLink {
-                            QuickActionRunnerView(payload: payload)
-                        } label: {
-                            Label(payload.action.title, systemImage: payload.action.systemImage)
+                    VStack(spacing: 10) {
+                        ForEach(Array(suggestions.enumerated()), id: \.offset) { _, payload in
+                            NavigationLink {
+                                QuickActionRunnerView(payload: payload)
+                            } label: {
+                                AppNavRow(
+                                    title: payload.action.title,
+                                    subtitle: "点按执行",
+                                    systemImage: payload.action.systemImage,
+                                    tint: .accentColor
+                                )
+                                .appCard()
+                            }
+                            .buttonStyle(PressableButtonStyle(scale: 0.98))
                         }
                     }
                 }
-            }
 
-            Section("全部工具") {
-                toolLink("剪贴板", "doc.on.clipboard") { ClipboardHomeView() }
-                toolLink("服务健康", "heart.text.square") { ServiceHealthHomeView() }
-                toolLink("RSS 阅读", "dot.radiowaves.up.forward") { RSSHomeView() }
-                toolLink("习惯与待办", "checklist") { HabitsTodosHomeView() }
-                toolLink("行情", "chart.line.uptrend.xyaxis") { MarketQuotesHomeView() }
-                toolLink("快递", "shippingbox") { ExpressHomeView() }
-                toolLink("密码生成", "key.fill") { PasswordGeneratorHomeView() }
+                AppSectionTitle(title: "全部工具", systemImage: "square.grid.2x2")
+                VStack(spacing: 10) {
+                    toolLink("剪贴板", "doc.on.clipboard", Color(hex: 0x0A84FF)) { ClipboardHomeView() }
+                    toolLink("服务健康", "heart.text.square", Color(hex: 0xFF375F)) { ServiceHealthHomeView() }
+                    toolLink("RSS 阅读", "dot.radiowaves.up.forward", Color(hex: 0xFF9500)) { RSSHomeView() }
+                    toolLink("习惯与待办", "checklist", Color(hex: 0x30D158)) { HabitsTodosHomeView() }
+                    toolLink("行情", "chart.line.uptrend.xyaxis", Color(hex: 0x34C759)) { MarketQuotesHomeView() }
+                    toolLink("快递", "shippingbox", Color(hex: 0xAC8E68)) { ExpressHomeView() }
+                    toolLink("密码生成", "key.fill", Color(hex: 0xBF5AF2)) { PasswordGeneratorHomeView() }
+                }
             }
+            .padding(16)
+            .padding(.bottom, 24)
         }
+        .background(AppSurfaceBackground(accent: ServiceBrand.quickActions.tint))
         .navigationTitle("快捷动作")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
@@ -188,12 +255,19 @@ struct QuickActionsHomeView: View {
         }
     }
 
-    private func toolLink<V: View>(_ title: String, _ icon: String, @ViewBuilder dest: () -> V) -> some View {
+    private func toolLink<V: View>(
+        _ title: String,
+        _ icon: String,
+        _ tint: Color,
+        @ViewBuilder dest: () -> V
+    ) -> some View {
         NavigationLink {
             dest()
         } label: {
-            Label(title, systemImage: icon)
+            AppNavRow(title: title, subtitle: "打开工具", systemImage: icon, tint: tint)
+                .appCard()
         }
+        .buttonStyle(PressableButtonStyle(scale: 0.98))
     }
 }
 

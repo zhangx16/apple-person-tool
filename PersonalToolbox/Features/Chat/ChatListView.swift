@@ -19,7 +19,8 @@ struct ChatListView: View {
                     EmptyStateView(
                         symbol: "key.fill",
                         title: "配置 API Key",
-                        message: "在设置中填写 sub2api 的 Base URL 与 API Key 后即可开始对话。",
+                        message: "填写 sub2api 的 Base URL 与 API Key 后即可开始对话。",
+                        pathHint: "设置 → Sub2API 助手",
                         actionTitle: "前往设置"
                     ) {
                         selectedTab = .settings
@@ -27,8 +28,9 @@ struct ChatListView: View {
                 } else if viewModel.conversations.isEmpty {
                     EmptyStateView(
                         symbol: "bubble.left.and.bubble.right",
-                        title: "开始一段新对话",
-                        message: "点右上角「新建」或下方按钮创建会话。",
+                        title: "还没有对话",
+                        message: "创建会话后即可与 Grok 流式对话，或从右上角「+」开始。",
+                        pathHint: "助手 → 新建对话",
                         actionTitle: "新建对话"
                     ) {
                         createAndOpen()

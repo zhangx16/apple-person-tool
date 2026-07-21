@@ -20,7 +20,8 @@ struct MonitorHomeView: View {
                 EmptyStateView(
                     symbol: "chart.bar.doc.horizontal",
                     title: "需要 Admin Token",
-                    message: "在设置中填写 Sub2API Base URL 与 Admin API Key（x-api-key），即可管理账号调度、用户余额与分组。"
+                    message: "填写 Sub2API Base URL 与 Admin API Key（x-api-key），即可管理账号调度、用户余额与分组。",
+                    pathHint: "设置 → Sub2API 监控"
                 )
                 .padding(.top, 40)
                 .padding(.horizontal, 16)

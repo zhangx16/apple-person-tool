@@ -1,11 +1,13 @@
 import SwiftUI
 
-/// Hub for self-hosted services + local tools — 2 列网格品牌卡片 + 最近使用横滑 + 悬浮搜索。
+/// Hub for self-hosted services + local tools — 分区 chip + 2 列网格 + 最近使用 + 悬浮搜索。
 struct ServicesHubView: View {
     @Binding var selectedTab: AppTab
     @EnvironmentObject private var settings: AppSettings
     @ObservedObject private var recent = LiveRecentStore.shared
     @State private var query = ""
+    /// nil = 全部分区（LCSign 式可筛选 Tab/列表）
+    @State private var selectedSection: String? = nil
 
     private struct HubItem: Identifiable {
         let id: String
@@ -26,17 +28,20 @@ struct ServicesHubView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: AppleTheme.space5) {
                     // 悬浮搜索胶囊
-                    FloatingSearchBar(text: $query, placeholder: "搜索工具")
+                    FloatingSearchBar(text: $query, placeholder: "搜索工具、服务…")
                         .padding(.horizontal, AppleTheme.space4)
                         .padding(.top, AppleTheme.space2)
 
                     if query.isEmpty {
+                        sectionFilterChips
+                            .padding(.horizontal, AppleTheme.space4)
+
                         // 最近使用
                         if !recent.brands().isEmpty {
                             recentSection
                         }
-                        // 全部分组网格
-                        ForEach(filteredSections, id: \.title) { sec in
+                        // 全部分组网格（可按 chip 过滤）
+                        ForEach(displaySections, id: \.title) { sec in
                             gridSection(sec)
                         }
                     } else {
@@ -50,6 +55,39 @@ struct ServicesHubView: View {
             .navigationTitle("服务")
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
         }
+    }
+
+    // MARK: - 分区筛选 chips
+
+    private var sectionFilterChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                FilterChip(
+                    title: "全部",
+                    systemImage: "square.grid.2x2",
+                    isSelected: selectedSection == nil,
+                    tint: .accentColor
+                ) {
+                    selectedSection = nil
+                }
+                ForEach(sectionModels, id: \.title) { sec in
+                    FilterChip(
+                        title: sec.title,
+                        systemImage: sec.symbol,
+                        isSelected: selectedSection == sec.title,
+                        tint: .accentColor
+                    ) {
+                        selectedSection = sec.title
+                    }
+                }
+            }
+            .padding(.vertical, 2)
+        }
+    }
+
+    private var displaySections: [SectionModel] {
+        guard let selectedSection else { return sectionModels }
+        return sectionModels.filter { $0.title == selectedSection }
     }
 
     // MARK: - 最近使用
@@ -172,17 +210,15 @@ struct ServicesHubView: View {
     @ViewBuilder
     private var searchResults: some View {
         if filteredSections.isEmpty {
-            VStack(spacing: 16) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 40, weight: .medium))
-                    .foregroundStyle(Color.accentColor.brandGradient)
-                    .symbolRenderingMode(.hierarchical)
-                Text("没有匹配「\(query)」的工具")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 60)
+            EmptyStateView(
+                symbol: "magnifyingglass",
+                title: "没有匹配结果",
+                message: "没有找到「\(query)」相关的工具或服务。",
+                pathHint: "试试换个关键词，或清空搜索浏览全部分区",
+                actionTitle: "清空搜索",
+                action: { query = "" }
+            )
+            .frame(minHeight: 320)
         } else {
             VStack(spacing: AppleTheme.space5) {
                 ForEach(filteredSections, id: \.title) { sec in
@@ -335,8 +371,9 @@ struct ServicesHubView: View {
         _ title: String,
         _ subtitle: String,
         _ brand: ServiceBrand,
+        section: String = "",
         @ViewBuilder dest: @escaping () -> AnyView
     ) -> HubItem {
-        HubItem(id: id, title: title, subtitle: subtitle, brand: brand, section: "", open: dest)
+        HubItem(id: id, title: title, subtitle: subtitle, brand: brand, section: section, open: dest)
     }
 }

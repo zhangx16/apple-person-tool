@@ -27,25 +27,32 @@ struct RootTabView: View {
 
                 // No dynamic params — changing init args under TabView recreated the tree on newer iOS.
                 LiveHomeView()
-                    .tabItem { Label("直播", systemImage: "play.tv.fill") }
+                    .tabItem { Label("直播", systemImage: "play.tv") }
                     .tag(AppTab.live)
                     .accessibilityLabel("直播")
 
                 ServicesHubView(selectedTab: $selectedTab)
-                    .tabItem { Label("服务", systemImage: "square.grid.2x2.fill") }
+                    .tabItem { Label("服务", systemImage: "square.grid.2x2") }
                     .tag(AppTab.services)
                     .accessibilityLabel("服务")
 
                 SettingsView()
-                    .tabItem { Label("设置", systemImage: "gearshape.fill") }
+                    .tabItem { Label("设置", systemImage: "gearshape") }
                     .tag(AppTab.settings)
                     .accessibilityLabel("设置")
             }
             .tint(Color.accentColor)
+            // 选中态填充图标，未选中线框 — 更接近 LCSign / 现代工具 App 底栏
+            .onAppear {
+                let appearance = UITabBarAppearance()
+                appearance.configureWithDefaultBackground()
+                appearance.backgroundEffect = UIBlurEffect(style: .systemChromeMaterial)
+                UITabBar.appearance().standardAppearance = appearance
+                UITabBar.appearance().scrollEdgeAppearance = appearance
+            }
             .preferredColorScheme(preferredScheme)
             .allowsHitTesting(isContentInteractive)
             .accessibilityHidden(!isContentInteractive)
-            .symbolVariant(selectedTab == .chat ? .fill : .none)
 
             if hideForSwitcher {
                 PrivacyCoverView()

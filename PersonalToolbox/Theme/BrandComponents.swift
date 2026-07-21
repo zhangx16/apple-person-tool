@@ -244,11 +244,18 @@ struct LiveBadge: View {
 
 // MARK: - StatusPill
 
-/// 彩色状态徽标，用于配置状态、在线状态、风险等级等。
+/// 彩色状态徽标（对齐 LCSign `LCStatusBadge`）：配置态 / 在线态 / 风险等级。
 struct StatusPill: View {
     let title: String
     var color: Color = .secondary
     var systemImage: String? = nil
+    /// 实心高对比（强调） vs 浅底描边（默认）。
+    var style: Style = .soft
+
+    enum Style {
+        case soft
+        case solid
+    }
 
     var body: some View {
         HStack(spacing: 4) {
@@ -259,16 +266,129 @@ struct StatusPill: View {
             Text(title)
                 .font(.caption.weight(.semibold))
         }
-        .foregroundStyle(color)
+        .foregroundStyle(style == .solid ? Color.white : color)
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
-        .background(color.opacity(0.12), in: Capsule())
-        .overlay {
+        .background {
             Capsule()
-                .strokeBorder(color.opacity(0.24), lineWidth: 0.5)
+                .fill(style == .solid ? AnyShapeStyle(color) : AnyShapeStyle(color.opacity(0.12)))
+        }
+        .overlay {
+            if style == .soft {
+                Capsule()
+                    .strokeBorder(color.opacity(0.24), lineWidth: 0.5)
+            }
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(title)
+    }
+}
+
+// MARK: - FilterChip
+
+/// 可点选筛选 chip（LCSign `LCChip`）：Hub 分区、列表筛选。
+struct FilterChip: View {
+    let title: String
+    var systemImage: String? = nil
+    var isSelected: Bool
+    var tint: Color = .accentColor
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 5) {
+                if let systemImage {
+                    Image(systemName: systemImage)
+                        .font(.caption.weight(.semibold))
+                }
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+            }
+            .foregroundStyle(isSelected ? Color.white : Color.primary)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background {
+                Capsule()
+                    .fill(isSelected ? AnyShapeStyle(tint.brandGradient) : AnyShapeStyle(Color(.secondarySystemGroupedBackground)))
+            }
+            .overlay {
+                Capsule()
+                    .strokeBorder(
+                        isSelected ? AppStroke.highlight : Color.primary.opacity(0.06),
+                        lineWidth: 1
+                    )
+            }
+            .modifier(AppShadow.near())
+        }
+        .buttonStyle(PressableButtonStyle(scale: 0.96))
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityLabel(title)
+    }
+}
+
+// MARK: - Primary / Ghost button styles (LCSign LCPrimary / LCGhost)
+
+/// 主按钮：品牌渐变底 + 白字。
+struct PrimaryButtonStyle: ButtonStyle {
+    var tint: Color = .accentColor
+    var isBusy: Bool = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.body.weight(.semibold))
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: 48)
+            .padding(.horizontal, 16)
+            .background {
+                RoundedRectangle(cornerRadius: AppleTheme.controlRadius, style: .continuous)
+                    .fill(tint.brandGradient)
+                    .opacity(configuration.isPressed || isBusy ? 0.88 : 1)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: AppleTheme.controlRadius, style: .continuous)
+                    .strokeBorder(AppStroke.highlight, lineWidth: 0.5)
+            }
+            .scaleEffect(configuration.isPressed && !UIAccessibility.isReduceMotionEnabled ? AppleTheme.pressScale : 1)
+            .animation(.easeOut(duration: AppleTheme.pressDuration), value: configuration.isPressed)
+            .modifier(AppShadow.near())
+    }
+}
+
+/// 幽灵按钮：描边 + 透明底（次要操作）。
+struct GhostButtonStyle: ButtonStyle {
+    var tint: Color = .accentColor
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.body.weight(.semibold))
+            .foregroundStyle(tint)
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: 48)
+            .padding(.horizontal, 16)
+            .background {
+                RoundedRectangle(cornerRadius: AppleTheme.controlRadius, style: .continuous)
+                    .fill(tint.opacity(configuration.isPressed ? 0.12 : 0.06))
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: AppleTheme.controlRadius, style: .continuous)
+                    .strokeBorder(tint.opacity(0.35), lineWidth: 1)
+            }
+            .scaleEffect(configuration.isPressed && !UIAccessibility.isReduceMotionEnabled ? AppleTheme.pressScale : 1)
+            .animation(.easeOut(duration: AppleTheme.pressDuration), value: configuration.isPressed)
+    }
+}
+
+// MARK: - Settings status helpers
+
+extension StatusPill {
+    /// 设置页「已配置 / 未配置」统一徽标。
+    static func config(_ configured: Bool) -> StatusPill {
+        if configured {
+            StatusPill(title: "已配置", color: Color(hex: 0x30D158), systemImage: "checkmark.circle.fill")
+        } else {
+            StatusPill(title: "未配置", color: Color(hex: 0x8E8E93), systemImage: "circle.dashed")
+        }
     }
 }
 

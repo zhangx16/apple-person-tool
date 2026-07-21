@@ -41,8 +41,12 @@ enum AppleTheme {
     static let sectionSpacing: CGFloat = 24
 
     // MARK: - Colors (semantic, auto dark-mode)
+    // Accent 对齐 LCSign 工具风：青绿/青蓝（见 Assets AccentColor）。
 
     static let accent = Color.accentColor
+    /// 品牌青绿（与 LCSign 主色轴一致，用于氛围与可选强调）。
+    static let brandTeal = Color(hex: 0x00A89C)
+    static let brandCyan = Color(hex: 0x009CC0)
     static let userBubble = Color.accentColor
     static let assistantBubble = Color(.secondarySystemBackground)
     static let canvas = Color(.systemGroupedBackground)
@@ -170,14 +174,22 @@ typealias HapticButtonStyle = PressableButtonStyle
 struct GlassCard<Content: View>: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     var corner: CGFloat = AppleTheme.cardRadius
+    var useMaterial: Bool = true
     @ViewBuilder var content: Content
 
     var body: some View {
         content
             .padding(AppleTheme.space4)
             .background {
-                RoundedRectangle(cornerRadius: corner, style: .continuous)
-                    .fill(reduceTransparency ? AppleTheme.card : Color(.secondarySystemGroupedBackground))
+                Group {
+                    if reduceTransparency || !useMaterial {
+                        RoundedRectangle(cornerRadius: corner, style: .continuous)
+                            .fill(Color(.secondarySystemGroupedBackground))
+                    } else {
+                        RoundedRectangle(cornerRadius: corner, style: .continuous)
+                            .fill(.ultraThinMaterial)
+                    }
+                }
             }
             .overlay {
                 RoundedRectangle(cornerRadius: corner, style: .continuous)
@@ -316,23 +328,24 @@ struct AppSurfaceBackground: View {
     var body: some View {
         ZStack {
             Color(.systemGroupedBackground)
-            // 多层径向光晕模拟 mesh 氛围（iOS 17 无 MeshGradient）
+            // 多层径向光晕：主色 + 青绿辅色，贴近 LCSign 玻璃工具风
             RadialGradient(
-                colors: [accent.opacity(0.10), accent.opacity(0.03), Color.clear],
+                colors: [accent.opacity(0.12), accent.opacity(0.04), Color.clear],
                 center: .topLeading,
                 startRadius: 0,
                 endRadius: 380
             )
             RadialGradient(
-                colors: [accent.opacity(0.06), Color.clear],
+                colors: [AppleTheme.brandTeal.opacity(0.07), Color.clear],
                 center: .topTrailing,
                 startRadius: 0,
-                endRadius: 280
+                endRadius: 300
             )
-            LinearGradient(
-                colors: [Color.clear, Color.clear],
-                startPoint: .top,
-                endPoint: .bottom
+            RadialGradient(
+                colors: [AppleTheme.brandCyan.opacity(0.05), Color.clear],
+                center: .bottom,
+                startRadius: 0,
+                endRadius: 260
             )
         }
         .ignoresSafeArea()
@@ -367,6 +380,8 @@ struct AppNavRow: View {
     var brand: ServiceBrand? = nil
     var systemImage: String? = nil
     var tint: Color = Color(hex: 0x0A84FF)
+    /// 右侧状态徽标（如已配置 / 未配置）。
+    var trailingPill: StatusPill? = nil
 
     var body: some View {
         HStack(spacing: 14) {
@@ -390,9 +405,12 @@ struct AppNavRow: View {
                 Text(subtitle)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                    .lineLimit(2)
             }
             Spacer(minLength: 0)
+            if let trailingPill {
+                trailingPill
+            }
             Image(systemName: "chevron.right")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.tertiary)
@@ -441,18 +459,27 @@ struct EmptyStateView: View {
     let symbol: String
     let title: String
     let message: String
+    /// 可选路径式引导，如「设置 → Sub2API 助手」（LCSign 文案风格）。
+    var pathHint: String? = nil
     var actionTitle: String? = nil
-    var action: (() -> Void)? = nil
+    var secondaryActionTitle: String? = nil
+    var secondaryAction: (() -> Void)? = nil
     var tint: Color = .accentColor
+    /// 主按钮回调放最后，保证既有 trailing closure 调用兼容。
+    var action: (() -> Void)? = nil
 
     var body: some View {
         VStack(spacing: 20) {
             ZStack {
+                // 双层光晕，贴近 LCSign 玻璃图标氛围
                 Circle()
-                    .fill(tint.opacity(0.10))
+                    .fill(tint.opacity(0.08))
+                    .frame(width: 112, height: 112)
+                Circle()
+                    .fill(tint.opacity(0.12))
                     .frame(width: 96, height: 96)
                 Circle()
-                    .strokeBorder(tint.opacity(0.18), lineWidth: 1)
+                    .strokeBorder(tint.opacity(0.20), lineWidth: 1)
                     .frame(width: 96, height: 96)
                 Image(systemName: symbol)
                     .font(.system(size: 36, weight: .medium))
@@ -469,26 +496,35 @@ struct EmptyStateView: View {
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 28)
-            }
-            if let actionTitle, let action {
-                Button(action: action) {
-                    Text(actionTitle)
-                        .font(.body.weight(.semibold))
-                        .padding(.horizontal, 28)
-                        .padding(.vertical, 13)
-                        .frame(minHeight: 44)
-                        .foregroundStyle(.white)
-                        .background(tint.brandGradient, in: Capsule())
-                        .overlay {
-                            Capsule()
-                                .strokeBorder(AppStroke.highlight, lineWidth: 0.5)
-                        }
-                        .modifier(AppShadow.near())
+                if let pathHint, !pathHint.isEmpty {
+                    Text(pathHint)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(tint.opacity(0.9))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(tint.opacity(0.10), in: Capsule())
+                        .padding(.top, 2)
                 }
-                .buttonStyle(PressableButtonStyle())
-                .padding(.top, 4)
-                .accessibilityLabel(actionTitle)
             }
+            VStack(spacing: 10) {
+                if let actionTitle, let action {
+                    Button(action: action) {
+                        Text(actionTitle)
+                    }
+                    .buttonStyle(PrimaryButtonStyle(tint: tint))
+                    .padding(.horizontal, 48)
+                    .accessibilityLabel(actionTitle)
+                }
+                if let secondaryActionTitle, let secondaryAction {
+                    Button(action: secondaryAction) {
+                        Text(secondaryActionTitle)
+                    }
+                    .buttonStyle(GhostButtonStyle(tint: tint))
+                    .padding(.horizontal, 48)
+                    .accessibilityLabel(secondaryActionTitle)
+                }
+            }
+            .padding(.top, 4)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .modifier(EmptyStateAccessibility(

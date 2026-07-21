@@ -11,71 +11,66 @@ struct SettingsView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
+                    // 顶部概览卡：配置进度一目了然（LCSign 证书/状态卡思路）
+                    configOverviewCard
+
                     settingsSection("服务配置", symbol: "server.rack") {
                         projectLink(
                             brand: .sub2,
                             title: "Sub2API 助手",
-                            subtitle: configuredHint(
-                                configured: settings.isAIConfigured,
-                                detail: hostHint(settings.sub2apiBaseURL)
-                            )
+                            subtitle: hostHint(settings.sub2apiBaseURL),
+                            configured: settings.isAIConfigured
                         ) {
                             Sub2ChatSettingsPage(viewModel: viewModel)
                         }
                         projectLink(
                             brand: .sub2,
                             title: "Sub2API 监控",
-                            subtitle: configuredHint(
-                                configured: settings.isAdminConfigured,
-                                detail: "Admin API Key"
-                            )
+                            subtitle: settings.isAdminConfigured ? "Admin API Key" : "用于监控中心",
+                            configured: settings.isAdminConfigured
                         ) {
                             Sub2AdminSettingsPage(viewModel: viewModel)
                         }
                         projectLink(
                             brand: .youtube,
                             title: "YouTube 下载",
-                            subtitle: configuredHint(
-                                configured: settings.isYTConfigured,
-                                detail: hostHint(settings.ytBaseURL)
-                            )
+                            subtitle: hostHint(settings.ytBaseURL),
+                            configured: settings.isYTConfigured
                         ) {
                             YTSettingsPage(viewModel: viewModel)
                         }
                         projectLink(
                             brand: .sublink,
                             title: "SublinkX",
-                            subtitle: configuredHint(
-                                configured: settings.isSublinkConfigured,
-                                detail: hostHint(settings.sublinkBaseURL)
-                            )
+                            subtitle: hostHint(settings.sublinkBaseURL),
+                            configured: settings.isSublinkConfigured
                         ) {
                             SublinkSettingsPage(viewModel: viewModel)
                         }
                         projectLink(
                             brand: .komari,
                             title: "Komari",
-                            subtitle: hostHint(settings.komariBaseURL)
+                            subtitle: hostHint(settings.komariBaseURL),
+                            configured: !settings.komariBaseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                         ) {
                             KomariSettingsPage(viewModel: viewModel)
                         }
                         projectLink(
                             brand: .cloudflare,
                             title: "Cloudflare",
-                            subtitle: configuredHint(
-                                configured: settings.isCloudflareConfigured,
-                                detail: settings.cloudflareAccountName.isEmpty
-                                    ? "API Token"
-                                    : settings.cloudflareAccountName
-                            )
+                            subtitle: settings.cloudflareAccountName.isEmpty
+                                ? "API Token"
+                                : settings.cloudflareAccountName,
+                            configured: settings.isCloudflareConfigured
                         ) {
                             CloudflareSettingsPage(viewModel: viewModel)
                         }
                         plainLink(
                             systemImage: "shippingbox.fill",
                             title: "快递100",
-                            subtitle: settings.kuaidi100Customer.isEmpty ? "未配置" : "customer 已填",
-                            tint: ServiceBrand.express.tint
+                            subtitle: settings.kuaidi100Customer.isEmpty ? "实时查询凭证" : "customer 已填",
+                            tint: ServiceBrand.express.tint,
+                            configured: !settings.kuaidi100Customer.isEmpty
                         ) {
                             Kuaidi100SettingsPage()
                         }
@@ -85,30 +80,33 @@ struct SettingsView: View {
                         plainLink(
                             systemImage: "music.note",
                             title: "抖音 Cookie",
-                            subtitle: settings.douyinLiveCookie.isEmpty ? "未配置 · 直播搜索/下载" : "已配置",
-                            tint: Color(hex: 0x111111)
+                            subtitle: "直播搜索 / 本机下载",
+                            tint: Color(hex: 0x111111),
+                            configured: !settings.douyinLiveCookie.isEmpty
                         ) {
                             DouyinLiveSettingsPage()
                         }
                         plainLink(
                             systemImage: "video.fill",
                             title: "快手直播 Cookie",
-                            subtitle: settings.kuaishouCookie.isEmpty ? "匿名可播 · 弹幕可选" : "已配置",
-                            tint: ServiceBrand.live.tint
+                            subtitle: "匿名可播 · 弹幕可选",
+                            tint: ServiceBrand.live.tint,
+                            configured: !settings.kuaishouCookie.isEmpty
                         ) {
                             KuaishouLiveSettingsPage()
                         }
                         plainLink(
                             systemImage: "play.rectangle.on.rectangle.fill",
                             title: "B站 Cookie",
-                            subtitle: settings.bilibiliCookie.isEmpty ? "未配置 · 高清/大会员需登录" : "已配置",
-                            tint: ServiceBrand.bilibili.tint
+                            subtitle: "高清 / 大会员需登录",
+                            tint: ServiceBrand.bilibili.tint,
+                            configured: !settings.bilibiliCookie.isEmpty
                         ) {
                             BilibiliDownloadSettingsPage()
                         }
                     }
 
-                    Text("密钥与 Cookie 仅保存在本机。")
+                    Text("密钥与 Cookie 仅保存在本机 Keychain / UserDefaults。")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                         .padding(.horizontal, 4)
@@ -135,7 +133,8 @@ struct SettingsView: View {
                             systemImage: "lock.shield.fill",
                             title: "隐私与安全",
                             subtitle: settings.requireBiometricUnlock ? "应用锁已开启" : "应用锁关闭",
-                            tint: Color(hex: 0x30D158)
+                            tint: Color(hex: 0x30D158),
+                            configured: settings.requireBiometricUnlock
                         ) {
                             PrivacySettingsPage(
                                 confirmLogout: $confirmLogout,
@@ -148,35 +147,43 @@ struct SettingsView: View {
 
                     VStack(alignment: .leading, spacing: 10) {
                         AppSectionTitle(title: "关于", systemImage: "info.circle")
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack {
-                                Text("应用")
-                                    .foregroundStyle(.secondary)
-                                Spacer()
-                                Text("XIN's Tool")
-                                    .fontWeight(.medium)
+                        VStack(alignment: .leading, spacing: 14) {
+                            HStack(spacing: 14) {
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .fill(Color.accentColor.brandGradient)
+                                    Image(systemName: "wrench.and.screwdriver.fill")
+                                        .font(.title3.weight(.semibold))
+                                        .foregroundStyle(.white)
+                                }
+                                .frame(width: 48, height: 48)
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .strokeBorder(AppStroke.highlight, lineWidth: 0.5)
+                                }
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text("XIN's Tool")
+                                        .font(.headline)
+                                    Text("助手 · 直播 · 服务 · 本地工具")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer(minLength: 0)
+                                StatusPill(title: appVersion, color: .accentColor, systemImage: "tag.fill")
                             }
-                            Divider().opacity(0.5)
-                            HStack {
-                                Text("版本")
-                                    .foregroundStyle(.secondary)
-                                Spacer()
-                                Text(appVersion)
-                                    .fontWeight(.medium)
-                            }
-                            Divider().opacity(0.5)
-                            Text("助手 · 直播 · 服务 · 本地工具")
+                            Divider().opacity(0.45)
+                            Text("青绿工具风 UI · 凭证仅存本机 · 自托管优先")
                                 .font(.caption)
                                 .foregroundStyle(.tertiary)
                         }
-                        .appCard()
+                        .appCardV2()
                     }
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
                 .padding(.bottom, 32)
             }
-            .background(AppSurfaceBackground(accent: Color(hex: 0x8E8E93)))
+            .background(AppSurfaceBackground(accent: Color.accentColor))
             .navigationTitle("设置")
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .confirmationDialog(
@@ -218,6 +225,50 @@ struct SettingsView: View {
 
     // MARK: - Home rows
 
+    private var configOverviewCard: some View {
+        let items: [(String, Bool)] = [
+            ("助手", settings.isAIConfigured),
+            ("下载", settings.isYTConfigured),
+            ("Sublink", settings.isSublinkConfigured),
+            ("Cloudflare", settings.isCloudflareConfigured)
+        ]
+        let ready = items.filter(\.1).count
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("配置概览")
+                        .font(.headline)
+                    Text("\(ready)/\(items.count) 项核心服务已就绪")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                StatusPill(
+                    title: ready == items.count ? "全部就绪" : "待完善",
+                    color: ready == items.count ? Color(hex: 0x30D158) : Color.accentColor,
+                    systemImage: ready == items.count ? "checkmark.seal.fill" : "ellipsis.circle.fill",
+                    style: ready == items.count ? .solid : .soft
+                )
+            }
+            HStack(spacing: 8) {
+                ForEach(items, id: \.0) { name, ok in
+                    VStack(spacing: 6) {
+                        Circle()
+                            .fill(ok ? Color(hex: 0x30D158) : Color.secondary.opacity(0.25))
+                            .frame(width: 10, height: 10)
+                        Text(name)
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(ok ? .primary : .secondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+        }
+        .appCardV2()
+    }
+
     @ViewBuilder
     private func settingsSection<Content: View>(
         _ title: String,
@@ -236,14 +287,20 @@ struct SettingsView: View {
         brand: ServiceBrand,
         title: String,
         subtitle: String,
+        configured: Bool? = nil,
         @ViewBuilder destination: () -> Destination
     ) -> some View {
         NavigationLink {
             destination()
                 .environmentObject(settings)
         } label: {
-            AppNavRow(title: title, subtitle: subtitle, brand: brand)
-                .appCard()
+            AppNavRow(
+                title: title,
+                subtitle: subtitle,
+                brand: brand,
+                trailingPill: configured.map { StatusPill.config($0) }
+            )
+            .appCard()
         }
         .buttonStyle(PressableButtonStyle(scale: 0.98))
     }
@@ -253,14 +310,21 @@ struct SettingsView: View {
         title: String,
         subtitle: String,
         tint: Color = Color(hex: 0x0A84FF),
+        configured: Bool? = nil,
         @ViewBuilder destination: () -> Destination
     ) -> some View {
         NavigationLink {
             destination()
                 .environmentObject(settings)
         } label: {
-            AppNavRow(title: title, subtitle: subtitle, systemImage: systemImage, tint: tint)
-                .appCard()
+            AppNavRow(
+                title: title,
+                subtitle: subtitle,
+                systemImage: systemImage,
+                tint: tint,
+                trailingPill: configured.map { StatusPill.config($0) }
+            )
+            .appCard()
         }
         .buttonStyle(PressableButtonStyle(scale: 0.98))
     }
@@ -801,17 +865,53 @@ struct NotificationSettingsPage: View {
 struct AppearanceSettingsPage: View {
     @EnvironmentObject private var settings: AppSettings
 
+    private let options: [(Int, String, String, String)] = [
+        (AppSettings.Appearance.system.rawValue, "跟随系统", "circle.lefthalf.filled", "自动适配浅色 / 深色"),
+        (AppSettings.Appearance.light.rawValue, "浅色", "sun.max.fill", "始终使用浅色界面"),
+        (AppSettings.Appearance.dark.rawValue, "深色", "moon.fill", "始终使用深色界面")
+    ]
+
     var body: some View {
-        Form {
-            Section {
-                Picker("主题", selection: $settings.appearance) {
-                    Text("跟随系统").tag(AppSettings.Appearance.system.rawValue)
-                    Text("浅色").tag(AppSettings.Appearance.light.rawValue)
-                    Text("深色").tag(AppSettings.Appearance.dark.rawValue)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                AppSectionTitle(title: "主题", systemImage: "paintbrush.fill")
+                ForEach(options, id: \.0) { value, title, symbol, subtitle in
+                    Button {
+                        settings.appearance = value
+                        Haptics.light()
+                    } label: {
+                        HStack(spacing: 14) {
+                            Image(systemName: symbol)
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .frame(width: 40, height: 40)
+                                .background(Color.accentColor.brandGradient, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(title)
+                                    .font(.body.weight(.semibold))
+                                    .foregroundStyle(.primary)
+                                Text(subtitle)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: settings.appearance == value ? "checkmark.circle.fill" : "circle")
+                                .font(.title3)
+                                .foregroundStyle(settings.appearance == value ? Color.accentColor : Color.secondary.opacity(0.35))
+                        }
+                        .appCard()
+                    }
+                    .buttonStyle(PressableButtonStyle(scale: 0.98))
                 }
-                .pickerStyle(.inline)
+                Text("强调色采用青绿工具风（对齐 LCSign 类工具 App），部分控件随系统材质自动适配。")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .padding(.horizontal, 4)
+                    .padding(.top, 8)
             }
+            .padding(16)
         }
+        .background(AppSurfaceBackground())
         .navigationTitle("外观")
         .navigationBarTitleDisplayMode(.inline)
     }

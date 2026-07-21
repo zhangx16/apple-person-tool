@@ -22,7 +22,7 @@ struct CheckinAuthMeta: Codable, Equatable {
     var appTokenConfigured: Bool?
 }
 
-struct CheckinCounts: Codable, Equatable {
+struct CheckinCounts: Codable, Equatable, Hashable {
     var total: Int?
     var projectTotal: Int?
     var success: Int?

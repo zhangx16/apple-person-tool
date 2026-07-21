@@ -726,8 +726,8 @@ struct SSHSettingsPage: View {
             } footer: {
                 Text("若已部署 Next Terminal 等 Web SSH，可在此填写面板地址。完整终端体验推荐 Blink Shell 或基于 Citadel 的自研终端。")
             }
-            Section("开源参考") {
-                Text("• Blink Shell — iOS 终端 / Mosh\n• Citadel — SwiftNIO SSH 高层库\n• apple/swift-nio-ssh — SSH 协议实现")
+            Section("实现") {
+                Text("App 内命令执行使用 Citadel（SwiftNIO SSH）。完整交互终端推荐 Blink Shell；也可配置 Next Terminal Web 面板。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

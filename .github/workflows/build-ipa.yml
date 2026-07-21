@@ -149,6 +149,15 @@ jobs:
           SHARE_PROVISION_PROFILE_SPECIFIER: ${{ secrets.SHARE_PROVISION_PROFILE_SPECIFIER }}
         run: bash scripts/ci-configure-share-extension.sh
 
+      - name: Resolve Swift packages (Citadel)
+        run: |
+          set -euo pipefail
+          if [ -f PersonalToolbox.xcworkspace/contents.xcworkspacedata ]; then
+            xcodebuild -resolvePackageDependencies -workspace PersonalToolbox.xcworkspace -scheme PersonalToolbox
+          else
+            xcodebuild -resolvePackageDependencies -project PersonalToolbox.xcodeproj -scheme PersonalToolbox
+          fi
+
       - name: Archive
         run: |
           set -euo pipefail

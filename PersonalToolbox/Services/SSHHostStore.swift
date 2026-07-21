@@ -76,5 +76,18 @@ final class SSHHostStore: ObservableObject {
     func delete(id: String) {
         hosts.removeAll { $0.id == id }
         persist()
+        KeychainStore.set("", for: Self.passwordKey(id))
+    }
+
+    // MARK: - Password (Keychain, not JSON)
+
+    static func passwordKey(_ hostId: String) -> String { "ssh.host.\(hostId).password" }
+
+    func setPassword(_ password: String, for hostId: String) {
+        KeychainStore.set(password, for: Self.passwordKey(hostId))
+    }
+
+    func password(for hostId: String) -> String {
+        KeychainStore.get(Self.passwordKey(hostId)) ?? ""
     }
 }

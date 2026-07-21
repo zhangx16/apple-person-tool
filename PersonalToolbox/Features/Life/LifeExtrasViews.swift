@@ -546,7 +546,7 @@ struct SSHHomeView: View {
     var body: some View {
         List {
             Section {
-                Text("完整交互终端推荐开源项目：Blink Shell、Citadel（SwiftNIO SSH）。本模块提供主机书签 + 可选打开 Next Terminal Web 面板。")
+                Text("已接入 Citadel 执行预设/自定义命令（密码登录）。完整交互式终端仍可配合 Blink 或 Next Terminal。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -653,15 +653,29 @@ private struct SSHEditorSheet: View {
 
 struct SSHHostDetailView: View {
     @State var host: SSHHost
+    @State private var password = ""
     @State private var newTitle = ""
     @State private var newCommand = ""
+    @State private var isRunning = false
+    @State private var runTitle = ""
+    @State private var runOutput = ""
+    @State private var runError: String?
+    @State private var showOutput = false
+    @StateObject private var store = SSHHostStore.shared
 
     var body: some View {
         List {
             Section("连接") {
                 LabeledContent("目标", value: "\(host.username)@\(host.host):\(host.port)")
+                SecureField("密码（存 Keychain）", text: $password)
+                    .privacySensitive()
+                    .textContentType(.password)
+                Button("保存密码") {
+                    store.setPassword(password, for: host.id)
+                    Haptics.success()
+                }
                 if let url = host.sshURL {
-                    Link("用 ssh:// 打开（Termius / Blink 等）", destination: url)
+                    Link("用 ssh:// 打开其它终端 App", destination: url)
                 }
                 Button {
                     UIPasteboard.general.string = host.cli()
@@ -671,27 +685,35 @@ struct SSHHostDetailView: View {
                 }
             }
             Section {
-                Text("远程执行需 Citadel / Blink。此处复制命令到终端 App 运行。")
+                Text("基于 Citadel（SwiftNIO SSH）在 App 内执行非交互命令。完整交互终端仍可用 Blink。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
             Section("预设命令") {
                 ForEach(host.presets) { p in
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: 6) {
                         Text(p.title).font(.subheadline.weight(.semibold))
                         Text(p.command).font(.caption.monospaced()).foregroundStyle(.secondary)
+                        HStack {
+                            Button {
+                                Task { await run(p) }
+                            } label: {
+                                Label("在 App 内执行", systemImage: "play.fill")
+                            }
+                            .disabled(isRunning || password.isEmpty)
+                            Button {
+                                UIPasteboard.general.string = host.cli(for: p)
+                                Haptics.success()
+                            } label: {
+                                Label("复制", systemImage: "doc.on.doc")
+                            }
+                        }
+                        .font(.caption.weight(.semibold))
                     }
                     .swipeActions {
-                        Button {
-                            UIPasteboard.general.string = host.cli(for: p)
-                            Haptics.success()
-                        } label: {
-                            Label("复制", systemImage: "doc.on.doc")
-                        }
-                        .tint(.blue)
                         Button(role: .destructive) {
                             host.presets.removeAll { $0.id == p.id }
-                            SSHHostStore.shared.upsert(host)
+                            store.upsert(host)
                         } label: {
                             Label("删除", systemImage: "trash")
                         }
@@ -707,14 +729,112 @@ struct SSHHostDetailView: View {
                         let c = newCommand.trimmingCharacters(in: .whitespacesAndNewlines)
                         guard !t.isEmpty, !c.isEmpty else { return }
                         host.presets.append(SSHPreset(id: UUID().uuidString, title: t, command: c))
-                        SSHHostStore.shared.upsert(host)
+                        store.upsert(host)
                         newTitle = ""
                         newCommand = ""
                     }
                 }
             }
+            Section("自定义命令") {
+                TextField("例如 uptime", text: $newCommand)
+                    .textInputAutocapitalization(.never)
+                    .font(.caption.monospaced())
+                Button {
+                    let c = newCommand.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !c.isEmpty else { return }
+                    Task {
+                        await run(SSHPreset(id: "adhoc", title: "自定义", command: c))
+                    }
+                } label: {
+                    Label(isRunning ? "执行中…" : "执行", systemImage: "terminal")
+                }
+                .disabled(isRunning || password.isEmpty || newCommand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
         }
         .navigationTitle(host.name)
+        .onAppear {
+            password = store.password(for: host.id)
+        }
+        .sheet(isPresented: $showOutput) {
+            NavigationStack {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text(runTitle).font(.headline)
+                        if let runError, !runError.isEmpty {
+                            Text(runError)
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                        }
+                        Text(runOutput.isEmpty ? "（无输出）" : runOutput)
+                            .font(.system(.caption, design: .monospaced))
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .padding()
+                }
+                .navigationTitle("命令输出")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("关闭") { showOutput = false }
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("复制") {
+                            UIPasteboard.general.string = runOutput
+                            Haptics.success()
+                        }
+                    }
+                }
+            }
+            .presentationDetents([.medium, .large])
+        }
+        .overlay {
+            if isRunning {
+                ProgressView("SSH 执行中…")
+                    .padding(20)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+        }
+    }
+
+    private func run(_ preset: SSHPreset) async {
+        let pass = password
+        guard !pass.isEmpty else {
+            runError = "请先填写密码"
+            showOutput = true
+            return
+        }
+        store.setPassword(pass, for: host.id)
+        isRunning = true
+        defer { isRunning = false }
+        runTitle = "\(preset.title) · \(preset.command)"
+        runOutput = ""
+        runError = nil
+        do {
+            let result = try await SSHRemoteRunner.run(
+                host: host.host,
+                port: host.port,
+                username: host.username,
+                password: pass,
+                command: preset.command
+            )
+            runOutput = result.output
+            runError = result.exitOK ? nil : (result.errorText ?? "命令失败")
+            if result.exitOK { Haptics.success() } else { Haptics.error() }
+            ActivityEventStore.shared.log(.make(
+                title: "SSH \(result.exitOK ? "成功" : "失败")",
+                subtitle: "\(host.name): \(preset.title)",
+                systemImage: "terminal",
+                tintHex: result.exitOK ? 0x30D158 : 0xFF453A,
+                route: "ssh"
+            ))
+            showOutput = true
+        } catch {
+            runError = error.localizedDescription
+            runOutput = ""
+            showOutput = true
+            Haptics.error()
+        }
     }
 }
 

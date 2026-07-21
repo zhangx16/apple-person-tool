@@ -1,14 +1,33 @@
-# Archive failed on `74dd6dc`
+# Archive failed on `f38656a`
 
-Run: https://github.com/zhangx16/apple-person-tool/actions/runs/29825063842
-Commit: `74dd6dc7b205a725d43e7d8288ce34fa4fc6fca0`
+Run: https://github.com/zhangx16/apple-person-tool/actions/runs/29825175981
+Commit: `f38656af22baf7f605bb09dd309bae4b7e2af899`
 
 ## Grep errors
 ```
-(no grep hits)
+xcodebuild: error: Unable to read project 'PersonalToolbox.xcodeproj'.
 ```
 
 ## Tail
 ```
+Command line invocation:
+    /Applications/Xcode_15.4.app/Contents/Developer/usr/bin/xcodebuild -project PersonalToolbox.xcodeproj -scheme PersonalToolbox -configuration Release -destination generic/platform=iOS -archivePath /Users/runner/work/_temp/PersonalToolbox.xcarchive clean archive CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM=CTSQLK944L "CODE_SIGN_IDENTITY=iPhone Distribution"
+
+User defaults from command line:
+    IDEArchivePathOverride = /Users/runner/work/_temp/PersonalToolbox.xcarchive
+    IDEPackageSupportUseBuiltinSCM = YES
+
+Build settings from command line:
+    CODE_SIGN_IDENTITY = iPhone Distribution
+    CODE_SIGN_STYLE = Manual
+    DEVELOPMENT_TEAM = CTSQLK944L
+
+2026-07-21 11:12:30.026 xcodebuild[2649:11743] Error Domain=NSCocoaErrorDomain Code=3840 "JSON text did not start with array or object and option to allow fragments not set. around line 1, column 0." UserInfo={NSDebugDescription=JSON text did not start with array or object and option to allow fragments not set. around line 1, column 0., NSJSONSerializationErrorIndex=0}
+2026-07-21 11:12:30.039 xcodebuild[2649:11743] Writing error result bundle to /var/folders/g3/pffjr_y96bq06blnkf72x_hw0000gn/T/ResultBundle_2026-21-07_11-12-0030.xcresult
+xcodebuild: error: Unable to read project 'PersonalToolbox.xcodeproj'.
+	Reason: The project ‘PersonalToolbox’ is damaged and cannot be opened due to a parse error. Examine the project file for invalid edits or unresolved source control conflicts.
+
+Path: /Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox.xcodeproj
+
 
 ```

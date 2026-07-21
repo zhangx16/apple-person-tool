@@ -84,8 +84,11 @@ struct DownloadHomeView: View {
         }
         .fullScreenCover(item: $viewModel.playItem, onDismiss: {
             viewModel.dismissPlay()
+            // Safety: always restore portrait when the player cover is dismissed.
+            OrientationHelper.lockPortrait()
         }) { item in
             VideoPlayerSheet(url: item.url, title: item.name)
+                .onAppear { OrientationHelper.lockLandscape() }
         }
     }
 

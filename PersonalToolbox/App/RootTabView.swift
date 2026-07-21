@@ -1,7 +1,7 @@
 import SwiftUI
 
 enum AppTab: Hashable {
-    case chat
+    case overview
     case live
     case services
     case settings
@@ -12,27 +12,25 @@ struct RootTabView: View {
     @EnvironmentObject private var shareInbox: ShareInbox
     @Environment(\.scenePhase) private var scenePhase
 
-    @State private var selectedTab: AppTab = .chat
+    @State private var selectedTab: AppTab = .overview
     @State private var isUnlocked = false
     @State private var hideForSwitcher = false
 
     var body: some View {
         ZStack {
-            // Classic TabView (Xcode 15.4 / iOS 17 SDK). Avoid iOS 18-only Tab {} API.
             TabView(selection: $selectedTab) {
-                ChatListView(selectedTab: $selectedTab)
-                    .tabItem { Label("助手", systemImage: "sparkles") }
-                    .tag(AppTab.chat)
-                    .accessibilityLabel("助手")
+                OverviewHomeView(selectedTab: $selectedTab)
+                    .tabItem { Label("总览", systemImage: "square.grid.2x2") }
+                    .tag(AppTab.overview)
+                    .accessibilityLabel("总览")
 
-                // No dynamic params — changing init args under TabView recreated the tree on newer iOS.
                 LiveHomeView()
                     .tabItem { Label("直播", systemImage: "play.tv") }
                     .tag(AppTab.live)
                     .accessibilityLabel("直播")
 
                 ServicesHubView(selectedTab: $selectedTab)
-                    .tabItem { Label("服务", systemImage: "square.grid.2x2") }
+                    .tabItem { Label("服务", systemImage: "shippingbox") }
                     .tag(AppTab.services)
                     .accessibilityLabel("服务")
 
@@ -42,7 +40,6 @@ struct RootTabView: View {
                     .accessibilityLabel("设置")
             }
             .tint(Color.accentColor)
-            // 选中态填充图标，未选中线框 — 更接近 LCSign / 现代工具 App 底栏
             .onAppear {
                 let appearance = UITabBarAppearance()
                 appearance.configureWithDefaultBackground()
@@ -67,7 +64,6 @@ struct RootTabView: View {
                 .zIndex(1)
             }
         }
-        // Do not animate tab selection transitions on the whole tree.
         .animation(AppleTheme.preferredSnappy, value: hideForSwitcher)
         .animation(AppleTheme.preferredSnappy, value: isUnlocked)
         .sheet(isPresented: $shareInbox.showSheet) {

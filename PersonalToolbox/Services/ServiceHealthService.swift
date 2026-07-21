@@ -37,8 +37,9 @@ final class ServiceHealthService: ObservableObject {
 
     private static func skeleton(settings: AppSettings) -> [ServiceHealthItem] {
         [
-            .init(id: "sub2", title: "Sub2API 助手", brand: .sub2, status: settings.isAIConfigured ? .unknown : .skip, latencyMs: nil, detail: settings.sub2apiBaseURL),
+            .init(id: "sub2", title: "Sub2API / 翻译", brand: .sub2, status: settings.isAIConfigured ? .unknown : .skip, latencyMs: nil, detail: settings.sub2apiBaseURL),
             .init(id: "admin", title: "Sub2API 监控", brand: .sub2, status: settings.isAdminConfigured ? .unknown : .skip, latencyMs: nil, detail: "Admin API"),
+            .init(id: "checkin", title: "签到服务", brand: .checkin, status: settings.isCheckinConfigured ? .unknown : .skip, latencyMs: nil, detail: settings.checkinBaseURL),
             .init(id: "yt", title: "YouTube 下载", brand: .youtube, status: settings.isYTConfigured ? .unknown : .skip, latencyMs: nil, detail: settings.ytBaseURL),
             .init(id: "sublink", title: "SublinkX", brand: .sublink, status: settings.isSublinkConfigured ? .unknown : .skip, latencyMs: nil, detail: settings.sublinkBaseURL),
             .init(id: "komari", title: "Komari", brand: .komari, status: settings.komariBaseURL.isEmpty ? .skip : .unknown, latencyMs: nil, detail: settings.komariBaseURL),
@@ -69,6 +70,9 @@ final class ServiceHealthService: ObservableObject {
         }
         if settings.isAdminConfigured {
             let r = await probeAdmin(); apply(r.0, r.1, r.2, r.3)
+        }
+        if settings.isCheckinConfigured {
+            let r = await probeCheckin(); apply(r.0, r.1, r.2, r.3)
         }
         if settings.isYTConfigured {
             let r = await probeYT(); apply(r.0, r.1, r.2, r.3)
@@ -110,6 +114,27 @@ final class ServiceHealthService: ObservableObject {
             return ("admin", .ok, ms, detail)
         } catch {
             return ("admin", .fail, nil, error.localizedDescription)
+        }
+    }
+
+    private func probeCheckin() async -> (String, ServiceHealthItem.Status, Int?, String) {
+        let start = ContinuousClock.now
+        do {
+            let health = try await CheckinService.shared.health(
+                baseURL: settings.checkinBaseURL,
+                apiToken: settings.checkinAPIToken
+            )
+            let summary = try await CheckinService.shared.summary(
+                baseURL: settings.checkinBaseURL,
+                apiToken: settings.checkinAPIToken
+            )
+            let ms = Int(start.duration(to: .now) / .milliseconds(1))
+            let total = summary.counts?.totalValue ?? 0
+            let healthy = summary.counts?.healthyValue ?? 0
+            let auth = health.auth ?? "token"
+            return ("checkin", .ok, ms, "\(auth) · \(healthy)/\(total) 正常")
+        } catch {
+            return ("checkin", .fail, nil, error.localizedDescription)
         }
     }
 

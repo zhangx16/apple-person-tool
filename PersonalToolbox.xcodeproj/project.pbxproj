@@ -6,6 +6,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0000000000000000000005E1 /* OverviewHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000005E0 /* OverviewHomeView.swift */; };
 		000000000000000000000561 /* LiveTarsCodec.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000560 /* LiveTarsCodec.swift */; };
 		000000000000000000000563 /* LiveProtoWire.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000562 /* LiveProtoWire.swift */; };
 		000000000000000000000565 /* webmssdk.js in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000564 /* webmssdk.js */; };
@@ -27,7 +28,7 @@
 		000000000000000000000108 /* BiometricAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000107 /* BiometricAuth.swift */; };
 		00000000000000000000010A /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000109 /* Haptics.swift */; };
 		0000000000000000000001C9 /* LocalNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000001C8 /* LocalNotifier.swift */; };
-		0000000000000000000005C1 /* ChatStreamKeepAlive.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000005C0 /* ChatStreamKeepAlive.swift */; };
+				};
 		0000000000000000000005D1 /* CheckinModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000005D0 /* CheckinModels.swift */; };
 		0000000000000000000005D3 /* CheckinService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000005D2 /* CheckinService.swift */; };
 		0000000000000000000005D7 /* CheckinHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000005D6 /* CheckinHomeView.swift */; };
@@ -35,12 +36,12 @@
 		00000000000000000000010C /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000010B /* KeychainStore.swift */; };
 		00000000000000000000010E /* NetworkClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000010D /* NetworkClient.swift */; };
 		000000000000000000000110 /* SSEParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000010F /* SSEParser.swift */; };
-		000000000000000000000112 /* ChatListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000111 /* ChatListView.swift */; };
-		000000000000000000000114 /* ChatThreadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000113 /* ChatThreadView.swift */; };
-		000000000000000000000116 /* ChatViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000115 /* ChatViewModel.swift */; };
-		000000000000000000000118 /* ImagineComposeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000117 /* ImagineComposeView.swift */; };
-		00000000000000000000011A /* ImagineViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000119 /* ImagineViewModel.swift */; };
-		00000000000000000000011C /* MediaBubbleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000011B /* MediaBubbleView.swift */; };
+				};
+				};
+				};
+				};
+				};
+				};
 		00000000000000000000011E /* DownloadHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000011D /* DownloadHomeView.swift */; };
 		000000000000000000000120 /* DownloadViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000011F /* DownloadViewModel.swift */; };
 		000000000000000000000122 /* FilesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000121 /* FilesListView.swift */; };
@@ -57,12 +58,12 @@
 		000000000000000000000138 /* SublinkViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000137 /* SublinkViewModel.swift */; };
 		00000000000000000000013A /* AdminModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000139 /* AdminModels.swift */; };
 		00000000000000000000013C /* ChatModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000013B /* ChatModels.swift */; };
-		00000000000000000000013E /* ConversationEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000013D /* ConversationEntity.swift */; };
+				};
 		000000000000000000000140 /* DownloadModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000013F /* DownloadModels.swift */; };
 		000000000000000000000142 /* KomariModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000141 /* KomariModels.swift */; };
 		000000000000000000000144 /* SublinkModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000143 /* SublinkModels.swift */; };
-		000000000000000000000146 /* ConversationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000145 /* ConversationStore.swift */; };
-		000000000000000000000148 /* ImagineService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000147 /* ImagineService.swift */; };
+				};
+				};
 		00000000000000000000014A /* KomariService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000149 /* KomariService.swift */; };
 		00000000000000000000014C /* Sub2APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000014B /* Sub2APIService.swift */; };
 		00000000000000000000014E /* Sub2AdminService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000014D /* Sub2AdminService.swift */; };
@@ -125,6 +126,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0000000000000000000005E0 /* OverviewHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewHomeView.swift; sourceTree = "<group>"; };
 		000000000000000000000560 /* LiveTarsCodec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveTarsCodec.swift; sourceTree = "<group>"; };
 		000000000000000000000562 /* LiveProtoWire.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveProtoWire.swift; sourceTree = "<group>"; };
 		000000000000000000000564 /* webmssdk.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = webmssdk.js; sourceTree = "<group>"; };
@@ -146,17 +148,10 @@
 		000000000000000000000107 /* BiometricAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricAuth.swift; sourceTree = "<group>"; };
 		000000000000000000000109 /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
 		0000000000000000000001C8 /* LocalNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalNotifier.swift; sourceTree = "<group>"; };
-		0000000000000000000005C0 /* ChatStreamKeepAlive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatStreamKeepAlive.swift; sourceTree = "<group>"; };
 		0000000000000000000001CA /* SystemVideoPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemVideoPlayer.swift; sourceTree = "<group>"; };
 		00000000000000000000010B /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		00000000000000000000010D /* NetworkClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkClient.swift; sourceTree = "<group>"; };
 		00000000000000000000010F /* SSEParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSEParser.swift; sourceTree = "<group>"; };
-		000000000000000000000111 /* ChatListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatListView.swift; sourceTree = "<group>"; };
-		000000000000000000000113 /* ChatThreadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatThreadView.swift; sourceTree = "<group>"; };
-		000000000000000000000115 /* ChatViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViewModel.swift; sourceTree = "<group>"; };
-		000000000000000000000117 /* ImagineComposeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagineComposeView.swift; sourceTree = "<group>"; };
-		000000000000000000000119 /* ImagineViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagineViewModel.swift; sourceTree = "<group>"; };
-		00000000000000000000011B /* MediaBubbleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaBubbleView.swift; sourceTree = "<group>"; };
 		00000000000000000000011D /* DownloadHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadHomeView.swift; sourceTree = "<group>"; };
 		00000000000000000000011F /* DownloadViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadViewModel.swift; sourceTree = "<group>"; };
 		000000000000000000000121 /* FilesListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilesListView.swift; sourceTree = "<group>"; };
@@ -176,12 +171,9 @@
 		000000000000000000000137 /* SublinkViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SublinkViewModel.swift; sourceTree = "<group>"; };
 		000000000000000000000139 /* AdminModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminModels.swift; sourceTree = "<group>"; };
 		00000000000000000000013B /* ChatModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatModels.swift; sourceTree = "<group>"; };
-		00000000000000000000013D /* ConversationEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationEntity.swift; sourceTree = "<group>"; };
 		00000000000000000000013F /* DownloadModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadModels.swift; sourceTree = "<group>"; };
 		000000000000000000000141 /* KomariModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KomariModels.swift; sourceTree = "<group>"; };
 		000000000000000000000143 /* SublinkModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SublinkModels.swift; sourceTree = "<group>"; };
-		000000000000000000000145 /* ConversationStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationStore.swift; sourceTree = "<group>"; };
-		000000000000000000000147 /* ImagineService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagineService.swift; sourceTree = "<group>"; };
 		000000000000000000000149 /* KomariService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KomariService.swift; sourceTree = "<group>"; };
 		00000000000000000000014B /* Sub2APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sub2APIService.swift; sourceTree = "<group>"; };
 		00000000000000000000014D /* Sub2AdminService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sub2AdminService.swift; sourceTree = "<group>"; };
@@ -247,6 +239,14 @@
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
+		0000000000000000000005E2 /* Overview */ = {
+			isa = PBXGroup;
+			children = (
+				0000000000000000000005E0 /* OverviewHomeView.swift */,
+			);
+			path = Overview;
+			sourceTree = "<group>";
+		};
 		0000000000000000000005D8 /* Checkin */ = {
 			isa = PBXGroup;
 			children = (
@@ -282,7 +282,6 @@
 				000000000000000000000107 /* BiometricAuth.swift */,
 				000000000000000000000109 /* Haptics.swift */,
 				0000000000000000000001C8 /* LocalNotifier.swift */,
-				0000000000000000000005C0 /* ChatStreamKeepAlive.swift */,
 				00000000000000000000052B /* ShareHandoff.swift */,
 				000000000000000000000504 /* LocalJSONStore.swift */,
 				000000000000000000000506 /* ActionRouter.swift */,
@@ -312,7 +311,6 @@
 				000000000000000000000139 /* AdminModels.swift */,
 				00000000000000000000013B /* ChatModels.swift */,
 				0000000000000000000005D0 /* CheckinModels.swift */,
-				00000000000000000000013D /* ConversationEntity.swift */,
 				00000000000000000000013F /* DownloadModels.swift */,
 				00000000000000000000052E /* LiveModels.swift */,
 				000000000000000000000141 /* KomariModels.swift */,
@@ -330,8 +328,6 @@
 		000000000000000000000305 /* Services */ = {
 			isa = PBXGroup;
 			children = (
-				000000000000000000000145 /* ConversationStore.swift */,
-				000000000000000000000147 /* ImagineService.swift */,
 				000000000000000000000149 /* KomariService.swift */,
 				0000000000000000000005D2 /* CheckinService.swift */,
 				00000000000000000000014B /* Sub2APIService.swift */,
@@ -369,19 +365,6 @@
 				0000000000000000000001B2 /* IPCheckService.swift */,
 			);
 			path = Services;
-			sourceTree = "<group>";
-		};
-		000000000000000000000307 /* Chat */ = {
-			isa = PBXGroup;
-			children = (
-				000000000000000000000111 /* ChatListView.swift */,
-				000000000000000000000113 /* ChatThreadView.swift */,
-				000000000000000000000115 /* ChatViewModel.swift */,
-				000000000000000000000117 /* ImagineComposeView.swift */,
-				000000000000000000000119 /* ImagineViewModel.swift */,
-				00000000000000000000011B /* MediaBubbleView.swift */,
-			);
-			path = Chat;
 			sourceTree = "<group>";
 		};
 		000000000000000000000308 /* Download */ = {
@@ -500,12 +483,12 @@
 			children = (
 				000000000000000000000534 /* Live */,
 				000000000000000000000518 /* Tools */,
-				000000000000000000000307 /* Chat */,
 				00000000000000000000030A /* Monitor */,
 				00000000000000000000030B /* ServicesHub */,
 				00000000000000000000030C /* Sublink */,
 				00000000000000000000030D /* Komari */,
 				0000000000000000000005D8 /* Checkin */,
+				0000000000000000000005E2 /* Overview */,
 				000000000000000000000311 /* Anniversary */,
 				000000000000000000000312 /* QRAssistant */,
 				000000000000000000000313 /* Translator */,
@@ -679,6 +662,7 @@
 			files = (
 				000000000000000000000102 /* PersonalToolboxApp.swift in Sources */,
 				000000000000000000000104 /* RootTabView.swift in Sources */,
+				0000000000000000000005E1 /* OverviewHomeView.swift in Sources */,
 				000000000000000000000106 /* AppSettings.swift in Sources */,
 				000000000000000000000108 /* BiometricAuth.swift in Sources */,
 				00000000000000000000010A /* Haptics.swift in Sources */,
@@ -696,19 +680,12 @@
 				00000000000000000000010C /* KeychainStore.swift in Sources */,
 				00000000000000000000010E /* NetworkClient.swift in Sources */,
 				000000000000000000000110 /* SSEParser.swift in Sources */,
-				000000000000000000000112 /* ChatListView.swift in Sources */,
-				000000000000000000000114 /* ChatThreadView.swift in Sources */,
-				000000000000000000000116 /* ChatViewModel.swift in Sources */,
-				000000000000000000000118 /* ImagineComposeView.swift in Sources */,
-				00000000000000000000011A /* ImagineViewModel.swift in Sources */,
-				00000000000000000000011C /* MediaBubbleView.swift in Sources */,
 				00000000000000000000011E /* DownloadHomeView.swift in Sources */,
 				000000000000000000000120 /* DownloadViewModel.swift in Sources */,
 				0000000000000000000001CB /* SystemVideoPlayer.swift in Sources */,
 				000000000000000000000122 /* FilesListView.swift in Sources */,
 				000000000000000000000124 /* TaskRowView.swift in Sources */,
 				000000000000000000000126 /* KomariHomeView.swift in Sources */,
-				0000000000000000000005C1 /* ChatStreamKeepAlive.swift in Sources */,
 				0000000000000000000005D1 /* CheckinModels.swift in Sources */,
 				0000000000000000000005D3 /* CheckinService.swift in Sources */,
 				0000000000000000000005D7 /* CheckinHomeView.swift in Sources */,
@@ -723,12 +700,9 @@
 				000000000000000000000138 /* SublinkViewModel.swift in Sources */,
 				00000000000000000000013A /* AdminModels.swift in Sources */,
 				00000000000000000000013C /* ChatModels.swift in Sources */,
-				00000000000000000000013E /* ConversationEntity.swift in Sources */,
 				000000000000000000000140 /* DownloadModels.swift in Sources */,
 				000000000000000000000142 /* KomariModels.swift in Sources */,
 				000000000000000000000144 /* SublinkModels.swift in Sources */,
-				000000000000000000000146 /* ConversationStore.swift in Sources */,
-				000000000000000000000148 /* ImagineService.swift in Sources */,
 				00000000000000000000014A /* KomariService.swift in Sources */,
 				00000000000000000000014C /* Sub2APIService.swift in Sources */,
 				00000000000000000000014E /* Sub2AdminService.swift in Sources */,
@@ -853,7 +827,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 46;
+				CURRENT_PROJECT_VERSION = 47;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				CODE_SIGN_ENTITLEMENTS = PersonalToolbox/PersonalToolbox.entitlements;
@@ -879,7 +853,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 46;
+				CURRENT_PROJECT_VERSION = 47;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				CODE_SIGN_ENTITLEMENTS = PersonalToolbox/PersonalToolbox.entitlements;
@@ -905,7 +879,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 46;
+				CURRENT_PROJECT_VERSION = 47;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
@@ -930,7 +904,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 46;
+				CURRENT_PROJECT_VERSION = 47;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;

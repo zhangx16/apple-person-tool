@@ -1,5 +1,4 @@
 import SwiftUI
-import SwiftData
 
 @main
 struct PersonalToolboxApp: App {
@@ -7,7 +6,6 @@ struct PersonalToolboxApp: App {
         // Warm local tool stores so 服务 → 生活 tools open instantly.
         AnniversaryStore.shared.load()
         QRAssistantStore.shared.load()
-        // TranslatorStore needs AppSettings; loaded on first open of 翻译器.
         LocalNotifier.installForegroundDelegate()
     }
 
@@ -19,9 +17,7 @@ struct PersonalToolboxApp: App {
                 .onOpenURL { url in
                     ShareInbox.shared.handle(url: url)
                 }
-                // App shell owns biometric gate + app-switcher redaction (PR-7).
         }
-        .modelContainer(for: [ConversationEntity.self, MessageEntity.self])
     }
 }
 
@@ -38,7 +34,6 @@ final class ShareInbox: ObservableObject {
         if let payload = ShareHandoff.consume() {
             pendingPayload = payload
             showSheet = true
-            // Also stash text into clipboard history
             let text = payload.combinedText
             if !text.isEmpty {
                 ClipboardStore.shared.addManual(text)

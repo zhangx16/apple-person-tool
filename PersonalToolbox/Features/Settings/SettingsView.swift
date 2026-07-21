@@ -17,7 +17,7 @@ struct SettingsView: View {
                     settingsSection("服务配置", symbol: "server.rack") {
                         projectLink(
                             brand: .sub2,
-                            title: "Sub2API 助手",
+                            title: "Sub2API / 翻译",
                             subtitle: hostHint(settings.sub2apiBaseURL),
                             configured: settings.isAIConfigured
                         ) {
@@ -174,7 +174,7 @@ struct SettingsView: View {
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text("XIN's Tool")
                                         .font(.headline)
-                                    Text("助手 · 直播 · 服务 · 本地工具")
+                                    Text("总览 · 直播 · 服务 · 本地工具")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
@@ -237,7 +237,7 @@ struct SettingsView: View {
 
     private var configOverviewCard: some View {
         let items: [(String, Bool)] = [
-            ("助手", settings.isAIConfigured),
+            ("签到", settings.isCheckinConfigured),
             ("下载", settings.isYTConfigured),
             ("Sublink", settings.isSublinkConfigured),
             ("Cloudflare", settings.isCloudflareConfigured)
@@ -399,27 +399,13 @@ struct Sub2ChatSettingsPage: View {
             } header: {
                 Text("连接")
             } footer: {
-                Text("用于对话与 Imagine。")
+                Text("用于翻译器等文本能力（助手对话模块已移除）。")
             }
 
             Section("模型") {
                 Picker("首选文本模型", selection: $settings.preferredModel) {
                     ForEach(viewModel.modelChoices, id: \.self) { Text($0).tag($0) }
                 }
-                Picker("默认生图模型", selection: $settings.preferredImagineImageModel) {
-                    ForEach(viewModel.imagineImageChoices, id: \.self) { Text($0).tag($0) }
-                }
-                Picker("默认编辑模型", selection: $settings.preferredImagineEditModel) {
-                    ForEach(viewModel.imagineEditChoices, id: \.self) { Text($0).tag($0) }
-                }
-                Picker("默认视频模型", selection: $settings.preferredImagineVideoModel) {
-                    ForEach(viewModel.imagineVideoChoices, id: \.self) { Text($0).tag($0) }
-                }
-            }
-
-            Section("系统提示词") {
-                TextField("系统提示词", text: $settings.systemPrompt, axis: .vertical)
-                    .lineLimit(3...8)
             }
 
             Section {
@@ -427,7 +413,7 @@ struct Sub2ChatSettingsPage: View {
                 Button {
                     Task { await viewModel.testSub2API() }
                 } label: {
-                    Label("测试 Chat 连接", systemImage: "bolt.horizontal.circle")
+                    Label("测试连接", systemImage: "bolt.horizontal.circle")
                 }
                 .buttonStyle(PressableButtonStyle())
                 .disabled(viewModel.sub2Probe.isProbing)
@@ -435,11 +421,11 @@ struct Sub2ChatSettingsPage: View {
                 Text("检测")
             }
         }
-        .navigationTitle("Sub2API 助手")
+        .navigationTitle("Sub2API / 翻译")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                ServiceBrandTitle(brand: .sub2, title: "Sub2API 助手")
+                ServiceBrandTitle(brand: .sub2, title: "Sub2API / 翻译")
             }
         }
     }
@@ -459,7 +445,7 @@ struct Sub2AdminSettingsPage: View {
             } header: {
                 Text("凭证")
             } footer: {
-                Text("对应 sub2api-mobile 的 Admin Token，访问 /api/v1/admin/*。可与 Chat Key 不同。Base URL 与「Sub2API 助手」共用。")
+                Text("对应 sub2api-mobile 的 Admin Token，访问 /api/v1/admin/*。可与翻译用 Key 不同。Base URL 与「Sub2API / 翻译」共用。")
             }
 
             Section {

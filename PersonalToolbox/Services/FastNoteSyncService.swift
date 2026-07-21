@@ -72,37 +72,40 @@ actor FastNoteSyncService {
     }
 
     /// Login → token string.
+    /// Upstream expects `credentials` + `password`, and `client=webgui` (login is webgui-restricted).
     func login(baseURL: String, username: String, password: String) async throws -> String {
-        let body = try JSONEncoder().encode([
-            "username": username,
+        let payload: [String: Any] = [
+            "credentials": username,
             "password": password
-        ])
-        // Some deployments expect nested params
-        let body2 = try JSONSerialization.data(withJSONObject: [
-            "username": username,
-            "password": password
-        ])
-        _ = body2
+        ]
+        let body = try JSONSerialization.data(withJSONObject: payload)
         let (data, http) = try await client.data(
             base: normalizeBase(baseURL),
             path: "/api/user/login",
             method: "POST",
             headers: headers(token: nil),
-            body: body
+            body: body,
+            query: [
+                .init(name: "client", value: "webgui"),
+                .init(name: "lang", value: "zh-CN")
+            ]
         )
         guard (200..<300).contains(http.statusCode) else {
             throw NetworkClient.httpError(status: http.statusCode, body: data)
         }
         if let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            // status:false → business error
+            if let status = obj["status"] as? Bool, status == false {
+                let msg = (obj["message"] as? String) ?? "登录失败"
+                let details = (obj["details"] as? String).map { " (\($0))" } ?? ""
+                throw NetworkError.message(msg + details)
+            }
             if let token = obj["data"] as? String, !token.isEmpty { return token }
             if let dataObj = obj["data"] as? [String: Any] {
                 if let token = dataObj["token"] as? String, !token.isEmpty { return token }
                 if let token = dataObj["Token"] as? String, !token.isEmpty { return token }
             }
             if let token = obj["token"] as? String, !token.isEmpty { return token }
-            if let msg = obj["message"] as? String, obj["status"] as? Bool == false {
-                throw NetworkError.message(msg)
-            }
         }
         throw NetworkError.message("登录成功但未返回 token")
     }

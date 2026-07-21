@@ -490,6 +490,13 @@ struct LiveRoomView: View {
         .fullScreenCover(isPresented: $isPlayerFullscreen) {
             LiveRoomFullscreenView(vm: vm)
         }
+        .onChange(of: isPlayerFullscreen) { _, fullscreen in
+            if fullscreen {
+                OrientationHelper.lockLandscape()
+            } else {
+                OrientationHelper.lockPortrait()
+            }
+        }
     }
 
     private var shortTitle: String {
@@ -1239,7 +1246,13 @@ struct LiveRoomFullscreenView: View {
         }
         .statusBarHidden(true)
         .persistentSystemOverlays(.hidden)
+        .onAppear {
+            // Fullscreen live: force landscape immediately.
+            OrientationHelper.lockLandscape()
+        }
         .onDisappear {
+            // Leaving fullscreen: restore portrait for the rest of the app.
+            OrientationHelper.lockPortrait()
             // Leaving fullscreen keeps lock state so inline player stays locked if user wants.
         }
     }

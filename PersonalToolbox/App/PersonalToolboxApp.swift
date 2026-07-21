@@ -2,11 +2,15 @@ import SwiftUI
 
 @main
 struct PersonalToolboxApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     init() {
         // Warm local tool stores so 服务 → 生活 tools open instantly.
         AnniversaryStore.shared.load()
         QRAssistantStore.shared.load()
         LocalNotifier.installForegroundDelegate()
+        // App chrome is portrait-first; live fullscreen temporarily locks landscape.
+        OrientationHelper.lockPortrait()
     }
 
     var body: some Scene {

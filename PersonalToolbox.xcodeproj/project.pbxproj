@@ -6,6 +6,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0000000000000000000005F1 /* OrientationHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000005F0 /* OrientationHelper.swift */; };
 		0000000000000000000005E1 /* OverviewHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000005E0 /* OverviewHomeView.swift */; };
 		000000000000000000000561 /* LiveTarsCodec.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000560 /* LiveTarsCodec.swift */; };
 		000000000000000000000563 /* LiveProtoWire.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000562 /* LiveProtoWire.swift */; };
@@ -116,6 +117,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0000000000000000000005F0 /* OrientationHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrientationHelper.swift; sourceTree = "<group>"; };
 		0000000000000000000005E0 /* OverviewHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverviewHomeView.swift; sourceTree = "<group>"; };
 		000000000000000000000560 /* LiveTarsCodec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveTarsCodec.swift; sourceTree = "<group>"; };
 		000000000000000000000562 /* LiveProtoWire.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveProtoWire.swift; sourceTree = "<group>"; };
@@ -271,6 +273,7 @@
 				000000000000000000000105 /* AppSettings.swift */,
 				000000000000000000000107 /* BiometricAuth.swift */,
 				000000000000000000000109 /* Haptics.swift */,
+				0000000000000000000005F0 /* OrientationHelper.swift */,
 				0000000000000000000001C8 /* LocalNotifier.swift */,
 				00000000000000000000052B /* ShareHandoff.swift */,
 				000000000000000000000504 /* LocalJSONStore.swift */,
@@ -656,6 +659,7 @@
 				000000000000000000000106 /* AppSettings.swift in Sources */,
 				000000000000000000000108 /* BiometricAuth.swift in Sources */,
 				00000000000000000000010A /* Haptics.swift in Sources */,
+				0000000000000000000005F1 /* OrientationHelper.swift in Sources */,
 				0000000000000000000001C9 /* LocalNotifier.swift in Sources */,				000000000000000000000533 /* LiveHomeView.swift in Sources */,				00000000000000000000052C /* ShareHandoff.swift in Sources */,
 				000000000000000000000505 /* LocalJSONStore.swift in Sources */,
 				000000000000000000000507 /* ActionRouter.swift in Sources */,

@@ -4,8 +4,14 @@ import Foundation
 enum AppGroupShared {
     static let suiteName = "group.app.parsnip6345.lake8262"
 
+    /// Falls back to standard defaults when App Group is not enabled on the provisioning profile.
     static var defaults: UserDefaults {
-        UserDefaults(suiteName: suiteName) ?? .standard
+        if let suite = UserDefaults(suiteName: suiteName),
+           // suiteName returns non-nil even without entitlement on some OS versions; still write.
+           true {
+            return suite
+        }
+        return .standard
     }
 
     enum Key {

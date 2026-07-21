@@ -10,6 +10,11 @@ import Foundation
 actor FastNoteSyncService {
     static let shared = FastNoteSyncService()
 
+    /// Server binds JWT to User-Agent. All Fast Note requests **must** share this exact string
+    /// or later calls fail with "Auth token Browser (UA) restricted (User-Agent mismatch)".
+    private static let fixedUserAgent =
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+
     struct NoteListItem: Codable, Identifiable, Hashable {
         var id: String { path ?? pathHash ?? UUID().uuidString }
         var path: String?
@@ -80,7 +85,9 @@ actor FastNoteSyncService {
     private func authHeaders(token: String?) -> [String: String] {
         var h: [String: String] = [
             "Content-Type": "application/json",
-            "Accept": "application/json"
+            "Accept": "application/json",
+            // Must match login UA for the lifetime of the token.
+            "User-Agent": Self.fixedUserAgent
         ]
         if let token, !token.isEmpty {
             // Both forms observed working on this deployment.
@@ -89,6 +96,17 @@ actor FastNoteSyncService {
         }
         return h
     }
+
+    /// Dedicated session so iOS does not inject a different default User-Agent.
+    private let session: URLSession = {
+        let config = URLSessionConfiguration.ephemeral
+        config.httpAdditionalHeaders = [
+            "User-Agent": FastNoteSyncService.fixedUserAgent
+        ]
+        config.timeoutIntervalForRequest = 30
+        config.timeoutIntervalForResource = 60
+        return URLSession(configuration: config)
+    }()
 
     /// Low-level request that always builds URL with query items.
     private func request(
@@ -115,8 +133,10 @@ actor FastNoteSyncService {
         for (k, v) in authHeaders(token: token) {
             req.setValue(v, forHTTPHeaderField: k)
         }
+        // Explicit again — some iOS versions override request UA from session.
+        req.setValue(Self.fixedUserAgent, forHTTPHeaderField: "User-Agent")
 
-        let (data, resp) = try await URLSession.shared.data(for: req)
+        let (data, resp) = try await session.data(for: req)
         guard let http = resp as? HTTPURLResponse else { throw NetworkError.invalidResponse }
         return (data, http)
     }
@@ -167,10 +187,10 @@ actor FastNoteSyncService {
         req.timeoutInterval = 30
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.setValue("application/json", forHTTPHeaderField: "Accept")
-        // Some reverse proxies inspect User-Agent; mimic browser webgui lightly.
-        req.setValue("XINTool/1.0 (webgui)", forHTTPHeaderField: "User-Agent")
+        // Same UA as all subsequent note API calls (token is UA-bound).
+        req.setValue(Self.fixedUserAgent, forHTTPHeaderField: "User-Agent")
 
-        let (data, resp) = try await URLSession.shared.data(for: req)
+        let (data, resp) = try await session.data(for: req)
         guard let http = resp as? HTTPURLResponse else { throw NetworkError.invalidResponse }
 
         if let biz = parseBusinessError(data) {

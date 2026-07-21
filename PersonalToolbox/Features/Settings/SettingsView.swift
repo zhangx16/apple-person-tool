@@ -694,7 +694,7 @@ struct FastNoteSettingsPage: View {
             Section {
                 Button("登录并缓存 Token") {
                     Task {
-                        // Clear stale token so we always hit login with webgui client.
+                        // Clear stale token (old tokens may be bound to a different User-Agent).
                         settings.fastNoteToken = ""
                         do {
                             let token = try await FastNoteSyncService.shared.login(
@@ -703,14 +703,17 @@ struct FastNoteSettingsPage: View {
                                 password: settings.fastNotePassword
                             )
                             settings.fastNoteToken = token
-                            // Quick list probe so user knows vault is correct
+                            // Quick list probe so user knows vault + UA are correct
                             let notes = try await FastNoteSyncService.shared.listNotes(
                                 baseURL: settings.fastNoteBaseURL,
                                 token: token,
-                                vault: settings.fastNoteVault,
+                                vault: settings.fastNoteVault.isEmpty ? "zxin" : settings.fastNoteVault,
                                 pageSize: 3
                             )
-                            probe = "登录成功 · vault=\(settings.fastNoteVault) · 笔记 \(notes.count)+ 条"
+                            if settings.fastNoteVault.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                settings.fastNoteVault = "zxin"
+                            }
+                            probe = "登录成功 · vault=\(settings.fastNoteVault) · 已验证笔记接口"
                             Haptics.success()
                         } catch {
                             probe = error.localizedDescription

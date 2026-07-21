@@ -114,7 +114,25 @@ jobs:
           # Align with SimpleLive media_kit: need a non-AVPlayer engine for HTTP-FLV.
           gem install cocoapods --no-document || sudo gem install cocoapods --no-document
           pod --version
-          pod install --repo-update
+          # CDN trunk is occasionally flaky on runners — retry with and without repo update.
+          export COCOAPODS_DISABLE_STATS=true
+          ok=0
+          for attempt in 1 2 3; do
+            echo "pod install attempt ${attempt}…"
+            if [ "$attempt" -eq 1 ]; then
+              if pod install --repo-update; then ok=1; break; fi
+            else
+              if pod install; then ok=1; break; fi
+            fi
+            echo "pod install failed (attempt ${attempt}); sleeping…"
+            sleep $((attempt * 20))
+            pod cache clean --all || true
+            pod repo update trunk || true
+          done
+          if [ "$ok" -ne 1 ]; then
+            echo "::error::CocoaPods install failed after retries"
+            exit 1
+          fi
           test -f PersonalToolbox.xcworkspace/contents.xcworkspacedata
           ls -la Pods/ | head
 

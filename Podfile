@@ -1,4 +1,5 @@
 # CocoaPods — FLV-capable player (same role as SimpleLive's media_kit / mpv).
+source 'https://cdn.cocoapods.org/'
 platform :ios, '17.0'
 use_frameworks!
 inhibit_all_warnings!

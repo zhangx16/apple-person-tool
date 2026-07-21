@@ -112,30 +112,42 @@ jobs:
         run: |
           set -euo pipefail
           # Align with SimpleLive media_kit: need a non-AVPlayer engine for HTTP-FLV.
-          gem install cocoapods --no-document || sudo gem install cocoapods --no-document
-          pod --version
-          # CDN trunk is occasionally flaky on runners — retry with and without repo update.
           export COCOAPODS_DISABLE_STATS=true
+          # Prefer Homebrew CocoaPods on macOS runners (more reliable than gem).
+          if ! command -v pod >/dev/null 2>&1; then
+            brew install cocoapods || gem install cocoapods --no-document || sudo gem install cocoapods --no-document
+          fi
+          pod --version
           ok=0
-          for attempt in 1 2 3; do
-            echo "pod install attempt ${attempt}…"
-            if [ "$attempt" -eq 1 ]; then
-              if pod install --repo-update; then ok=1; break; fi
+          for attempt in 1 2 3 4; do
+            echo "==== pod install attempt ${attempt} ===="
+            set +e
+            if [ "$attempt" -le 2 ]; then
+              pod install --repo-update 2>&1 | tee "$RUNNER_TEMP/pod-install.log"
             else
-              if pod install; then ok=1; break; fi
+              # Fallback: classic Specs git repo if CDN is unhealthy.
+              pod repo remove trunk 2>/dev/null || true
+              pod install --verbose 2>&1 | tee "$RUNNER_TEMP/pod-install.log"
             fi
-            echo "pod install failed (attempt ${attempt}); sleeping…"
-            sleep $((attempt * 20))
-            pod cache clean --all || true
-            pod repo update trunk || true
+            status=${PIPESTATUS[0]}
+            set -e
+            if [ "$status" -eq 0 ] && [ -f PersonalToolbox.xcworkspace/contents.xcworkspacedata ]; then
+              ok=1
+              break
+            fi
+            echo "pod install failed (attempt ${attempt}, status=${status})"
+            tail -n 80 "$RUNNER_TEMP/pod-install.log" || true
+            sleep $((attempt * 25))
           done
           if [ "$ok" -ne 1 ]; then
             echo "::error::CocoaPods install failed after retries"
+            echo "### CocoaPods failure" >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            tail -n 120 "$RUNNER_TEMP/pod-install.log" >> "$GITHUB_STEP_SUMMARY" || true
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
-          test -f PersonalToolbox.xcworkspace/contents.xcworkspacedata
           ls -la Pods/ | head
-
       - name: Resolve schemes
         run: xcodebuild -workspace PersonalToolbox.xcworkspace -list
 
@@ -223,8 +235,8 @@ jobs:
           path: |
             ${{ runner.temp }}/xcodebuild-archive.log
             ${{ runner.temp }}/xcodebuild-export.log
+            ${{ runner.temp }}/pod-install.log
           if-no-files-found: ignore
-
       # Publish errors to public branch (readable without PAT / log login).
       - name: Publish archive errors to ci-errors branch
         if: failure()

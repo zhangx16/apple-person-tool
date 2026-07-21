@@ -865,43 +865,42 @@ struct NotificationSettingsPage: View {
 struct AppearanceSettingsPage: View {
     @EnvironmentObject private var settings: AppSettings
 
-    private let options: [(Int, String, String, String)] = [
-        (AppSettings.Appearance.system.rawValue, "跟随系统", "circle.lefthalf.filled", "自动适配浅色 / 深色"),
-        (AppSettings.Appearance.light.rawValue, "浅色", "sun.max.fill", "始终使用浅色界面"),
-        (AppSettings.Appearance.dark.rawValue, "深色", "moon.fill", "始终使用深色界面")
-    ]
+    private struct AppearanceOption: Identifiable {
+        let id: String
+        let title: String
+        let symbol: String
+        let subtitle: String
+    }
+
+    private var options: [AppearanceOption] {
+        [
+            AppearanceOption(
+                id: AppSettings.Appearance.system.rawValue,
+                title: "跟随系统",
+                symbol: "circle.lefthalf.filled",
+                subtitle: "自动适配浅色 / 深色"
+            ),
+            AppearanceOption(
+                id: AppSettings.Appearance.light.rawValue,
+                title: "浅色",
+                symbol: "sun.max.fill",
+                subtitle: "始终使用浅色界面"
+            ),
+            AppearanceOption(
+                id: AppSettings.Appearance.dark.rawValue,
+                title: "深色",
+                symbol: "moon.fill",
+                subtitle: "始终使用深色界面"
+            )
+        ]
+    }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 AppSectionTitle(title: "主题", systemImage: "paintbrush.fill")
-                ForEach(options, id: \.0) { value, title, symbol, subtitle in
-                    Button {
-                        settings.appearance = value
-                        Haptics.light()
-                    } label: {
-                        HStack(spacing: 14) {
-                            Image(systemName: symbol)
-                                .font(.body.weight(.semibold))
-                                .foregroundStyle(.white)
-                                .frame(width: 40, height: 40)
-                                .background(Color.accentColor.brandGradient, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(title)
-                                    .font(.body.weight(.semibold))
-                                    .foregroundStyle(.primary)
-                                Text(subtitle)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            Image(systemName: settings.appearance == value ? "checkmark.circle.fill" : "circle")
-                                .font(.title3)
-                                .foregroundStyle(settings.appearance == value ? Color.accentColor : Color.secondary.opacity(0.35))
-                        }
-                        .appCard()
-                    }
-                    .buttonStyle(PressableButtonStyle(scale: 0.98))
+                ForEach(options) { option in
+                    appearanceRow(option)
                 }
                 Text("强调色采用青绿工具风（对齐 LCSign 类工具 App），部分控件随系统材质自动适配。")
                     .font(.caption)
@@ -914,6 +913,36 @@ struct AppearanceSettingsPage: View {
         .background(AppSurfaceBackground())
         .navigationTitle("外观")
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func appearanceRow(_ option: AppearanceOption) -> some View {
+        let selected = settings.appearance == option.id
+        return Button {
+            settings.appearance = option.id
+            Haptics.light()
+        } label: {
+            HStack(spacing: 14) {
+                Image(systemName: option.symbol)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 40, height: 40)
+                    .background(Color.accentColor.brandGradient, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(option.title)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Text(option.subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                    .font(.title3)
+                    .foregroundStyle(selected ? Color.accentColor : Color.secondary.opacity(0.35))
+            }
+            .appCard()
+        }
+        .buttonStyle(PressableButtonStyle(scale: 0.98))
     }
 }
 

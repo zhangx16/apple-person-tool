@@ -602,7 +602,7 @@
 			);
 			buildRules = ();
 			dependencies = (
-				000000000000000000000529 /* PBXTargetDependency */,
+				000000000000000000000529 /* PBXTargetDependency */,);
 			name = PersonalToolbox;
 			productName = PersonalToolbox;
 			productReference = 000000000000000000000202 /* PersonalToolbox.app */;
@@ -626,7 +626,6 @@
 			productReference = 00000000000000000000051C /* ShareExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
-
 /* End PBXNativeTarget section */
 /* Begin PBXTargetDependency section */
 
@@ -642,7 +641,6 @@
 			target = 000000000000000000000524 /* ShareExtension */;
 			targetProxy = 000000000000000000000528 /* PBXContainerItemProxy */;
 		};
-
 /* End PBXTargetDependency section */
 
 
@@ -820,7 +818,6 @@
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
@@ -952,7 +949,6 @@
 			};
 			name = Release;
 		};
-
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -968,7 +964,6 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-
 /* End XCConfigurationList section */
 	};
 	rootObject = 000000000000000000000204 /* Project object */;

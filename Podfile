@@ -1,12 +1,12 @@
 # CocoaPods — FLV-capable player (same role as SimpleLive's media_kit / mpv).
-source 'https://cdn.cocoapods.org/'
 platform :ios, '17.0'
 use_frameworks!
 inhibit_all_warnings!
 
 target 'PersonalToolbox' do
   # LibVLC-based player; plays HTTP-FLV / HLS that AVPlayer cannot.
-  pod 'MobileVLCKit'
+  # Pin a known-good binary pod version to avoid trunk resolution flakiness.
+  pod 'MobileVLCKit', '3.6.0'
 end
 
 # Share Extension must not link VLC (size + no need).

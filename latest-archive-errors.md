@@ -1,12 +1,11 @@
-# Archive failed on `700349f`
+# Archive failed on `2542b6f`
 
-Run: https://github.com/zhangx16/apple-person-tool/actions/runs/29810572779
-Commit: `700349fd6e2148fe7f38104fe52d6e625478ae04`
+Run: https://github.com/zhangx16/apple-person-tool/actions/runs/29812511090
+Commit: `2542b6f40b27f8c21ff585d11b88b0ac4ae51eed`
 
 ## Grep errors
 ```
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Core/ChatStreamKeepAlive.swift:113:21: error: reference to captured var 'self' in concurrently-executing code
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Core/ChatStreamKeepAlive.swift:124:21: error: reference to captured var 'self' in concurrently-executing code
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Models/CheckinModels.swift:59:8: error: type 'CheckinProject' does not conform to protocol 'Hashable'
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
     optional func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: any Error)
@@ -17,12 +16,6 @@ Commit: `700349fd6e2148fe7f38104fe52d6e625478ae04`
 
 ## Tail
 ```
-               ^
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Chat/ChatListView.swift:25:23: warning: backward matching of the unlabeled trailing closure is deprecated; label the argument with 'action' to suppress this warning
-                    ) {
-~~~~~~~~~~~~~~~~~~~~~ ^
-, action: 
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Theme/AppleTheme.swift:458:8: note: 'init(symbol:title:message:pathHint:actionTitle:secondaryActionTitle:secondaryAction:tint:action:)' declared here
 struct EmptyStateView: View {
        ^
 /Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Chat/ChatListView.swift:35:23: warning: backward matching of the unlabeled trailing closure is deprecated; label the argument with 'action' to suppress this warning
@@ -68,18 +61,24 @@ struct EmptyStateView: View {
 /Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Core/AppSettings.swift:6:16: note: static property declared here
     static let shared = AppSettings()
                ^
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Core/ChatStreamKeepAlive.swift:113:46: warning: capture of 'note' with non-sendable type 'Notification' in a `@Sendable` closure
-                    self?.handleInterruption(note)
-                                             ^
-Foundation.Notification:2:15: note: struct 'Notification' does not conform to the 'Sendable' protocol
-public struct Notification : ReferenceConvertible, Equatable, Hashable {
-              ^
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Core/ChatStreamKeepAlive.swift:113:21: error: reference to captured var 'self' in concurrently-executing code
-                    self?.handleInterruption(note)
-                    ^
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Core/ChatStreamKeepAlive.swift:124:21: error: reference to captured var 'self' in concurrently-executing code
-                    self?.resumeIfNeeded()
-                    ^
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Core/ChatStreamKeepAlive.swift:113:23: warning: call to main actor-isolated instance method 'handleInterruption' in a synchronous nonisolated context; this is an error in Swift 6
+                self?.handleInterruption(note)
+                      ^
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Core/ChatStreamKeepAlive.swift:138:18: note: calls to instance method 'handleInterruption' from outside of its actor context are implicitly asynchronous
+    private func handleInterruption(_ note: Notification) {
+                 ^
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Core/ChatStreamKeepAlive.swift:122:23: warning: call to main actor-isolated instance method 'resumeIfNeeded()' in a synchronous nonisolated context; this is an error in Swift 6
+                self?.resumeIfNeeded()
+                      ^
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Core/ChatStreamKeepAlive.swift:160:18: note: calls to instance method 'resumeIfNeeded()' from outside of its actor context are implicitly asynchronous
+    private func resumeIfNeeded() {
+                 ^
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Models/CheckinModels.swift:59:8: error: type 'CheckinProject' does not conform to protocol 'Hashable'
+struct CheckinProject: Codable, Equatable, Identifiable, Hashable {
+       ^
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Models/CheckinModels.swift:74:9: note: stored property type 'CheckinCounts?' does not conform to protocol 'Hashable', preventing synthesized conformance of 'CheckinProject' to 'Hashable'
+    var counts: CheckinCounts?
+        ^
 /Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Settings/SettingsViewModel.swift:26:35: warning: main actor-isolated static property 'shared' can not be referenced from a non-isolated context; this is an error in Swift 6
     init(settings: AppSettings = .shared) {
                                   ^

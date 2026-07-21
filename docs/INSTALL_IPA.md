@@ -25,7 +25,6 @@
    | `SHARE_PROVISION_PROFILE_SPECIFIER` | （可选）Share Extension 描述文件名称 |
 
    Share Extension Bundle ID：`app.parsnip6345.lake8262.share`  
-   App Group：`group.app.parsnip6345.lake8262`  
    未配置 Share 描述文件时，CI **自动去掉 Extension**，只打主 App IPA（主功能不受影响）。
 
 2. **Actions → Build Ad Hoc IPA → Run workflow**（或 push 到 `main`）。

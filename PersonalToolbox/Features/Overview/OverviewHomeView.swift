@@ -167,14 +167,6 @@ final class OverviewViewModel: ObservableObject {
                         tintHex: c.failedValue > 0 ? 0xFF9F0A : 0x30D158,
                         route: "checkin"
                     ))
-                    AppGroupShared.publish(
-                        checkinHealthy: c.healthyValue,
-                        checkinTotal: c.totalValue,
-                        checkinFailed: c.failedValue,
-                        dueSubs: SubscriptionStore.shared.dueSoon.count,
-                        nextSubName: SubscriptionStore.shared.dueSoon.first?.name,
-                        nextSubDays: SubscriptionStore.shared.dueSoon.first?.daysUntilDue
-                    )
                 }
             } catch {
                 // Don't block whole overview; surface soft error.

@@ -45,14 +45,6 @@ struct RefreshStatusIntent: AppIntent {
         let summary = await MainActor.run { () -> String in
             let fails = ServiceHealthService.shared.items.filter { $0.status == .fail }.count
             let due = SubscriptionStore.shared.dueSoon.count
-            AppGroupShared.publish(
-                checkinHealthy: AppGroupShared.defaults.integer(forKey: AppGroupShared.Key.checkinHealthy),
-                checkinTotal: AppGroupShared.defaults.integer(forKey: AppGroupShared.Key.checkinTotal),
-                checkinFailed: AppGroupShared.defaults.integer(forKey: AppGroupShared.Key.checkinFailed),
-                dueSubs: due,
-                nextSubName: SubscriptionStore.shared.dueSoon.first?.name,
-                nextSubDays: SubscriptionStore.shared.dueSoon.first?.daysUntilDue
-            )
             ActivityEventStore.shared.log(.make(
                 title: "快捷指令刷新",
                 subtitle: fails == 0 ? "服务探测完成" : "\(fails) 项异常",

@@ -90,14 +90,6 @@ final class CertExpiryStore: ObservableObject {
             items[i].error = result.detail
         }
         persist()
-        AppGroupShared.publish(
-            checkinHealthy: AppGroupShared.defaults.integer(forKey: AppGroupShared.Key.checkinHealthy),
-            checkinTotal: AppGroupShared.defaults.integer(forKey: AppGroupShared.Key.checkinTotal),
-            checkinFailed: AppGroupShared.defaults.integer(forKey: AppGroupShared.Key.checkinFailed),
-            dueSubs: SubscriptionStore.shared.dueSoon.count,
-            nextSubName: SubscriptionStore.shared.dueSoon.first?.name,
-            nextSubDays: SubscriptionStore.shared.dueSoon.first?.daysUntilDue
-        )
     }
 
     var expiringSoon: [CertWatchItem] {

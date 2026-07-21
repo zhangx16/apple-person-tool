@@ -13,45 +13,50 @@ final class CheckinViewModel: ObservableObject {
 
     private let service = CheckinService.shared
 
-    var items: [CheckinItem] {
-        summary?.items ?? []
+    /// Prefer server-side merged projects; fall back to client-side merge from flat items.
+    var projects: [CheckinProject] {
+        if let list = summary?.projects, !list.isEmpty {
+            return list
+        }
+        return Self.mergeItemsClientSide(summary?.items ?? [])
     }
 
-    var filteredItems: [CheckinItem] {
-        var list = items
+    var filteredProjects: [CheckinProject] {
+        var list = projects
         if let filterStatus {
-            list = list.filter { $0.statusKind == filterStatus }
+            list = list.filter { project in
+                project.statusKind == filterStatus
+                    || project.accountList.contains { $0.statusKind == filterStatus }
+            }
         }
         let q = search.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if !q.isEmpty {
-            list = list.filter {
-                $0.displayName.lowercased().contains(q)
-                    || $0.displayProvider.lowercased().contains(q)
-                    || ($0.message ?? "").lowercased().contains(q)
-                    || ($0.botUsername ?? "").lowercased().contains(q)
-                    || ($0.provider ?? "").lowercased().contains(q)
+            list = list.filter { project in
+                project.displayTitle.lowercased().contains(q)
+                    || project.displaySubtitle.lowercased().contains(q)
+                    || (project.message ?? "").lowercased().contains(q)
+                    || (project.botUsername ?? "").lowercased().contains(q)
+                    || project.accountList.contains {
+                        $0.displayName.lowercased().contains(q)
+                            || ($0.message ?? "").lowercased().contains(q)
+                            || ($0.phone ?? "").lowercased().contains(q)
+                    }
             }
         }
         return list
     }
 
-    /// Group filtered items by provider label for sectioned list.
-    var sections: [(label: String, key: String, items: [CheckinItem])] {
-        var order: [String] = []
-        var map: [String: [CheckinItem]] = [:]
-        for item in filteredItems {
-            let key = item.provider ?? item.displayProvider
-            if map[key] == nil {
-                order.append(key)
-                map[key] = []
-            }
-            map[key]?.append(item)
+    /// Sections: 网站签到 / Telegram Bot
+    var sections: [(label: String, key: String, projects: [CheckinProject])] {
+        var web: [CheckinProject] = []
+        var tg: [CheckinProject] = []
+        for p in filteredProjects {
+            if p.isTelegram { tg.append(p) } else { web.append(p) }
         }
-        return order.compactMap { key in
-            guard let items = map[key], !items.isEmpty else { return nil }
-            let label = items.first?.displayProvider ?? key
-            return (label, key, items)
-        }
+        var out: [(String, String, [CheckinProject])] = []
+        if !web.isEmpty { out.append(("网站签到", "website", web)) }
+        if !tg.isEmpty { out.append(("Telegram Bot", "telegram_bot", tg)) }
+        return out
     }
 
     func load(settings: AppSettings) async {
@@ -80,6 +85,121 @@ final class CheckinViewModel: ObservableObject {
         }
     }
 
+    /// Fallback merge when older server has no `projects`.
+    static func mergeItemsClientSide(_ items: [CheckinItem]) -> [CheckinProject] {
+        var webOrder: [String] = []
+        var webMap: [String: [CheckinItem]] = [:]
+        var tgOrder: [String] = []
+        var tgMap: [String: [CheckinItem]] = [:]
+
+        for item in items {
+            if item.kind == "telegram_bot" || item.provider == "telegram_bot" {
+                let key = (item.botUsername ?? item.id).replacingOccurrences(of: "@", with: "")
+                if tgMap[key] == nil {
+                    tgOrder.append(key)
+                    tgMap[key] = []
+                }
+                tgMap[key]?.append(item)
+            } else {
+                let key = item.provider ?? "unknown"
+                if webMap[key] == nil {
+                    webOrder.append(key)
+                    webMap[key] = []
+                }
+                webMap[key]?.append(item)
+            }
+        }
+
+        var projects: [CheckinProject] = []
+        for key in webOrder {
+            let accounts = webMap[key] ?? []
+            projects.append(makeProject(
+                id: "web:\(key)",
+                kind: "website",
+                provider: key,
+                title: accounts.first?.displayProvider ?? key,
+                subtitle: "\(accounts.count) 个账号",
+                botUsername: nil,
+                botName: nil,
+                avatarURL: nil,
+                accounts: accounts
+            ))
+        }
+        for key in tgOrder {
+            let accounts = tgMap[key] ?? []
+            let botName = accounts.first?.botName ?? key
+            projects.append(makeProject(
+                id: "tg:\(key)",
+                kind: "telegram_bot",
+                provider: "telegram_bot",
+                title: botName,
+                subtitle: "@\(key)",
+                botUsername: key,
+                botName: botName,
+                avatarURL: accounts.first?.avatarURL,
+                accounts: accounts
+            ))
+        }
+        return projects
+    }
+
+    private static func makeProject(
+        id: String,
+        kind: String,
+        provider: String,
+        title: String,
+        subtitle: String,
+        botUsername: String?,
+        botName: String?,
+        avatarURL: String?,
+        accounts: [CheckinItem]
+    ) -> CheckinProject {
+        var counts = CheckinCounts(
+            total: accounts.count,
+            projectTotal: 1,
+            success: 0, already: 0, failed: 0, skipped: 0, unknown: 0, pending: 0, healthy: 0
+        )
+        for a in accounts {
+            switch a.statusKind {
+            case .success: counts.success = (counts.success ?? 0) + 1
+            case .already: counts.already = (counts.already ?? 0) + 1
+            case .failed: counts.failed = (counts.failed ?? 0) + 1
+            case .skipped: counts.skipped = (counts.skipped ?? 0) + 1
+            case .pending: counts.pending = (counts.pending ?? 0) + 1
+            case .unknown: counts.unknown = (counts.unknown ?? 0) + 1
+            }
+        }
+        counts.healthy = (counts.success ?? 0) + (counts.already ?? 0)
+        let status: String
+        if (counts.failed ?? 0) > 0 { status = "failed" }
+        else if accounts.allSatisfy({ $0.statusKind == .skipped }) { status = "skipped" }
+        else if accounts.allSatisfy({ $0.statusKind == .already }) { status = "already" }
+        else if accounts.allSatisfy({ $0.statusKind == .success || $0.statusKind == .already }) {
+            status = "success"
+        } else { status = "unknown" }
+
+        let checkedAt = accounts.compactMap(\.checkedAt).max() ?? ""
+        let healthy = counts.healthy ?? 0
+        return CheckinProject(
+            id: id,
+            kind: kind,
+            provider: provider,
+            providerLabel: accounts.first?.providerLabel ?? provider,
+            title: title,
+            subtitle: subtitle,
+            botUsername: botUsername,
+            botName: botName,
+            avatarURL: avatarURL,
+            status: status,
+            ok: status == "success" || status == "already",
+            message: "\(accounts.count) 账号 · \(healthy) 正常 · \(counts.failed ?? 0) 失败",
+            checkedAt: checkedAt,
+            accountCount: accounts.count,
+            counts: counts,
+            accounts: accounts
+        )
+    }
+
     static func chineseError(_ error: Error) -> String {
         if let net = error as? NetworkError {
             return net.errorDescription ?? "网络错误"
@@ -103,7 +223,7 @@ final class CheckinViewModel: ObservableObject {
 struct CheckinHomeView: View {
     @EnvironmentObject private var settings: AppSettings
     @StateObject private var viewModel = CheckinViewModel()
-    @State private var selected: CheckinItem?
+    @State private var selected: CheckinProject?
 
     private var accent: Color { ServiceBrand.checkin.tint }
 
@@ -122,7 +242,7 @@ struct CheckinHomeView: View {
                 } else {
                     overviewCard
                     filterChips
-                    FloatingSearchBar(text: $viewModel.search, placeholder: "搜索账号、Bot、消息…")
+                    FloatingSearchBar(text: $viewModel.search, placeholder: "搜索项目、Bot、账号…")
                         .padding(.horizontal, 2)
 
                     if let err = viewModel.errorMessage {
@@ -141,13 +261,13 @@ struct CheckinHomeView: View {
                     } else if viewModel.sections.isEmpty {
                         EmptyStateView(
                             symbol: "tray",
-                            title: viewModel.items.isEmpty ? "暂无签到项" : "无匹配结果",
-                            message: viewModel.items.isEmpty
+                            title: viewModel.projects.isEmpty ? "暂无签到项" : "无匹配结果",
+                            message: viewModel.projects.isEmpty
                                 ? "服务端还没有账号或 Telegram 签到结果。"
                                 : "试试其他关键词或筛选。",
-                            actionTitle: viewModel.items.isEmpty ? "重新加载" : "清除筛选",
+                            actionTitle: viewModel.projects.isEmpty ? "重新加载" : "清除筛选",
                             action: {
-                                if viewModel.items.isEmpty {
+                                if viewModel.projects.isEmpty {
                                     Task { await viewModel.load(settings: settings) }
                                 } else {
                                     viewModel.search = ""
@@ -158,7 +278,7 @@ struct CheckinHomeView: View {
                         .frame(minHeight: 240)
                     } else {
                         ForEach(viewModel.sections, id: \.key) { section in
-                            providerSection(section.label, items: section.items)
+                            projectSection(section.label, projects: section.projects)
                         }
                     }
                 }
@@ -195,8 +315,8 @@ struct CheckinHomeView: View {
                 await viewModel.load(settings: settings)
             }
         }
-        .navigationDestination(item: $selected) { item in
-            CheckinItemDetailView(item: item)
+        .navigationDestination(item: $selected) { project in
+            CheckinProjectDetailView(project: project)
         }
     }
 
@@ -204,25 +324,24 @@ struct CheckinHomeView: View {
 
     private var overviewCard: some View {
         let c = viewModel.summary?.counts
+        let projectCount = viewModel.projects.count
         return VStack(alignment: .leading, spacing: 14) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("今日总览")
                         .font(.headline)
+                    Text("\(projectCount) 个签到项目")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                     if let t = viewModel.lastUpdated {
                         Text("更新于 \(t.formatted(date: .omitted, time: .shortened))")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    } else if let gen = viewModel.summary?.generatedAt, !gen.isEmpty {
-                        Text("服务端 \(gen)")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
                     }
                 }
                 Spacer()
                 StatusPill(
-                    title: "\(c?.healthyValue ?? 0)/\(c?.totalValue ?? 0) 正常",
+                    title: "\(c?.healthyValue ?? 0)/\(c?.totalValue ?? 0) 账号正常",
                     color: (c?.failedValue ?? 0) > 0 ? Color(hex: 0xFF9F0A) : Color(hex: 0x30D158),
                     systemImage: "checkmark.seal.fill",
                     style: (c?.failedValue ?? 0) == 0 && (c?.totalValue ?? 0) > 0 ? .solid : .soft
@@ -234,26 +353,6 @@ struct CheckinHomeView: View {
                 metric("已签", c?.alreadyValue ?? 0, Color(hex: 0x64D2FF))
                 metric("失败", c?.failedValue ?? 0, Color(hex: 0xFF453A))
                 metric("跳过", c?.skippedValue ?? 0, Color(hex: 0xFF9F0A))
-            }
-
-            if let providers = viewModel.summary?.providers, !providers.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(providers) { p in
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(p.displayLabel)
-                                    .font(.caption.weight(.semibold))
-                                    .lineLimit(1)
-                                Text("\(p.countValue) 项 · 失败 \(p.counts?.failedValue ?? 0)")
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                            }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .background(Color(.tertiarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        }
-                    }
-                }
             }
         }
         .appCardV2()
@@ -289,7 +388,7 @@ struct CheckinHomeView: View {
                         title: kind.title,
                         systemImage: kind.systemImage,
                         isSelected: viewModel.filterStatus == kind,
-                        tint: Color(hex: kind.colorHex)
+                        tint: kind.color
                     ) {
                         viewModel.filterStatus = viewModel.filterStatus == kind ? nil : kind
                     }
@@ -300,15 +399,18 @@ struct CheckinHomeView: View {
 
     // MARK: - Sections
 
-    private func providerSection(_ title: String, items: [CheckinItem]) -> some View {
+    private func projectSection(_ title: String, projects: [CheckinProject]) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            AppSectionTitle(title: title, systemImage: "checklist")
+            AppSectionTitle(
+                title: title,
+                systemImage: title.contains("Telegram") ? "paperplane.fill" : "globe"
+            )
             VStack(spacing: 10) {
-                ForEach(items) { item in
+                ForEach(projects) { project in
                     Button {
-                        selected = item
+                        selected = project
                     } label: {
-                        CheckinItemRow(item: item)
+                        CheckinProjectRow(project: project)
                             .appCard()
                     }
                     .buttonStyle(PressableButtonStyle(scale: 0.98))
@@ -318,24 +420,67 @@ struct CheckinHomeView: View {
     }
 }
 
-// MARK: - Row
+// MARK: - Avatar
 
-private struct CheckinItemRow: View {
-    let item: CheckinItem
+struct CheckinAvatarView: View {
+    var url: URL?
+    var fallbackSystemImage: String
+    var fallbackTint: Color
+    var size: CGFloat = 44
+
+    var body: some View {
+        ZStack {
+            if let url {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    case .failure:
+                        fallback
+                    case .empty:
+                        ProgressView()
+                            .controlSize(.mini)
+                    @unknown default:
+                        fallback
+                    }
+                }
+            } else {
+                fallback
+            }
+        }
+        .frame(width: size, height: size)
+        .background(fallbackTint.opacity(0.12), in: Circle())
+        .clipShape(Circle())
+        .overlay {
+            Circle().strokeBorder(AppStroke.highlight, lineWidth: 0.5)
+        }
+    }
+
+    private var fallback: some View {
+        Image(systemName: fallbackSystemImage)
+            .font(.system(size: size * 0.42, weight: .semibold))
+            .foregroundStyle(fallbackTint)
+    }
+}
+
+// MARK: - Project row
+
+private struct CheckinProjectRow: View {
+    let project: CheckinProject
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: item.statusKind.systemImage)
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(Color(hex: item.statusKind.colorHex))
-                .frame(width: 36, height: 36)
-                .background(
-                    Color(hex: item.statusKind.colorHex).opacity(0.12),
-                    in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-                )
+            CheckinAvatarView(
+                url: project.avatar,
+                fallbackSystemImage: project.isTelegram ? "paperplane.fill" : "globe",
+                fallbackTint: project.statusKind.color,
+                size: 44
+            )
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(item.displayName)
+                Text(project.displayTitle)
                     .font(.body.weight(.semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
@@ -346,9 +491,9 @@ private struct CheckinItemRow: View {
             }
             Spacer(minLength: 0)
             StatusPill(
-                title: item.statusKind.title,
-                color: Color(hex: item.statusKind.colorHex),
-                systemImage: item.statusKind.systemImage
+                title: project.statusKind.title,
+                color: project.statusKind.color,
+                systemImage: project.statusKind.systemImage
             )
             Image(systemName: "chevron.right")
                 .font(.caption.weight(.semibold))
@@ -356,140 +501,157 @@ private struct CheckinItemRow: View {
         }
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(item.displayName)，\(item.statusKind.title)，\(item.message ?? "")")
+        .accessibilityLabel("\(project.displayTitle)，\(project.accountList.count) 个账号，\(project.statusKind.title)")
     }
 
     private var subtitle: String {
         var parts: [String] = []
-        if let msg = item.message, !msg.isEmpty {
-            parts.append(msg)
+        if !project.displaySubtitle.isEmpty {
+            parts.append(project.displaySubtitle)
         }
-        if let d = item.pointsDelta {
-            parts.append(d == floor(d) ? "+\(Int(d))" : String(format: "+%.1f", d))
-            if let c = item.currency, !c.isEmpty { parts[parts.count - 1] += " \(c)" }
+        let n = project.accountCount ?? project.accountList.count
+        parts.append("\(n) 账号")
+        if let c = project.counts {
+            if (c.failedValue) > 0 { parts.append("失败 \(c.failedValue)") }
+            else if (c.skippedValue) > 0 { parts.append("跳过 \(c.skippedValue)") }
+            else { parts.append("正常 \(c.healthyValue)") }
         }
-        if let at = item.checkedAt, !at.isEmpty {
-            parts.append(Self.shortTime(at))
-        }
-        return parts.isEmpty ? item.displayProvider : parts.joined(separator: " · ")
-    }
-
-    private static func shortTime(_ iso: String) -> String {
-        // Keep ISO-ish readable without full parser dependency.
-        if iso.count >= 16 {
-            // 2026-07-21T02:12:03Z → 07-21 02:12
-            let day = iso.dropFirst(5).prefix(5)
-            let hm = iso.dropFirst(11).prefix(5)
-            return "\(day) \(hm)"
-        }
-        return iso
+        return parts.joined(separator: " · ")
     }
 }
 
-// MARK: - Detail
+// MARK: - Project detail (merged accounts)
 
-struct CheckinItemDetailView: View {
-    let item: CheckinItem
+struct CheckinProjectDetailView: View {
+    let project: CheckinProject
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                HStack(spacing: 12) {
-                    Image(systemName: item.statusKind.systemImage)
-                        .font(.largeTitle.weight(.semibold))
-                        .foregroundStyle(Color(hex: item.statusKind.colorHex))
+                HStack(spacing: 14) {
+                    CheckinAvatarView(
+                        url: project.avatar,
+                        fallbackSystemImage: project.isTelegram ? "paperplane.fill" : "globe",
+                        fallbackTint: project.statusKind.color,
+                        size: 64
+                    )
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(item.displayName)
+                        Text(project.displayTitle)
                             .font(.title3.weight(.bold))
-                        Text(item.displayProvider)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                        if !project.displaySubtitle.isEmpty {
+                            Text(project.displaySubtitle)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        if let msg = project.message, !msg.isEmpty {
+                            Text(msg)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                        }
                     }
                     Spacer()
                     StatusPill(
-                        title: item.statusKind.title,
-                        color: Color(hex: item.statusKind.colorHex),
-                        systemImage: item.statusKind.systemImage,
-                        style: item.statusKind == .failed ? .solid : .soft
+                        title: project.statusKind.title,
+                        color: project.statusKind.color,
+                        systemImage: project.statusKind.systemImage,
+                        style: project.statusKind == .failed ? .solid : .soft
                     )
                 }
                 .appCardV2()
 
-                detailCard
+                if let c = project.counts {
+                    HStack(spacing: 8) {
+                        miniStat("成功", c.successValue, Color(hex: 0x30D158))
+                        miniStat("已签", c.alreadyValue, Color(hex: 0x64D2FF))
+                        miniStat("失败", c.failedValue, Color(hex: 0xFF453A))
+                        miniStat("跳过", c.skippedValue, Color(hex: 0xFF9F0A))
+                    }
+                }
 
-                if let msg = item.message, !msg.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
-                        AppSectionTitle(title: "签到消息", systemImage: "text.bubble")
-                        Text(msg)
-                            .font(.body)
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .appCard()
+                AppSectionTitle(
+                    title: "账号 (\(project.accountList.count))",
+                    systemImage: "person.2.fill"
+                )
+                VStack(spacing: 10) {
+                    ForEach(project.accountList) { account in
+                        accountCard(account)
                     }
                 }
             }
             .padding(16)
         }
-        .background(AppSurfaceBackground(accent: Color(hex: item.statusKind.colorHex)))
-        .navigationTitle("签到详情")
+        .background(AppSurfaceBackground(accent: project.statusKind.color))
+        .navigationTitle(project.isTelegram ? "Bot 签到" : "项目详情")
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    private var detailCard: some View {
-        VStack(spacing: 0) {
-            row("状态", item.statusKind.title)
-            Divider().opacity(0.4)
-            row("签到源", item.displayProvider)
-            if let bot = item.botUsername, !bot.isEmpty {
-                Divider().opacity(0.4)
-                row("Bot", "@\(bot)")
-            }
-            if let at = item.checkedAt, !at.isEmpty {
-                Divider().opacity(0.4)
-                row("时间", at)
-            }
-            if let d = item.pointsDelta {
-                Divider().opacity(0.4)
-                let unit = item.currency.map { " \($0)" } ?? ""
-                let num = d == floor(d) ? "+\(Int(d))" : String(format: "+%.2f", d)
-                row("变动", num + unit)
-            }
-            if let b = item.balance {
-                Divider().opacity(0.4)
-                let unit = item.currency.map { " \($0)" } ?? ""
-                let num = b == floor(b) ? "\(Int(b))" : String(format: "%.2f", b)
-                row("余额", num + unit)
-            }
-            if let s = item.streak {
-                Divider().opacity(0.4)
-                row("连续", s == floor(s) ? "\(Int(s)) 天" : String(format: "%.0f 天", s))
-            }
-            if let left = item.leftDays, !left.isEmpty {
-                Divider().opacity(0.4)
-                row("剩余天数", left)
-            }
-            if let notes = item.notes, !notes.isEmpty {
-                Divider().opacity(0.4)
-                row("备注", notes)
-            }
-            Divider().opacity(0.4)
-            row("ID", item.id)
+    private func miniStat(_ title: String, _ value: Int, _ color: Color) -> some View {
+        VStack(spacing: 4) {
+            Text("\(value)")
+                .font(.headline.weight(.bold))
+                .foregroundStyle(color)
+            Text(title)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
         }
-        .appCardV2(padding: 4)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
-    private func row(_ title: String, _ value: String) -> some View {
-        HStack(alignment: .top) {
-            Text(title)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .frame(width: 72, alignment: .leading)
-            Text(value)
-                .font(.subheadline.weight(.medium))
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
+    private func accountCard(_ account: CheckinItem) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(account.displayName)
+                    .font(.body.weight(.semibold))
+                Spacer()
+                StatusPill(
+                    title: account.statusKind.title,
+                    color: account.statusKind.color,
+                    systemImage: account.statusKind.systemImage
+                )
+            }
+            if let msg = account.message, !msg.isEmpty {
+                Text(msg)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+            }
+            if let at = account.checkedAt, !at.isEmpty {
+                Text(at)
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+            // Points / balance for website accounts
+            HStack(spacing: 12) {
+                if let d = account.pointsDelta {
+                    let unit = account.currency.map { " \($0)" } ?? ""
+                    let num = d == floor(d) ? "+\(Int(d))" : String(format: "+%.2f", d)
+                    labelChip("变动", num + unit)
+                }
+                if let b = account.balance {
+                    let unit = account.currency.map { " \($0)" } ?? ""
+                    let num = b == floor(b) ? "\(Int(b))" : String(format: "%.2f", b)
+                    labelChip("余额", num + unit)
+                }
+                if let s = account.streak {
+                    labelChip("连续", s == floor(s) ? "\(Int(s)) 天" : String(format: "%.0f 天", s))
+                }
+                if let left = account.leftDays, !left.isEmpty {
+                    labelChip("剩余", left)
+                }
+            }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .appCard()
+    }
+
+    private func labelChip(_ k: String, _ v: String) -> some View {
+        Text("\(k) \(v)")
+            .font(.caption2.weight(.medium))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Color(.tertiarySystemFill), in: Capsule())
     }
 }

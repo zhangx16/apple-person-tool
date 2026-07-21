@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 // MARK: - Summary (GET /api/v1/summary)
 
@@ -8,6 +9,9 @@ struct CheckinSummary: Codable, Equatable {
     var source: String?
     var counts: CheckinCounts?
     var providers: [CheckinProviderGroup]?
+    /// Preferred: projects with accounts merged (same bot / same website provider).
+    var projects: [CheckinProject]?
+    /// Flat account-level items (compat / search fallback).
     var items: [CheckinItem]?
     var telegram: CheckinTelegramMeta?
     var embykeeper: CheckinEmbykeeperMeta?
@@ -20,6 +24,7 @@ struct CheckinAuthMeta: Codable, Equatable {
 
 struct CheckinCounts: Codable, Equatable {
     var total: Int?
+    var projectTotal: Int?
     var success: Int?
     var already: Int?
     var failed: Int?
@@ -29,6 +34,7 @@ struct CheckinCounts: Codable, Equatable {
     var healthy: Int?
 
     var totalValue: Int { total ?? 0 }
+    var projectTotalValue: Int { projectTotal ?? 0 }
     var healthyValue: Int { healthy ?? ((success ?? 0) + (already ?? 0)) }
     var failedValue: Int { failed ?? 0 }
     var skippedValue: Int { skipped ?? 0 }
@@ -41,11 +47,60 @@ struct CheckinProviderGroup: Codable, Equatable, Identifiable {
     var label: String?
     var counts: CheckinCounts?
     var itemCount: Int?
+    var projectCount: Int?
     var lastCheckedAt: String?
 
     var id: String { key ?? label ?? UUID().uuidString }
     var displayLabel: String { label ?? key ?? "未知" }
-    var countValue: Int { itemCount ?? 0 }
+    var countValue: Int { projectCount ?? itemCount ?? 0 }
+}
+
+/// Merged check-in project (one TG bot or one website provider).
+struct CheckinProject: Codable, Equatable, Identifiable, Hashable {
+    var id: String
+    var kind: String?
+    var provider: String?
+    var providerLabel: String?
+    var title: String?
+    var subtitle: String?
+    var botUsername: String?
+    var botName: String?
+    var avatarURL: String?
+    var status: String?
+    var ok: Bool?
+    var message: String?
+    var checkedAt: String?
+    var accountCount: Int?
+    var counts: CheckinCounts?
+    var accounts: [CheckinItem]?
+
+    var displayTitle: String {
+        let t = title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !t.isEmpty { return t }
+        return providerLabel ?? provider ?? "签到项目"
+    }
+
+    var displaySubtitle: String {
+        let s = subtitle?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !s.isEmpty { return s }
+        if let u = botUsername, !u.isEmpty { return "@\(u)" }
+        return providerLabel ?? ""
+    }
+
+    var statusKind: CheckinStatusKind {
+        CheckinStatusKind(rawValue: (status ?? "").lowercased()) ?? .unknown
+    }
+
+    var isTelegram: Bool { kind == "telegram_bot" || provider == "telegram_bot" }
+
+    var accountList: [CheckinItem] { accounts ?? [] }
+
+    var avatar: URL? {
+        guard let raw = avatarURL?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {
+            return nil
+        }
+        return URL(string: raw)
+    }
 }
 
 struct CheckinItem: Codable, Equatable, Identifiable, Hashable {
@@ -56,6 +111,8 @@ struct CheckinItem: Codable, Equatable, Identifiable, Hashable {
     var accountName: String?
     var botName: String?
     var botUsername: String?
+    var avatarURL: String?
+    var phone: String?
     var status: String?
     var ok: Bool?
     var message: String?
@@ -76,6 +133,13 @@ struct CheckinItem: Codable, Equatable, Identifiable, Hashable {
 
     var statusKind: CheckinStatusKind {
         CheckinStatusKind(rawValue: (status ?? "").lowercased()) ?? .unknown
+    }
+
+    var avatar: URL? {
+        guard let raw = avatarURL?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {
+            return nil
+        }
+        return URL(string: raw)
     }
 }
 
@@ -109,7 +173,6 @@ enum CheckinStatusKind: String, CaseIterable {
         }
     }
 
-    /// Semantic color for StatusPill / dots.
     var colorHex: UInt32 {
         switch self {
         case .success: return 0x30D158
@@ -120,6 +183,8 @@ enum CheckinStatusKind: String, CaseIterable {
         case .unknown: return 0x8E8E93
         }
     }
+
+    var color: Color { Color(hex: colorHex) }
 }
 
 struct CheckinTelegramMeta: Codable, Equatable {
@@ -130,7 +195,6 @@ struct CheckinTelegramMeta: Codable, Equatable {
 struct CheckinEmbykeeperMeta: Codable, Equatable {
     var installed: Bool?
     var configPresent: Bool?
-    /// Session file count (server may send Int, or historically a [String] list).
     var sessionFiles: Int?
     var sessionStringCount: Int?
 
@@ -143,7 +207,6 @@ struct CheckinEmbykeeperMeta: Codable, Equatable {
         installed = try c.decodeIfPresent(Bool.self, forKey: .installed)
         configPresent = try c.decodeIfPresent(Bool.self, forKey: .configPresent)
         sessionStringCount = try c.decodeIfPresent(Int.self, forKey: .sessionStringCount)
-        // Tolerate both Int count and [String] filenames from older server builds.
         if let n = try? c.decodeIfPresent(Int.self, forKey: .sessionFiles) {
             sessionFiles = n
         } else if let arr = try? c.decodeIfPresent([String].self, forKey: .sessionFiles) {

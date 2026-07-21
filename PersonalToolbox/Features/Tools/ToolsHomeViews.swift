@@ -78,6 +78,16 @@ struct ClipboardHomeView: View {
                             } label: {
                                 HStack(alignment: .top, spacing: 12) {
                                     VStack(alignment: .leading, spacing: 6) {
+                                        HStack(spacing: 6) {
+                                            Image(systemName: item.kind.systemImage)
+                                                .font(.caption2.weight(.bold))
+                                            Text(item.kind.title)
+                                                .font(.caption2.weight(.semibold))
+                                        }
+                                        .foregroundStyle(ServiceBrand.clipboard.tint)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 3)
+                                        .background(ServiceBrand.clipboard.tint.opacity(0.12), in: Capsule())
                                         Text(item.preview)
                                             .font(.subheadline.weight(.medium))
                                             .foregroundStyle(.primary)

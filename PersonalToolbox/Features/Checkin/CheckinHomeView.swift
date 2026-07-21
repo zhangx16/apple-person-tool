@@ -651,17 +651,29 @@ struct CheckinProjectDetailView: View {
     }
 
     private var deleteProjectButton: some View {
-        Button(role: .destructive) {
-            confirmDeleteProject = true
-        } label: {
-            Label(
-                working.isTelegram ? "删除此 Bot 签到任务" : "删除此网站全部账号",
-                systemImage: "trash"
-            )
-            .frame(maxWidth: .infinity)
+        VStack(spacing: 10) {
+            if !working.isTelegram, working.accountList.contains(where: { $0.statusKind == .failed || $0.statusKind == .unknown }) {
+                Button {
+                    Task { await retryProject() }
+                } label: {
+                    Label("重试本项目全部账号", systemImage: "arrow.clockwise.circle")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(GhostButtonStyle(tint: ServiceBrand.checkin.tint))
+                .disabled(isBusy)
+            }
+            Button(role: .destructive) {
+                confirmDeleteProject = true
+            } label: {
+                Label(
+                    working.isTelegram ? "删除此 Bot 签到任务" : "删除此网站全部账号",
+                    systemImage: "trash"
+                )
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(GhostButtonStyle(tint: Color(hex: 0xFF453A)))
+            .disabled(isBusy)
         }
-        .buttonStyle(GhostButtonStyle(tint: Color(hex: 0xFF453A)))
-        .disabled(isBusy)
         .padding(.top, 8)
     }
 
@@ -794,7 +806,7 @@ struct CheckinProjectDetailView: View {
                     labelChip("剩余", left)
                 }
             }
-            // Multi-account: always allow removing a single account from this project.
+            // Actions: edit / retry / delete single account.
             HStack(spacing: 12) {
                 if !working.isTelegram {
                     Button {
@@ -803,6 +815,15 @@ struct CheckinProjectDetailView: View {
                         Label("编辑", systemImage: "pencil")
                     }
                     .font(.caption.weight(.semibold))
+                    if account.statusKind == .failed || account.statusKind == .unknown {
+                        Button {
+                            Task { await retryCheckin(account) }
+                        } label: {
+                            Label("补签", systemImage: "arrow.clockwise")
+                        }
+                        .font(.caption.weight(.semibold))
+                        .disabled(isBusy)
+                    }
                 }
                 Spacer()
                 if working.accountList.count > 1 || !working.isTelegram {
@@ -989,6 +1010,66 @@ struct CheckinProjectDetailView: View {
         working.subtitle = working.isTelegram
             ? working.displaySubtitle
             : "\(accounts.count) 个账号"
+    }
+
+    private func retryCheckin(_ account: CheckinItem) async {
+        guard let creds else {
+            banner = "未配置签到服务"
+            return
+        }
+        isBusy = true
+        defer { isBusy = false }
+        do {
+            let msg = try await CheckinService.shared.runAccountCheckin(
+                baseURL: creds.base,
+                apiToken: creds.token,
+                id: account.id
+            )
+            banner = "补签：\(msg)"
+            ActivityEventStore.shared.log(.make(
+                title: "签到补签",
+                subtitle: "\(account.displayName)：\(msg)",
+                systemImage: "arrow.clockwise",
+                tintHex: 0x30D158,
+                route: "checkin"
+            ))
+            onChanged?()
+            Haptics.success()
+        } catch {
+            banner = (error as? NetworkError)?.errorDescription ?? error.localizedDescription
+            Haptics.error()
+        }
+    }
+
+    private func retryProject() async {
+        guard let creds else {
+            banner = "未配置签到服务"
+            return
+        }
+        isBusy = true
+        defer { isBusy = false }
+        do {
+            let ids = working.accountList.map(\.id)
+            let r = try await CheckinService.shared.runProviderCheckin(
+                baseURL: creds.base,
+                apiToken: creds.token,
+                provider: working.provider,
+                ids: ids
+            )
+            banner = "项目补签 \(r.message)"
+            ActivityEventStore.shared.log(.make(
+                title: "项目补签",
+                subtitle: "\(working.displayTitle)：\(r.message)",
+                systemImage: "arrow.clockwise.circle",
+                tintHex: 0x30D158,
+                route: "checkin"
+            ))
+            onChanged?()
+            Haptics.success()
+        } catch {
+            banner = (error as? NetworkError)?.errorDescription ?? error.localizedDescription
+            Haptics.error()
+        }
     }
 
     private func saveBotName() async {

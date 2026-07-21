@@ -11,6 +11,49 @@ struct ClipboardItem: Identifiable, Codable, Hashable {
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
         return t.count > 120 ? String(t.prefix(120)) + "…" : t
     }
+
+    enum Kind: String {
+        case url, tracking, cookie, code, plain
+        var title: String {
+            switch self {
+            case .url: return "链接"
+            case .tracking: return "单号"
+            case .cookie: return "Cookie"
+            case .code: return "验证码"
+            case .plain: return "文本"
+            }
+        }
+        var systemImage: String {
+            switch self {
+            case .url: return "link"
+            case .tracking: return "shippingbox"
+            case .cookie: return "key"
+            case .code: return "number"
+            case .plain: return "doc.plaintext"
+            }
+        }
+    }
+
+    var kind: Kind {
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if t.lowercased().hasPrefix("http://") || t.lowercased().hasPrefix("https://")
+            || t.contains("b23.tv") || t.contains("bilibili.com") {
+            return .url
+        }
+        if t.lowercased().contains("session") || t.lowercased().contains("cookie")
+            || (t.contains("=") && t.contains(";") && t.count > 20) {
+            return .cookie
+        }
+        if let _ = ActionRouter.extractVerificationCode(from: t), t.count <= 12 {
+            return .code
+        }
+        // Tracking-ish: long alphanumeric
+        let alnum = t.replacingOccurrences(of: " ", with: "")
+        if alnum.count >= 10, alnum.count <= 32, alnum.range(of: "^[A-Za-z0-9]+$", options: .regularExpression) != nil {
+            return .tracking
+        }
+        return .plain
+    }
 }
 
 @MainActor

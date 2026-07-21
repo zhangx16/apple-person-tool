@@ -165,4 +165,55 @@ actor CheckinService {
             method: "DELETE"
         )
     }
+
+    /// Trigger website check-in for one account (补签 / 重试).
+    @discardableResult
+    func runAccountCheckin(baseURL: String, apiToken: String, id: String) async throws -> String {
+        let pathID = id.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? id
+        let data = try await requestData(
+            baseURL: baseURL,
+            apiToken: apiToken,
+            path: "/api/v1/accounts/\(pathID)/checkin",
+            method: "POST"
+        )
+        if let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            if let acc = obj["account"] as? [String: Any],
+               let lc = acc["lastCheckin"] as? [String: Any],
+               let msg = lc["message"] as? String {
+                return msg
+            }
+            if let result = obj["result"] as? [String: Any],
+               let checkin = result["checkin"] as? [String: Any],
+               let msg = checkin["message"] as? String {
+                return msg
+            }
+        }
+        return "签到完成"
+    }
+
+    /// Trigger check-in for a provider or explicit ids.
+    func runProviderCheckin(
+        baseURL: String,
+        apiToken: String,
+        provider: String? = nil,
+        ids: [String] = []
+    ) async throws -> (success: Int, total: Int, message: String) {
+        var body: [String: Any] = [:]
+        if let provider, !provider.isEmpty { body["provider"] = provider }
+        if !ids.isEmpty { body["ids"] = ids }
+        let payload = try JSONSerialization.data(withJSONObject: body)
+        let data = try await requestData(
+            baseURL: baseURL,
+            apiToken: apiToken,
+            path: "/api/v1/checkin/run",
+            method: "POST",
+            body: payload
+        )
+        if let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            let success = obj["successCount"] as? Int ?? 0
+            let total = obj["total"] as? Int ?? 0
+            return (success, total, "成功 \(success)/\(total)")
+        }
+        return (0, 0, "已提交")
+    }
 }

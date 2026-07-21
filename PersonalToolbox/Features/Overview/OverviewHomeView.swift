@@ -26,6 +26,11 @@ final class OverviewViewModel: ObservableObject {
         case liveTab
         case settingsTab
         case checkinSettings
+        case notes
+        case reminders
+        case subscriptions
+        case certs
+        case ssh
     }
 
     @Published private(set) var isLoading = false
@@ -33,9 +38,11 @@ final class OverviewViewModel: ObservableObject {
     @Published private(set) var checkinSummary: CheckinSummary?
     @Published private(set) var healthItems: [ServiceHealthItem] = []
     @Published private(set) var lastRefreshed: Date?
+    @Published private(set) var activity: [ActivityEvent] = []
 
     private let checkin = CheckinService.shared
     private let health = ServiceHealthService.shared
+    private let activityStore = ActivityEventStore.shared
 
     var greeting: String {
         let h = Calendar.current.component(.hour, from: Date())
@@ -127,11 +134,22 @@ final class OverviewViewModel: ObservableObject {
         defer {
             isLoading = false
             lastRefreshed = .now
+            activity = activityStore.recent
         }
 
         // Parallel-ish: health then checkin (health is sequential internally).
         await health.probeAll()
         healthItems = health.items
+        let fails = healthItems.filter { $0.status == .fail }
+        if !fails.isEmpty {
+            activityStore.log(.make(
+                title: "服务探测",
+                subtitle: "\(fails.count) 项异常：\(fails.prefix(2).map(\.title).joined(separator: "、"))",
+                systemImage: "heart.text.square",
+                tintHex: 0xFF453A,
+                route: "health"
+            ))
+        }
 
         if settings.isCheckinConfigured {
             do {
@@ -141,13 +159,39 @@ final class OverviewViewModel: ObservableObject {
                     .trimmingCharacters(in: .whitespacesAndNewlines)
                     .replacingOccurrences(of: "\u{00a0}", with: "")
                 checkinSummary = try await checkin.summary(baseURL: base, apiToken: token)
+                if let c = checkinSummary?.counts {
+                    activityStore.log(.make(
+                        title: "签到状态已更新",
+                        subtitle: "正常 \(c.healthyValue)/\(c.totalValue) · 失败 \(c.failedValue)",
+                        systemImage: "checkmark.seal.fill",
+                        tintHex: c.failedValue > 0 ? 0xFF9F0A : 0x30D158,
+                        route: "checkin"
+                    ))
+                }
             } catch {
                 // Don't block whole overview; surface soft error.
                 errorMessage = (error as? NetworkError)?.errorDescription ?? error.localizedDescription
+                activityStore.log(.make(
+                    title: "签到同步失败",
+                    subtitle: errorMessage ?? "",
+                    systemImage: "exclamationmark.triangle",
+                    tintHex: 0xFF453A,
+                    route: "checkin"
+                ))
             }
         } else {
             checkinSummary = nil
         }
+        activity = activityStore.recent
+    }
+
+    var setupChecklist: [(String, Bool, OverviewDestination)] {
+        [
+            ("签到服务", AppSettings.shared.isCheckinConfigured, .checkinSettings),
+            ("Sub2 监控", AppSettings.shared.isAdminConfigured, .settingsTab),
+            ("Cloudflare", AppSettings.shared.isCloudflareConfigured, .settingsTab),
+            ("笔记同步", AppSettings.shared.isFastNoteConfigured, .settingsTab)
+        ]
     }
 }
 
@@ -166,7 +210,9 @@ struct OverviewHomeView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: AppleTheme.space5) {
                     heroHeader
+                    onboardingSection
                     attentionSection
+                    activitySection
                     todayStrip
                     servicesQuickGrid
                     moreToolsRow
@@ -229,6 +275,82 @@ struct OverviewHomeView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, 4)
+    }
+
+    // MARK: - Onboarding checklist
+
+    @ViewBuilder
+    private var onboardingSection: some View {
+        let items = viewModel.setupChecklist
+        let ready = items.filter(\.1).count
+        if ready < items.count {
+            VStack(alignment: .leading, spacing: 10) {
+                AppSectionTitle(title: "开始配置", systemImage: "checklist")
+                VStack(spacing: 8) {
+                    ForEach(Array(items.enumerated()), id: \.offset) { _, row in
+                        Button {
+                            navigate(row.2)
+                        } label: {
+                            HStack {
+                                Image(systemName: row.1 ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(row.1 ? Color(hex: 0x30D158) : .secondary)
+                                Text(row.0)
+                                    .foregroundStyle(.primary)
+                                Spacer()
+                                if !row.1 {
+                                    Text("去设置")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(Color.accentColor)
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(14)
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+        }
+    }
+
+    // MARK: - Activity timeline
+
+    @ViewBuilder
+    private var activitySection: some View {
+        if !viewModel.activity.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                AppSectionTitle(title: "最近动态", systemImage: "clock.arrow.circlepath")
+                VStack(spacing: 0) {
+                    ForEach(Array(viewModel.activity.prefix(8))) { ev in
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: ev.systemImage)
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(Color(hex: ev.tintHex))
+                                .frame(width: 28)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(ev.title)
+                                    .font(.subheadline.weight(.semibold))
+                                Text(ev.subtitle)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(2)
+                                Text(ev.createdAt.formatted(date: .omitted, time: .shortened))
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                            }
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.vertical, 10)
+                        if ev.id != viewModel.activity.prefix(8).last?.id {
+                            Divider().opacity(0.35)
+                        }
+                    }
+                }
+                .padding(.horizontal, 14)
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+        }
     }
 
     // MARK: - Attention
@@ -406,6 +528,12 @@ struct OverviewHomeView: View {
                 quickTile(brand: .ipCheck, title: "IP 检测") {
                     navigate(.ipCheck)
                 }
+                quickTile(brand: .translator, title: "笔记同步") {
+                    navigate(.notes)
+                }
+                quickTile(brand: .habits, title: "提醒") {
+                    navigate(.reminders)
+                }
             }
         }
     }
@@ -493,6 +621,16 @@ struct OverviewHomeView: View {
             KomariHomeView()
         case .ipCheck:
             IPCheckHomeView()
+        case .notes:
+            FastNoteHomeView()
+        case .reminders:
+            ReminderHomeView()
+        case .subscriptions:
+            SubscriptionHomeView()
+        case .certs:
+            CertMonitorHomeView()
+        case .ssh:
+            SSHHomeView()
         case .servicesTab, .liveTab, .settingsTab, .checkinSettings:
             EmptyView()
         }

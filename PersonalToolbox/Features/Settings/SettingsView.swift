@@ -66,6 +66,25 @@ struct SettingsView: View {
                             CheckinSettingsPage(viewModel: viewModel)
                         }
                         projectLink(
+                            brand: .translator,
+                            title: "笔记同步",
+                            subtitle: settings.isFastNoteConfigured
+                                ? hostHint(settings.fastNoteBaseURL)
+                                : "Fast Note Sync · 可与 Obsidian 共用",
+                            configured: settings.isFastNoteConfigured
+                        ) {
+                            FastNoteSettingsPage()
+                        }
+                        plainLink(
+                            systemImage: "terminal",
+                            title: "SSH / Next Terminal",
+                            subtitle: settings.nextTerminalURL.isEmpty ? "Web 终端 URL 可选" : hostHint(settings.nextTerminalURL),
+                            tint: ServiceBrand.komari.tint,
+                            configured: !settings.nextTerminalURL.isEmpty || !SSHHostStore.shared.hosts.isEmpty
+                        ) {
+                            SSHSettingsPage()
+                        }
+                        projectLink(
                             brand: .cloudflare,
                             title: "Cloudflare",
                             subtitle: settings.cloudflareAccountName.isEmpty
@@ -121,6 +140,18 @@ struct SettingsView: View {
                         .foregroundStyle(.tertiary)
                         .padding(.horizontal, 4)
                         .padding(.top, -10)
+
+                    settingsSection("数据", symbol: "externaldrive") {
+                        plainLink(
+                            systemImage: "square.and.arrow.up.on.square",
+                            title: "备份导出",
+                            subtitle: "导出 URL 配置快照（不含密钥）",
+                            tint: .accentColor,
+                            configured: true
+                        ) {
+                            BackupExportView()
+                        }
+                    }
 
                     settingsSection("通用", symbol: "slider.horizontal.3") {
                         plainLink(
@@ -634,6 +665,74 @@ struct CheckinSettingsPage: View {
                 ServiceBrandTitle(brand: .checkin, title: "签到服务")
             }
         }
+    }
+}
+
+struct FastNoteSettingsPage: View {
+    @EnvironmentObject private var settings: AppSettings
+    @State private var probe: String?
+
+    var body: some View {
+        Form {
+            Section {
+                TextField("Base URL", text: $settings.fastNoteBaseURL)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.URL)
+                TextField("用户名", text: $settings.fastNoteUsername)
+                    .textInputAutocapitalization(.never)
+                SecureField("密码", text: $settings.fastNotePassword)
+                    .privacySensitive()
+            } header: {
+                Text("Fast Note Sync Service")
+            } footer: {
+                Text("与 Obsidian「Fast Note Sync」插件共用同一后端。App 通过 REST API 读写笔记，无需安装 Obsidian。文档：haierkeys/fast-note-sync-service。")
+            }
+            Section {
+                Button("登录并缓存 Token") {
+                    Task {
+                        do {
+                            let token = try await FastNoteSyncService.shared.login(
+                                baseURL: settings.fastNoteBaseURL,
+                                username: settings.fastNoteUsername,
+                                password: settings.fastNotePassword
+                            )
+                            settings.fastNoteToken = token
+                            probe = "登录成功"
+                            Haptics.success()
+                        } catch {
+                            probe = error.localizedDescription
+                            Haptics.error()
+                        }
+                    }
+                }
+                if let probe {
+                    Text(probe).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        }
+        .navigationTitle("笔记同步")
+    }
+}
+
+struct SSHSettingsPage: View {
+    @EnvironmentObject private var settings: AppSettings
+
+    var body: some View {
+        Form {
+            Section {
+                TextField("Next Terminal URL（可选）", text: $settings.nextTerminalURL)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.URL)
+            } footer: {
+                Text("若已部署 Next Terminal 等 Web SSH，可在此填写面板地址。完整终端体验推荐 Blink Shell 或基于 Citadel 的自研终端。")
+            }
+            Section("开源参考") {
+                Text("• Blink Shell — iOS 终端 / Mosh\n• Citadel — SwiftNIO SSH 高层库\n• apple/swift-nio-ssh — SSH 协议实现")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .navigationTitle("SSH")
     }
 }
 

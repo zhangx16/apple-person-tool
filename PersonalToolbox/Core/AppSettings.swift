@@ -75,6 +75,26 @@ final class AppSettings: ObservableObject {
         didSet { KeychainStore.set(checkinAPIToken, for: Keys.checkinAPIToken) }
     }
 
+    // MARK: - Fast Note Sync (haierkeys/fast-note-sync-service)
+
+    @Published var fastNoteBaseURL: String {
+        didSet { UserDefaults.standard.set(fastNoteBaseURL, forKey: Keys.fastNoteBaseURL) }
+    }
+    @Published var fastNoteUsername: String {
+        didSet { UserDefaults.standard.set(fastNoteUsername, forKey: Keys.fastNoteUsername) }
+    }
+    @Published var fastNotePassword: String {
+        didSet { KeychainStore.set(fastNotePassword, for: Keys.fastNotePassword) }
+    }
+    @Published var fastNoteToken: String {
+        didSet { KeychainStore.set(fastNoteToken, for: Keys.fastNoteToken) }
+    }
+
+    /// Optional Next Terminal / web SSH portal URL.
+    @Published var nextTerminalURL: String {
+        didSet { UserDefaults.standard.set(nextTerminalURL, forKey: Keys.nextTerminalURL) }
+    }
+
     // MARK: - Cloudflare (CFPanel-style)
 
     /// API Token (Bearer) or Global API Key when email is set.
@@ -186,6 +206,11 @@ final class AppSettings: ObservableObject {
         static let komariBaseURL = "komariBaseURL"
         static let checkinBaseURL = "checkinBaseURL"
         static let checkinAPIToken = "checkinAPIToken"
+        static let fastNoteBaseURL = "fastNoteBaseURL"
+        static let fastNoteUsername = "fastNoteUsername"
+        static let fastNotePassword = "fastNotePassword"
+        static let fastNoteToken = "fastNoteToken"
+        static let nextTerminalURL = "nextTerminalURL"
         static let cloudflareAPIToken = "cloudflareAPIToken"
         static let cloudflareEmail = "cloudflareEmail"
         static let cloudflareAccountId = "cloudflareAccountId"
@@ -249,6 +274,11 @@ final class AppSettings: ObservableObject {
         komariBaseURL = d.string(forKey: Keys.komariBaseURL) ?? "https://komari.996616.xyz"
         checkinBaseURL = d.string(forKey: Keys.checkinBaseURL) ?? "https://checkin.031216.xyz"
         checkinAPIToken = KeychainStore.get(Keys.checkinAPIToken) ?? ""
+        fastNoteBaseURL = d.string(forKey: Keys.fastNoteBaseURL) ?? "https://sync.996616.xyz"
+        fastNoteUsername = d.string(forKey: Keys.fastNoteUsername) ?? ""
+        fastNotePassword = KeychainStore.get(Keys.fastNotePassword) ?? ""
+        fastNoteToken = KeychainStore.get(Keys.fastNoteToken) ?? ""
+        nextTerminalURL = d.string(forKey: Keys.nextTerminalURL) ?? ""
         cloudflareAPIToken = KeychainStore.get(Keys.cloudflareAPIToken) ?? ""
         cloudflareEmail = d.string(forKey: Keys.cloudflareEmail) ?? ""
         cloudflareAccountId = d.string(forKey: Keys.cloudflareAccountId) ?? ""
@@ -295,5 +325,11 @@ final class AppSettings: ObservableObject {
     var isCheckinConfigured: Bool {
         !checkinBaseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !checkinAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var isFastNoteConfigured: Bool {
+        !fastNoteBaseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !fastNoteUsername.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !fastNotePassword.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 }

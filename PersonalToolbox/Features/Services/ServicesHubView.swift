@@ -305,6 +305,15 @@ struct ServicesHubView: View {
                 item("anniversary", "纪念日", "生日 · 倒计时 · 本地提醒", .anniversary) {
                     AnyView(AnniversaryHomeView())
                 },
+                item("reminders", "提醒倒计时", "续费 · 账单 · 本地通知", .habits) {
+                    AnyView(ReminderHomeView())
+                },
+                item("subscriptions", "订阅账单", "月度估算 · 到期提醒", .express) {
+                    AnyView(SubscriptionHomeView())
+                },
+                item("notes", "笔记同步", "Fast Note Sync · 可与 Obsidian 共用", .translator) {
+                    AnyView(FastNoteHomeView())
+                },
                 item("habits", "习惯与待办", "打卡连续天数 · 待办清单", .habits) {
                     AnyView(HabitsTodosHomeView())
                 },
@@ -357,6 +366,12 @@ struct ServicesHubView: View {
                 },
                 item("ip", "IP 检测", "IPSuper 风格聚合 · 风险画像 · 流媒体", .ipCheck) {
                     AnyView(IPCheckHomeView())
+                },
+                item("certs", "证书到期", "域名 TLS 到期监视", .cloudflare) {
+                    AnyView(CertMonitorHomeView())
+                },
+                item("ssh", "SSH 主机", "书签 · Next Terminal · 推荐 Blink/Citadel", .komari) {
+                    AnyView(SSHHomeView())
                 }
             ]),
             SectionModel(title: "订阅与节点", symbol: "link", items: [

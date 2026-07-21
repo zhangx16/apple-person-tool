@@ -6,6 +6,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		000000000000000000000711 /* SSHTerminalSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000710 /* SSHTerminalSession.swift */; };
+		000000000000000000000713 /* SSHTerminalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000712 /* SSHTerminalView.swift */; };
 		000000000000000000000703 /* SSHRemoteRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000702 /* SSHRemoteRunner.swift */; };
 		000000000000000000000613 /* AppIntentsSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000612 /* AppIntentsSupport.swift */; };
 		0000000000000000000005F3 /* ActivityEventStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000005F2 /* ActivityEventStore.swift */; };
@@ -126,6 +128,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		000000000000000000000710 /* SSHTerminalSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHTerminalSession.swift; sourceTree = "<group>"; };
+		000000000000000000000712 /* SSHTerminalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Life/SSHTerminalView.swift; sourceTree = "<group>"; };
 		000000000000000000000702 /* SSHRemoteRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSHRemoteRunner.swift; sourceTree = "<group>"; };
 		000000000000000000000612 /* AppIntentsSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIntentsSupport.swift; sourceTree = "<group>"; };
 		0000000000000000000005F2 /* ActivityEventStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityEventStore.swift; sourceTree = "<group>"; };
@@ -349,6 +353,7 @@
 				0000000000000000000005FA /* FastNoteSyncService.swift */,
 				0000000000000000000005FC /* SSHHostStore.swift */,
 				000000000000000000000702 /* SSHRemoteRunner.swift */,
+				000000000000000000000710 /* SSHTerminalSession.swift */,
 				00000000000000000000014B /* Sub2APIService.swift */,
 				00000000000000000000014D /* Sub2AdminService.swift */,
 				00000000000000000000014F /* SublinkService.swift */,
@@ -517,6 +522,7 @@
 				000000000000000000000308 /* Download */,
 				000000000000000000000309 /* Settings */,
 				0000000000000000000005FE /* LifeExtrasViews.swift */,
+				000000000000000000000712 /* SSHTerminalView.swift */,
 			);
 			path = Features;
 			sourceTree = "<group>";
@@ -697,6 +703,8 @@
 				0000000000000000000005FB /* FastNoteSyncService.swift in Sources */,
 				0000000000000000000005FD /* SSHHostStore.swift in Sources */,
 				000000000000000000000703 /* SSHRemoteRunner.swift in Sources */,
+				000000000000000000000711 /* SSHTerminalSession.swift in Sources */,
+				000000000000000000000713 /* SSHTerminalView.swift in Sources */,
 				0000000000000000000005FF /* LifeExtrasViews.swift in Sources */,
 				000000000000000000000106 /* AppSettings.swift in Sources */,
 				000000000000000000000108 /* BiometricAuth.swift in Sources */,
@@ -863,7 +871,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 55;
+				CURRENT_PROJECT_VERSION = 56;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				CODE_SIGN_ENTITLEMENTS = PersonalToolbox/PersonalToolbox.entitlements;
@@ -889,7 +897,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 55;
+				CURRENT_PROJECT_VERSION = 56;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				CODE_SIGN_ENTITLEMENTS = PersonalToolbox/PersonalToolbox.entitlements;
@@ -915,7 +923,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 55;
+				CURRENT_PROJECT_VERSION = 56;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
@@ -940,7 +948,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 55;
+				CURRENT_PROJECT_VERSION = 56;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;

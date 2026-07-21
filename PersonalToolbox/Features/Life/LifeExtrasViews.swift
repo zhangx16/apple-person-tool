@@ -661,6 +661,7 @@ struct SSHHostDetailView: View {
     @State private var runOutput = ""
     @State private var runError: String?
     @State private var showOutput = false
+    @State private var showTerminal = false
     @StateObject private var store = SSHHostStore.shared
 
     var body: some View {
@@ -674,6 +675,13 @@ struct SSHHostDetailView: View {
                     store.setPassword(password, for: host.id)
                     Haptics.success()
                 }
+                Button {
+                    store.setPassword(password, for: host.id)
+                    showTerminal = true
+                } label: {
+                    Label("打开交互终端", systemImage: "terminal.fill")
+                }
+                .disabled(password.isEmpty)
                 if let url = host.sshURL {
                     Link("用 ssh:// 打开其它终端 App", destination: url)
                 }
@@ -685,7 +693,7 @@ struct SSHHostDetailView: View {
                 }
             }
             Section {
-                Text("基于 Citadel（SwiftNIO SSH）在 App 内执行非交互命令。完整交互终端仍可用 Blink。")
+                Text("交互终端使用 Citadel PTY（密码登录）。亦可执行下方预设/自定义命令。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -787,6 +795,9 @@ struct SSHHostDetailView: View {
                 }
             }
             .presentationDetents([.medium, .large])
+        }
+        .fullScreenCover(isPresented: $showTerminal) {
+            SSHTerminalView(host: host, password: password)
         }
         .overlay {
             if isRunning {

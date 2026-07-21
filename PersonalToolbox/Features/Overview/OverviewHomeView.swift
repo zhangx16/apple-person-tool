@@ -18,7 +18,8 @@ final class OverviewViewModel: ObservableObject {
         case checkin
         case serviceHealth
         case download
-        case monitor
+        case sub2Monitor
+        case cloudflare
         case komari
         case ipCheck
         case servicesTab
@@ -319,23 +320,23 @@ struct OverviewHomeView: View {
                 }
 
                 metricCard(
-                    title: "监控",
+                    title: "Sub2 管理",
                     value: settings.isAdminConfigured ? "已配置" : "未配置",
-                    caption: "Sub2 · Cloudflare",
+                    caption: "账号调度 · 用户余额",
                     tint: ServiceBrand.sub2.tint,
                     systemImage: "chart.bar.fill"
                 ) {
-                    navigate(.monitor)
+                    navigate(.sub2Monitor)
                 }
 
                 metricCard(
-                    title: "Komari",
-                    value: settings.komariBaseURL.isEmpty ? "未配置" : "节点",
-                    caption: hostShort(settings.komariBaseURL),
-                    tint: ServiceBrand.komari.tint,
-                    systemImage: "server.rack"
+                    title: "Cloudflare",
+                    value: settings.isCloudflareConfigured ? "已配置" : "未配置",
+                    caption: "用量 · 域名 · DNS",
+                    tint: ServiceBrand.cloudflare.tint,
+                    systemImage: "cloud.fill"
                 ) {
-                    navigate(.komari)
+                    navigate(.cloudflare)
                 }
             }
         }
@@ -398,12 +399,10 @@ struct OverviewHomeView: View {
                 spacing: 12
             ) {
                 quickTile(brand: .checkin, title: "签到中心") { navigate(.checkin) }
-                quickTile(brand: .sub2, title: "监控中心") { navigate(.monitor) }
+                quickTile(brand: .sub2, title: "Sub2 管理") { navigate(.sub2Monitor) }
+                quickTile(brand: .cloudflare, title: "Cloudflare") { navigate(.cloudflare) }
                 quickTile(brand: .komari, title: "Komari") { navigate(.komari) }
                 quickTile(brand: .health, title: "服务健康") { navigate(.serviceHealth) }
-                quickTile(brand: .cloudflare, title: "Cloudflare") {
-                    path.append(OverviewViewModel.OverviewDestination.monitor)
-                }
                 quickTile(brand: .ipCheck, title: "IP 检测") {
                     navigate(.ipCheck)
                 }
@@ -486,8 +485,10 @@ struct OverviewHomeView: View {
             ServiceHealthHomeView()
         case .download:
             DownloadHomeView(isTabSelected: true)
-        case .monitor:
-            MonitorShellView()
+        case .sub2Monitor:
+            MonitorHomeView()
+        case .cloudflare:
+            CloudflareHomeView()
         case .komari:
             KomariHomeView()
         case .ipCheck:

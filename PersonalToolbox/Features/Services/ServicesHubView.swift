@@ -330,8 +330,21 @@ struct ServicesHubView: View {
                 }
             ]),
             SectionModel(title: "监控", symbol: "waveform.path.ecg", items: [
-                item("monitor", "监控中心", "Sub2 管理 · Cloudflare（点标题切换）", .sub2) {
-                    AnyView(MonitorShellView())
+                item(
+                    "sub2Monitor",
+                    "Sub2 管理",
+                    settings.isAdminConfigured ? "账号调度 · 用户 · 分组" : "未配置 Admin Token",
+                    .sub2
+                ) {
+                    AnyView(MonitorHomeView())
+                },
+                item(
+                    "cloudflare",
+                    "Cloudflare",
+                    settings.isCloudflareConfigured ? "用量 · 域名 · DNS" : "未配置 API Token",
+                    .cloudflare
+                ) {
+                    AnyView(CloudflareHomeView())
                 },
                 item("health", "服务健康总览", "一键探测全部已配置服务", .health) {
                     AnyView(ServiceHealthHomeView())

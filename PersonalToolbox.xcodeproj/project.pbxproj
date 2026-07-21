@@ -249,6 +249,14 @@
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
+		000000000000000000000600 /* Life */ = {
+			isa = PBXGroup;
+			children = (
+				0000000000000000000005FE /* LifeExtrasViews.swift */,
+			);
+			path = Life;
+			sourceTree = "<group>";
+		};
 		0000000000000000000005E2 /* Overview */ = {
 			isa = PBXGroup;
 			children = (
@@ -508,6 +516,7 @@
 				00000000000000000000030D /* Komari */,
 				0000000000000000000005D8 /* Checkin */,
 				0000000000000000000005E2 /* Overview */,
+				000000000000000000000600 /* Life */,
 				000000000000000000000311 /* Anniversary */,
 				000000000000000000000312 /* QRAssistant */,
 				000000000000000000000313 /* Translator */,

@@ -28,7 +28,6 @@
 		000000000000000000000108 /* BiometricAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000107 /* BiometricAuth.swift */; };
 		00000000000000000000010A /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000109 /* Haptics.swift */; };
 		0000000000000000000001C9 /* LocalNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000001C8 /* LocalNotifier.swift */; };
-				};
 		0000000000000000000005D1 /* CheckinModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000005D0 /* CheckinModels.swift */; };
 		0000000000000000000005D3 /* CheckinService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000005D2 /* CheckinService.swift */; };
 		0000000000000000000005D7 /* CheckinHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000005D6 /* CheckinHomeView.swift */; };
@@ -36,12 +35,6 @@
 		00000000000000000000010C /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000010B /* KeychainStore.swift */; };
 		00000000000000000000010E /* NetworkClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000010D /* NetworkClient.swift */; };
 		000000000000000000000110 /* SSEParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000010F /* SSEParser.swift */; };
-				};
-				};
-				};
-				};
-				};
-				};
 		00000000000000000000011E /* DownloadHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000011D /* DownloadHomeView.swift */; };
 		000000000000000000000120 /* DownloadViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000011F /* DownloadViewModel.swift */; };
 		000000000000000000000122 /* FilesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000121 /* FilesListView.swift */; };
@@ -58,12 +51,9 @@
 		000000000000000000000138 /* SublinkViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000137 /* SublinkViewModel.swift */; };
 		00000000000000000000013A /* AdminModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000139 /* AdminModels.swift */; };
 		00000000000000000000013C /* ChatModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000013B /* ChatModels.swift */; };
-				};
 		000000000000000000000140 /* DownloadModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000013F /* DownloadModels.swift */; };
 		000000000000000000000142 /* KomariModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000141 /* KomariModels.swift */; };
 		000000000000000000000144 /* SublinkModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000143 /* SublinkModels.swift */; };
-				};
-				};
 		00000000000000000000014A /* KomariService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000149 /* KomariService.swift */; };
 		00000000000000000000014C /* Sub2APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000014B /* Sub2APIService.swift */; };
 		00000000000000000000014E /* Sub2AdminService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000014D /* Sub2AdminService.swift */; };

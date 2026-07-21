@@ -6,7 +6,7 @@ inhibit_all_warnings!
 target 'PersonalToolbox' do
   # LibVLC-based player; plays HTTP-FLV / HLS that AVPlayer cannot.
   # Pin a known-good binary pod version to avoid trunk resolution flakiness.
-  pod 'MobileVLCKit', '3.6.0'
+  pod 'MobileVLCKit'
 end
 
 # Share Extension must not link VLC (size + no need).

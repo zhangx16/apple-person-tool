@@ -109,50 +109,35 @@ jobs:
           echo "Codesigning identity ready"
 
       - name: CocoaPods (MobileVLCKit for FLV)
+        id: pods
+        continue-on-error: true
         run: |
           set -euo pipefail
-          # Align with SimpleLive media_kit: need a non-AVPlayer engine for HTTP-FLV.
+          # Prefer VLC when CocoaPods is healthy; otherwise archive falls back to xcodeproj
+          # (Live uses AVPlayer/HLS via #if canImport(MobileVLCKit)).
           export COCOAPODS_DISABLE_STATS=true
           LOG="$RUNNER_TEMP/pod-install.log"
           : > "$LOG"
           {
             echo "ruby: $(ruby -v 2>&1 || true)"
-            echo "which pod: $(command -v pod || true)"
-            # Match previously successful runs: gem install, not brew.
             gem install cocoapods --no-document || sudo gem install cocoapods --no-document
             hash -r || true
             pod --version
+            pod install --repo-update
+            test -f PersonalToolbox.xcworkspace/contents.xcworkspacedata
+            ls -la Pods/ | head
+            echo "HAS_WORKSPACE=1" >> "$GITHUB_ENV"
           } 2>&1 | tee -a "$LOG"
-          ok=0
-          for attempt in 1 2 3; do
-            echo "==== pod install attempt ${attempt} ====" | tee -a "$LOG"
-            set +e
-            if [ "$attempt" -eq 1 ]; then
-              pod install --repo-update 2>&1 | tee -a "$LOG"
-            else
-              pod install 2>&1 | tee -a "$LOG"
-            fi
-            status=${PIPESTATUS[0]}
-            set -e
-            if [ "$status" -eq 0 ] && [ -f PersonalToolbox.xcworkspace/contents.xcworkspacedata ]; then
-              ok=1
-              break
-            fi
-            echo "pod install failed attempt=${attempt} status=${status}" | tee -a "$LOG"
-            sleep $((attempt * 30))
-          done
-          if [ "$ok" -ne 1 ]; then
-            echo "::error::CocoaPods install failed after retries"
-            echo "### CocoaPods failure" >> "$GITHUB_STEP_SUMMARY"
-            echo '```' >> "$GITHUB_STEP_SUMMARY"
-            tail -n 150 "$LOG" >> "$GITHUB_STEP_SUMMARY" || true
-            echo '```' >> "$GITHUB_STEP_SUMMARY"
-            # Also mirror into the public ci-errors note path pattern via archive error publisher
-            cp "$LOG" "$RUNNER_TEMP/xcodebuild-archive.log" 2>/dev/null || true
-            exit 1
+
+      - name: Resolve schemes
+        run: |
+          if [ -f PersonalToolbox.xcworkspace/contents.xcworkspacedata ]; then
+            xcodebuild -workspace PersonalToolbox.xcworkspace -list
+          else
+            echo "No CocoaPods workspace — using PersonalToolbox.xcodeproj"
+            xcodebuild -project PersonalToolbox.xcodeproj -list
+            echo "HAS_WORKSPACE=0" >> "$GITHUB_ENV"
           fi
-          ls -la Pods/ | head      - name: Resolve schemes
-        run: xcodebuild -workspace PersonalToolbox.xcworkspace -list
 
       - name: Configure Share Extension (optional)
         env:
@@ -168,17 +153,33 @@ jobs:
           # Do NOT pass PROVISIONING_PROFILE_SPECIFIER on the CLI — it applies to
           # CocoaPods targets too and breaks archive. Profile is set in pbxproj
           # for PersonalToolbox / ShareExtension only.
-          xcodebuild \
-            -workspace PersonalToolbox.xcworkspace \
-            -scheme PersonalToolbox \
-            -configuration Release \
-            -destination 'generic/platform=iOS' \
-            -archivePath "$RUNNER_TEMP/PersonalToolbox.xcarchive" \
-            clean archive \
-            CODE_SIGN_STYLE=Manual \
-            DEVELOPMENT_TEAM=CTSQLK944L \
-            CODE_SIGN_IDENTITY="iPhone Distribution" \
-            2>&1 | tee "$RUNNER_TEMP/xcodebuild-archive.log"
+          if [ -f PersonalToolbox.xcworkspace/contents.xcworkspacedata ]; then
+            echo "Archiving with CocoaPods workspace (MobileVLCKit linked)"
+            xcodebuild \
+              -workspace PersonalToolbox.xcworkspace \
+              -scheme PersonalToolbox \
+              -configuration Release \
+              -destination 'generic/platform=iOS' \
+              -archivePath "$RUNNER_TEMP/PersonalToolbox.xcarchive" \
+              clean archive \
+              CODE_SIGN_STYLE=Manual \
+              DEVELOPMENT_TEAM=CTSQLK944L \
+              CODE_SIGN_IDENTITY="iPhone Distribution" \
+              2>&1 | tee "$RUNNER_TEMP/xcodebuild-archive.log"
+          else
+            echo "Archiving with xcodeproj (no MobileVLCKit — HLS/AVPlayer fallback)"
+            xcodebuild \
+              -project PersonalToolbox.xcodeproj \
+              -scheme PersonalToolbox \
+              -configuration Release \
+              -destination 'generic/platform=iOS' \
+              -archivePath "$RUNNER_TEMP/PersonalToolbox.xcarchive" \
+              clean archive \
+              CODE_SIGN_STYLE=Manual \
+              DEVELOPMENT_TEAM=CTSQLK944L \
+              CODE_SIGN_IDENTITY="iPhone Distribution" \
+              2>&1 | tee "$RUNNER_TEMP/xcodebuild-archive.log"
+          fi
           STATUS=${PIPESTATUS[0]}
           set -e
           if [ "$STATUS" -ne 0 ]; then

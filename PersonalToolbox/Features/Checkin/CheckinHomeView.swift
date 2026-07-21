@@ -316,7 +316,10 @@ struct CheckinHomeView: View {
             }
         }
         .navigationDestination(item: $selected) { project in
-            CheckinProjectDetailView(project: project)
+            CheckinProjectDetailView(project: project) {
+                Task { await viewModel.load(settings: settings) }
+            }
+            .environmentObject(settings)
         }
     }
 
@@ -520,47 +523,37 @@ private struct CheckinProjectRow: View {
     }
 }
 
-// MARK: - Project detail (merged accounts)
+// MARK: - Project detail (merged accounts) + edit/delete
 
 struct CheckinProjectDetailView: View {
     let project: CheckinProject
+    var onChanged: (() -> Void)? = nil
+
+    @EnvironmentObject private var settings: AppSettings
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var working = project
+    @State private var isBusy = false
+    @State private var banner: String?
+    @State private var confirmDeleteProject = false
+    @State private var accountPendingDelete: CheckinItem?
+    @State private var editingWebsite: CheckinItem?
+    @State private var editingBot = false
+    @State private var botNameDraft = ""
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                HStack(spacing: 14) {
-                    CheckinAvatarView(
-                        url: project.avatar,
-                        fallbackSystemImage: project.isTelegram ? "paperplane.fill" : "globe",
-                        fallbackTint: project.statusKind.color,
-                        size: 64
-                    )
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(project.displayTitle)
-                            .font(.title3.weight(.bold))
-                        if !project.displaySubtitle.isEmpty {
-                            Text(project.displaySubtitle)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-                        if let msg = project.message, !msg.isEmpty {
-                            Text(msg)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(2)
-                        }
-                    }
-                    Spacer()
-                    StatusPill(
-                        title: project.statusKind.title,
-                        color: project.statusKind.color,
-                        systemImage: project.statusKind.systemImage,
-                        style: project.statusKind == .failed ? .solid : .soft
-                    )
-                }
-                .appCardV2()
+                headerCard
 
-                if let c = project.counts {
+                if let banner, !banner.isEmpty {
+                    Text(banner)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 4)
+                }
+
+                if let c = working.counts {
                     HStack(spacing: 8) {
                         miniStat("成功", c.successValue, Color(hex: 0x30D158))
                         miniStat("已签", c.alreadyValue, Color(hex: 0x64D2FF))
@@ -570,20 +563,153 @@ struct CheckinProjectDetailView: View {
                 }
 
                 AppSectionTitle(
-                    title: "账号 (\(project.accountList.count))",
+                    title: "账号 (\(working.accountList.count))",
                     systemImage: "person.2.fill"
                 )
                 VStack(spacing: 10) {
-                    ForEach(project.accountList) { account in
+                    ForEach(working.accountList) { account in
                         accountCard(account)
                     }
                 }
+
+                Button(role: .destructive) {
+                    confirmDeleteProject = true
+                } label: {
+                    Label(
+                        working.isTelegram ? "删除此 Bot 签到任务" : "删除此网站全部账号",
+                        systemImage: "trash"
+                    )
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(GhostButtonStyle(tint: Color(hex: 0xFF453A)))
+                .disabled(isBusy)
+                .padding(.top, 8)
             }
             .padding(16)
         }
-        .background(AppSurfaceBackground(accent: project.statusKind.color))
-        .navigationTitle(project.isTelegram ? "Bot 签到" : "项目详情")
+        .background(AppSurfaceBackground(accent: working.statusKind.color))
+        .navigationTitle(working.isTelegram ? "Bot 签到" : "项目详情")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if working.isTelegram {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("编辑") {
+                        botNameDraft = working.botName ?? working.displayTitle
+                        editingBot = true
+                    }
+                    .disabled(isBusy)
+                }
+            }
+        }
+        .confirmationDialog(
+            working.isTelegram ? "删除 Bot 签到任务？" : "删除全部网站账号？",
+            isPresented: $confirmDeleteProject,
+            titleVisibility: .visible
+        ) {
+            Button("删除", role: .destructive) {
+                Task { await deleteProject() }
+            }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text(working.isTelegram
+                 ? "将从 glados-checkin-web 配置中移除 @\(working.botUsername ?? "")，并清除相关结果。"
+                 : "将删除该站点下全部 \(working.accountList.count) 个签到账号，不可恢复。")
+        }
+        .confirmationDialog(
+            "删除此账号？",
+            isPresented: Binding(
+                get: { accountPendingDelete != nil },
+                set: { if !$0 { accountPendingDelete = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("删除", role: .destructive) {
+                if let acc = accountPendingDelete {
+                    Task { await deleteAccount(acc) }
+                }
+            }
+            Button("取消", role: .cancel) { accountPendingDelete = nil }
+        } message: {
+            Text(accountPendingDelete.map { "\($0.displayName) 将被删除。" } ?? "")
+        }
+        .sheet(item: $editingWebsite) { item in
+            NavigationStack {
+                CheckinWebsiteAccountEditor(accountID: item.id) {
+                    editingWebsite = nil
+                    onChanged?()
+                    banner = "已保存"
+                }
+                .environmentObject(settings)
+            }
+            .presentationDetents([.large, .medium])
+        }
+        .sheet(isPresented: $editingBot) {
+            NavigationStack {
+                Form {
+                    Section("Bot 信息") {
+                        TextField("显示名称", text: $botNameDraft)
+                        if let u = working.botUsername {
+                            LabeledContent("用户名", value: "@\(u)")
+                        }
+                    }
+                }
+                .navigationTitle("编辑 Bot")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("取消") { editingBot = false }
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("保存") {
+                            Task { await saveBotName() }
+                        }
+                        .disabled(isBusy || botNameDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+                }
+            }
+            .presentationDetents([.medium])
+        }
+        .overlay {
+            if isBusy {
+                ProgressView()
+                    .padding(20)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+        }
+    }
+
+    private var headerCard: some View {
+        HStack(spacing: 14) {
+            CheckinAvatarView(
+                url: working.avatar,
+                fallbackSystemImage: working.isTelegram ? "paperplane.fill" : "globe",
+                fallbackTint: working.statusKind.color,
+                size: 64
+            )
+            VStack(alignment: .leading, spacing: 4) {
+                Text(working.displayTitle)
+                    .font(.title3.weight(.bold))
+                if !working.displaySubtitle.isEmpty {
+                    Text(working.displaySubtitle)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                if let msg = working.message, !msg.isEmpty {
+                    Text(msg)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+            }
+            Spacer()
+            StatusPill(
+                title: working.statusKind.title,
+                color: working.statusKind.color,
+                systemImage: working.statusKind.systemImage,
+                style: working.statusKind == .failed ? .solid : .soft
+            )
+        }
+        .appCardV2()
     }
 
     private func miniStat(_ title: String, _ value: Int, _ color: Color) -> some View {
@@ -623,7 +749,6 @@ struct CheckinProjectDetailView: View {
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }
-            // Points / balance for website accounts
             HStack(spacing: 12) {
                 if let d = account.pointsDelta {
                     let unit = account.currency.map { " \($0)" } ?? ""
@@ -642,6 +767,18 @@ struct CheckinProjectDetailView: View {
                     labelChip("剩余", left)
                 }
             }
+            HStack(spacing: 12) {
+                if !working.isTelegram {
+                    Button("编辑") { editingWebsite = account }
+                        .font(.caption.weight(.semibold))
+                }
+                Spacer()
+                Button("删除", role: .destructive) {
+                    accountPendingDelete = account
+                }
+                .font(.caption.weight(.semibold))
+            }
+            .padding(.top, 2)
         }
         .appCard()
     }
@@ -653,5 +790,264 @@ struct CheckinProjectDetailView: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .background(Color(.tertiarySystemFill), in: Capsule())
+    }
+
+    // MARK: - Actions
+
+    private var creds: (base: String, token: String)? {
+        var base = settings.checkinBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        while base.hasSuffix("/") { base.removeLast() }
+        let token = settings.checkinAPIToken.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !base.isEmpty, !token.isEmpty else { return nil }
+        return (base, token)
+    }
+
+    private func deleteProject() async {
+        guard let creds else {
+            banner = "未配置签到服务"
+            return
+        }
+        isBusy = true
+        defer { isBusy = false }
+        do {
+            if working.isTelegram {
+                guard let user = working.botUsername, !user.isEmpty else {
+                    banner = "缺少 Bot 用户名"
+                    return
+                }
+                try await CheckinService.shared.deleteTelegramBot(
+                    baseURL: creds.base,
+                    apiToken: creds.token,
+                    botUsername: user
+                )
+            } else {
+                for acc in working.accountList {
+                    try await CheckinService.shared.deleteAccount(
+                        baseURL: creds.base,
+                        apiToken: creds.token,
+                        id: acc.id
+                    )
+                }
+            }
+            Haptics.success()
+            onChanged?()
+            dismiss()
+        } catch {
+            banner = (error as? NetworkError)?.errorDescription ?? error.localizedDescription
+            Haptics.error()
+        }
+    }
+
+    private func deleteAccount(_ account: CheckinItem) async {
+        guard let creds else {
+            banner = "未配置签到服务"
+            return
+        }
+        isBusy = true
+        defer {
+            isBusy = false
+            accountPendingDelete = nil
+        }
+        do {
+            if working.isTelegram {
+                // Prefer phone-level delete when available; otherwise delete whole bot.
+                if let phone = account.phone, !phone.isEmpty {
+                    try await CheckinService.shared.deleteTelegramPhone(
+                        baseURL: creds.base,
+                        apiToken: creds.token,
+                        phone: phone
+                    )
+                } else if let user = working.botUsername {
+                    try await CheckinService.shared.deleteTelegramBot(
+                        baseURL: creds.base,
+                        apiToken: creds.token,
+                        botUsername: user
+                    )
+                    onChanged?()
+                    dismiss()
+                    return
+                }
+            } else {
+                try await CheckinService.shared.deleteAccount(
+                    baseURL: creds.base,
+                    apiToken: creds.token,
+                    id: account.id
+                )
+            }
+            working.accounts = working.accountList.filter { $0.id != account.id }
+            if working.accountList.isEmpty {
+                onChanged?()
+                dismiss()
+            } else {
+                banner = "已删除 \(account.displayName)"
+                onChanged?()
+            }
+            Haptics.success()
+        } catch {
+            banner = (error as? NetworkError)?.errorDescription ?? error.localizedDescription
+            Haptics.error()
+        }
+    }
+
+    private func saveBotName() async {
+        guard let creds, let user = working.botUsername else { return }
+        let name = botNameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return }
+        isBusy = true
+        defer { isBusy = false }
+        do {
+            try await CheckinService.shared.updateTelegramBot(
+                baseURL: creds.base,
+                apiToken: creds.token,
+                botUsername: user,
+                body: CheckinTelegramBotUpdateBody(name: name)
+            )
+            working.botName = name
+            working.title = name
+            editingBot = false
+            banner = "已保存 Bot 名称"
+            onChanged?()
+            Haptics.success()
+        } catch {
+            banner = (error as? NetworkError)?.errorDescription ?? error.localizedDescription
+            Haptics.error()
+        }
+    }
+}
+
+// MARK: - Website account editor
+
+struct CheckinWebsiteAccountEditor: View {
+    let accountID: String
+    var onSaved: () -> Void
+
+    @EnvironmentObject private var settings: AppSettings
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var name = ""
+    @State private var baseUrl = ""
+    @State private var notes = ""
+    @State private var cookie = ""
+    @State private var username = ""
+    @State private var password = ""
+    @State private var provider = "glados"
+    @State private var hasPassword = false
+    @State private var isLoading = true
+    @State private var isSaving = false
+    @State private var errorText: String?
+
+    private var isPasswordProvider: Bool {
+        ["embypulse", "embymb", "zhousanwan"].contains(provider)
+    }
+
+    var body: some View {
+        Form {
+            if isLoading {
+                ProgressView("加载账号…")
+            } else {
+                Section("基本信息") {
+                    TextField("名称", text: $name)
+                    TextField("站点 Base URL", text: $baseUrl)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .keyboardType(.URL)
+                    TextField("备注", text: $notes)
+                    LabeledContent("Provider", value: provider)
+                }
+                if isPasswordProvider {
+                    Section("登录凭证") {
+                        TextField("用户名", text: $username)
+                            .textInputAutocapitalization(.never)
+                        SecureField(hasPassword ? "密码（留空不修改）" : "密码", text: $password)
+                    }
+                } else {
+                    Section("Cookie") {
+                        TextField("Cookie", text: $cookie, axis: .vertical)
+                            .lineLimit(3...8)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                    }
+                }
+                if let errorText {
+                    Section {
+                        Text(errorText).foregroundStyle(.red).font(.caption)
+                    }
+                }
+            }
+        }
+        .navigationTitle("编辑账号")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("取消") { dismiss() }
+            }
+            ToolbarItem(placement: .confirmationAction) {
+                Button("保存") {
+                    Task { await save() }
+                }
+                .disabled(isLoading || isSaving)
+            }
+        }
+        .task { await load() }
+    }
+
+    private func load() async {
+        var base = settings.checkinBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        while base.hasSuffix("/") { base.removeLast() }
+        let token = settings.checkinAPIToken.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !base.isEmpty, !token.isEmpty else {
+            errorText = "未配置签到服务"
+            isLoading = false
+            return
+        }
+        do {
+            let acc = try await CheckinService.shared.getAccount(
+                baseURL: base,
+                apiToken: token,
+                id: accountID
+            )
+            name = acc.name ?? ""
+            baseUrl = acc.baseUrl ?? ""
+            notes = acc.notes ?? ""
+            cookie = acc.cookie ?? ""
+            username = acc.username ?? ""
+            provider = acc.provider ?? "glados"
+            hasPassword = acc.hasPassword == true
+            isLoading = false
+        } catch {
+            errorText = (error as? NetworkError)?.errorDescription ?? error.localizedDescription
+            isLoading = false
+        }
+    }
+
+    private func save() async {
+        var base = settings.checkinBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        while base.hasSuffix("/") { base.removeLast() }
+        let token = settings.checkinAPIToken.trimmingCharacters(in: .whitespacesAndNewlines)
+        isSaving = true
+        defer { isSaving = false }
+        do {
+            _ = try await CheckinService.shared.updateAccount(
+                baseURL: base,
+                apiToken: token,
+                id: accountID,
+                body: CheckinAccountUpdateBody(
+                    provider: provider,
+                    name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+                    baseUrl: baseUrl.trimmingCharacters(in: .whitespacesAndNewlines),
+                    notes: notes,
+                    cookie: isPasswordProvider ? nil : cookie,
+                    username: isPasswordProvider ? username : nil,
+                    password: isPasswordProvider ? (password.isEmpty ? nil : password) : nil,
+                    insecureTls: nil
+                )
+            )
+            Haptics.success()
+            onSaved()
+            dismiss()
+        } catch {
+            errorText = (error as? NetworkError)?.errorDescription ?? error.localizedDescription
+            Haptics.error()
+        }
     }
 }

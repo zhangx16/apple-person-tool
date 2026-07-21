@@ -231,3 +231,46 @@ struct CheckinHealth: Codable, Equatable {
     var appTokenConfigured: Bool?
     var auth: String?
 }
+
+// MARK: - Account management (website)
+
+struct CheckinAccountDetailBox: Codable {
+    var account: CheckinAccountDetail
+}
+
+struct CheckinAccountDetail: Codable, Equatable, Identifiable {
+    var id: String
+    var provider: String?
+    var providerLabel: String?
+    var name: String?
+    var baseUrl: String?
+    var notes: String?
+    var cookie: String?
+    var username: String?
+    var hasPassword: Bool?
+    var hasCookie: Bool?
+    var insecureTls: Bool?
+    var lastStatusAt: String?
+    var lastCheckinAt: String?
+}
+
+struct CheckinAccountUpdateBody: Encodable {
+    var provider: String?
+    var name: String?
+    var baseUrl: String?
+    var notes: String?
+    var cookie: String?
+    var username: String?
+    /// Empty / nil keeps existing password on server.
+    var password: String?
+    var insecureTls: Bool?
+}
+
+struct CheckinTelegramBotUpdateBody: Encodable {
+    var name: String?
+    var botUsername: String?
+    var commands: [String]?
+    var sendInterval: Int?
+    var useCaptcha: Bool?
+    var waitResponse: Bool?
+}

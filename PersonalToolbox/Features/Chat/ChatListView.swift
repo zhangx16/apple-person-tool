@@ -103,8 +103,11 @@ struct ChatListView: View {
                     Button {
                         path.append(conv.id)
                     } label: {
-                        ConversationRow(conversation: conv)
-                            .appCard()
+                        ConversationRow(
+                            conversation: conv,
+                            isStreaming: viewModel.isConversationStreaming(conv.id)
+                        )
+                        .appCard()
                     }
                     .buttonStyle(PressableButtonStyle(scale: 0.98))
                     .staggeredAppearance(index: index)
@@ -145,6 +148,7 @@ struct ChatListView: View {
 
 private struct ConversationRow: View {
     let conversation: ChatConversation
+    var isStreaming: Bool = false
 
     var body: some View {
         HStack(spacing: 14) {
@@ -163,11 +167,20 @@ private struct ConversationRow: View {
             .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(conversation.title)
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
+                HStack(spacing: 8) {
+                    Text(conversation.title)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                    if isStreaming {
+                        StatusPill(
+                            title: "生成中",
+                            color: .accentColor,
+                            systemImage: "ellipsis.bubble.fill"
+                        )
+                    }
+                }
                 HStack(spacing: 6) {
                     Text(conversation.model)
                         .font(.caption)
@@ -188,7 +201,11 @@ private struct ConversationRow: View {
         }
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(conversation.title)，\(Self.relativeDate(conversation.updatedAt))，模型 \(conversation.model)")
+        .accessibilityLabel(
+            isStreaming
+                ? "\(conversation.title)，正在生成，\(Self.relativeDate(conversation.updatedAt))，模型 \(conversation.model)"
+                : "\(conversation.title)，\(Self.relativeDate(conversation.updatedAt))，模型 \(conversation.model)"
+        )
         .accessibilityHint("打开对话")
     }
 

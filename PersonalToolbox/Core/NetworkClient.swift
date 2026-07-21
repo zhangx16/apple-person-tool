@@ -76,6 +76,12 @@ final class NetworkClient: @unchecked Sendable {
         let sseConfig = URLSessionConfiguration.default
         TimeoutProfile.sse.apply(to: sseConfig)
         sseConfig.waitsForConnectivity = true
+        // Keep chat streams alive across brief radio handoffs / app inactivity.
+        sseConfig.allowsConstrainedNetworkAccess = true
+        sseConfig.allowsExpensiveNetworkAccess = true
+        // Time between SSE chunks can be long while the model is "thinking".
+        // Resource timeout still caps total stream length (600s).
+        sseConfig.timeoutIntervalForRequest = max(TimeoutProfile.sse.requestTimeout, 180)
         sseSession = URLSession(configuration: sseConfig)
 
         let isolatedCookies = HTTPCookieStorage()

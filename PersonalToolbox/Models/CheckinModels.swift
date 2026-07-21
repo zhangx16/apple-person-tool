@@ -1,0 +1,142 @@
+import Foundation
+
+// MARK: - Summary (GET /api/v1/summary)
+
+struct CheckinSummary: Codable, Equatable {
+    var ok: Bool?
+    var generatedAt: String?
+    var source: String?
+    var counts: CheckinCounts?
+    var providers: [CheckinProviderGroup]?
+    var items: [CheckinItem]?
+    var telegram: CheckinTelegramMeta?
+    var embykeeper: CheckinEmbykeeperMeta?
+    var auth: CheckinAuthMeta?
+}
+
+struct CheckinAuthMeta: Codable, Equatable {
+    var appTokenConfigured: Bool?
+}
+
+struct CheckinCounts: Codable, Equatable {
+    var total: Int?
+    var success: Int?
+    var already: Int?
+    var failed: Int?
+    var skipped: Int?
+    var unknown: Int?
+    var pending: Int?
+    var healthy: Int?
+
+    var totalValue: Int { total ?? 0 }
+    var healthyValue: Int { healthy ?? ((success ?? 0) + (already ?? 0)) }
+    var failedValue: Int { failed ?? 0 }
+    var skippedValue: Int { skipped ?? 0 }
+    var successValue: Int { success ?? 0 }
+    var alreadyValue: Int { already ?? 0 }
+}
+
+struct CheckinProviderGroup: Codable, Equatable, Identifiable {
+    var key: String?
+    var label: String?
+    var counts: CheckinCounts?
+    var itemCount: Int?
+    var lastCheckedAt: String?
+
+    var id: String { key ?? label ?? UUID().uuidString }
+    var displayLabel: String { label ?? key ?? "未知" }
+    var countValue: Int { itemCount ?? 0 }
+}
+
+struct CheckinItem: Codable, Equatable, Identifiable, Hashable {
+    var id: String
+    var kind: String?
+    var provider: String?
+    var providerLabel: String?
+    var accountName: String?
+    var botName: String?
+    var botUsername: String?
+    var status: String?
+    var ok: Bool?
+    var message: String?
+    var checkedAt: String?
+    var pointsDelta: Double?
+    var balance: Double?
+    var currency: String?
+    var streak: Double?
+    var leftDays: String?
+    var todaySigned: Bool?
+    var notes: String?
+
+    var displayProvider: String { providerLabel ?? provider ?? "未知" }
+    var displayName: String {
+        let name = accountName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return name.isEmpty ? displayProvider : name
+    }
+
+    var statusKind: CheckinStatusKind {
+        CheckinStatusKind(rawValue: (status ?? "").lowercased()) ?? .unknown
+    }
+}
+
+enum CheckinStatusKind: String, CaseIterable {
+    case success
+    case already
+    case failed
+    case skipped
+    case pending
+    case unknown
+
+    var title: String {
+        switch self {
+        case .success: return "成功"
+        case .already: return "已签到"
+        case .failed: return "失败"
+        case .skipped: return "跳过"
+        case .pending: return "未执行"
+        case .unknown: return "未知"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .success: return "checkmark.circle.fill"
+        case .already: return "checkmark.circle"
+        case .failed: return "xmark.circle.fill"
+        case .skipped: return "forward.fill"
+        case .pending: return "clock"
+        case .unknown: return "questionmark.circle"
+        }
+    }
+
+    /// Semantic color for StatusPill / dots.
+    var colorHex: UInt32 {
+        switch self {
+        case .success: return 0x30D158
+        case .already: return 0x64D2FF
+        case .failed: return 0xFF453A
+        case .skipped: return 0xFF9F0A
+        case .pending: return 0x8E8E93
+        case .unknown: return 0x8E8E93
+        }
+    }
+}
+
+struct CheckinTelegramMeta: Codable, Equatable {
+    var updatedAt: String?
+    var botCount: Int?
+}
+
+struct CheckinEmbykeeperMeta: Codable, Equatable {
+    var installed: Bool?
+    var configPresent: Bool?
+    var sessionFiles: Int?
+    var sessionStringCount: Int?
+}
+
+struct CheckinHealth: Codable, Equatable {
+    var ok: Bool?
+    var now: String?
+    var appTokenConfigured: Bool?
+    var auth: String?
+}

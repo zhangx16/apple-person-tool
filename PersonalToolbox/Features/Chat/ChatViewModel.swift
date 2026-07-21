@@ -3,13 +3,18 @@ import SwiftData
 import Combine
 import UIKit
 
-/// Chat list + thread state machine: idle ⇄ streaming (stop keeps partial).
+/// Chat list + thread state machine.
+/// Supports **multiple concurrent conversation streams** (one active stream per conversation).
+/// Background: silent-audio keep-alive + BG task + non-stream completion so replies finish off-screen.
 @MainActor
 final class ChatViewModel: ObservableObject {
     @Published var conversations: [ChatConversation] = []
     @Published var active: ChatConversation?
     @Published var input: String = ""
-    @Published var isStreaming: Bool = false
+    /// True when the **currently open** conversation is streaming (composer / stop button).
+    @Published private(set) var isStreaming: Bool = false
+    /// Conversation IDs with an in-flight stream (list badges / multi-chat).
+    @Published private(set) var streamingConversationIDs: Set<UUID> = []
     @Published var errorMessage: String?
     @Published var availableModels: [String] = AppSettings.defaultModels
     @Published var showModelPicker = false
@@ -17,14 +22,39 @@ final class ChatViewModel: ObservableObject {
     private var store: ConversationStore?
     private var settings: AppSettings
     private let service = Sub2APIService.shared
-    private var streamTask: Task<Void, Never>?
-    /// Monotonic generation for the live stream Task. Stale finish/delta must not clear a newer send.
-    private var streamEpoch: UInt = 0
     private var didAttach = false
+
+    /// Per-conversation live stream bookkeeping (includes recovery payload for background completion).
+    private struct LiveStream {
+        let task: Task<Void, Never>
+        let epoch: UInt
+        let assistantMessageID: UUID
+        let baseURL: String
+        let apiKey: String
+        let model: String
+        let apiMessages: [ChatMessage]
+    }
+
+    private var liveStreams: [UUID: LiveStream] = [:]
+    /// Monotonic epoch per conversation — stale finish/delta must not clear a newer send on that thread.
+    private var streamEpochs: [UUID: UInt] = [:]
+    /// Shared background task (supplementary to audio keep-alive).
+    private var sharedBackgroundTaskID: UIBackgroundTaskIdentifier = .invalid
+    private var lifecycleObservers: [NSObjectProtocol] = []
+    /// Extra keep-alive retain taken on `didEnterBackground` (balanced on foreground / idle).
+    private var backgroundExtraRetain = false
 
     init(store: ConversationStore? = nil, settings: AppSettings = .shared) {
         self.store = store
         self.settings = settings
+        installLifecycleObservers()
+    }
+
+    deinit {
+        // Observers removed on main if still registered — best-effort.
+        for token in lifecycleObservers {
+            NotificationCenter.default.removeObserver(token)
+        }
     }
 
     /// Bind SwiftData context from the view environment (idempotent).
@@ -38,6 +68,10 @@ final class ChatViewModel: ObservableObject {
 
     var isConfigured: Bool { settings.isAIConfigured }
 
+    func isConversationStreaming(_ id: UUID) -> Bool {
+        streamingConversationIDs.contains(id)
+    }
+
     // MARK: - Load / list
 
     func reload() {
@@ -46,18 +80,15 @@ final class ChatViewModel: ObservableObject {
             conversations = try store.list().map { $0.toChatConversation() }
             if let activeID = active?.id,
                let refreshed = conversations.first(where: { $0.id == activeID }) {
-                // Preserve in-memory streaming flags for the open thread.
-                let streamingFlags = Dictionary(
-                    uniqueKeysWithValues: (active?.messages ?? []).map { ($0.id, $0.isStreaming) }
-                )
-                var merged = refreshed
-                for i in merged.messages.indices {
-                    if streamingFlags[merged.messages[i].id] == true {
-                        merged.messages[i].isStreaming = true
-                    }
-                }
-                active = merged
+                active = mergeLiveStreamingState(into: refreshed)
             }
+            // Re-apply streaming flags on list rows that are still live.
+            for id in streamingConversationIDs {
+                if let idx = conversations.firstIndex(where: { $0.id == id }) {
+                    conversations[idx] = mergeLiveStreamingState(into: conversations[idx])
+                }
+            }
+            refreshIsStreamingFlag()
         } catch {
             errorMessage = Self.chineseError(error)
         }
@@ -71,26 +102,26 @@ final class ChatViewModel: ObservableObject {
                 return
             }
             var conv = entity.toChatConversation()
-            // Preserve streaming state if same conversation is already active.
+            // Preserve in-memory content for the same open thread (latest tokens may be ahead of store flush timing).
             if let current = active, current.id == id {
-                let streaming = Dictionary(
-                    uniqueKeysWithValues: current.messages.map { ($0.id, $0.isStreaming) }
-                )
                 let contents = Dictionary(
                     uniqueKeysWithValues: current.messages.map { ($0.id, $0.content) }
                 )
                 for i in conv.messages.indices {
                     let mid = conv.messages[i].id
-                    if streaming[mid] == true {
-                        conv.messages[i].isStreaming = true
-                        if let live = contents[mid], live.count > conv.messages[i].content.count {
-                            conv.messages[i].content = live
-                        }
+                    if let live = contents[mid], live.count > conv.messages[i].content.count {
+                        conv.messages[i].content = live
                     }
                 }
             }
-            active = conv
-            errorMessage = nil
+            active = mergeLiveStreamingState(into: conv)
+            // Only clear banner when switching into a healthy thread (keep error if it belongs to this id).
+            if !streamingConversationIDs.contains(id) {
+                // Keep error if it was for this conversation; otherwise clear stale banner from another thread.
+                // We don't track error-per-conversation today — clear on navigate for cleaner UX.
+                errorMessage = nil
+            }
+            refreshIsStreamingFlag()
         } catch {
             errorMessage = Self.chineseError(error)
         }
@@ -108,6 +139,7 @@ final class ChatViewModel: ObservableObject {
             active = conv
             input = ""
             errorMessage = nil
+            refreshIsStreamingFlag()
             return conv
         } catch {
             errorMessage = Self.chineseError(error)
@@ -126,8 +158,8 @@ final class ChatViewModel: ObservableObject {
 
     func deleteConversation(id: UUID) {
         guard let store else { return }
-        if isStreaming, active?.id == id {
-            stop()
+        if streamingConversationIDs.contains(id) {
+            stop(conversationID: id)
         }
         do {
             try store.delete(conversationID: id)
@@ -135,6 +167,7 @@ final class ChatViewModel: ObservableObject {
             if active?.id == id {
                 active = nil
             }
+            refreshIsStreamingFlag()
         } catch {
             errorMessage = Self.chineseError(error)
         }
@@ -210,7 +243,7 @@ final class ChatViewModel: ObservableObject {
 
     func send() {
         let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, !isStreaming else { return }
+        guard !text.isEmpty else { return }
         guard let store else { return }
 
         guard isConfigured else {
@@ -222,6 +255,11 @@ final class ChatViewModel: ObservableObject {
             guard newConversation() != nil else { return }
         }
         guard var conv = active else { return }
+
+        // Only block a second send on the **same** conversation; other chats may stream in parallel.
+        if streamingConversationIDs.contains(conv.id) {
+            return
+        }
 
         let userID = UUID()
         let assistantID = UUID()
@@ -257,9 +295,9 @@ final class ChatViewModel: ObservableObject {
         active = conv
         upsertConversationInList(conv)
         errorMessage = nil
-        streamEpoch &+= 1
-        let epoch = streamEpoch
-        isStreaming = true
+
+        let epoch = nextEpoch(for: conv.id)
+        markStreaming(conversationID: conv.id, on: true)
         Haptics.light()
 
         let apiMessages = Self.buildAPIMessages(
@@ -278,77 +316,257 @@ final class ChatViewModel: ObservableObject {
         let apiKey = settings.sub2apiAPIKey
         let conversationID = conv.id
 
-        streamTask = Task { @MainActor [weak self] in
-            guard let self else { return }
-            var assembled = ""
-            do {
-                let stream = await self.service.streamChat(
-                    baseURL: baseURL,
-                    apiKey: apiKey,
-                    model: model,
-                    messages: apiMessages
-                )
-                for try await delta in stream {
-                    if Task.isCancelled { break }
-                    assembled += delta
-                    self.applyAssistantDelta(
-                        conversationID: conversationID,
-                        messageID: assistantID,
-                        content: assembled,
-                        isStreaming: true,
-                        epoch: epoch
-                    )
-                }
+        // Hold process in background for the whole stream lifetime.
+        ChatStreamKeepAlive.shared.retain()
+        beginSharedBackgroundTaskIfNeeded()
 
-                self.finishStream(
+        let task = Task { @MainActor [weak self] in
+            guard let self else { return }
+            await self.runStreamLoop(
+                conversationID: conversationID,
+                assistantID: assistantID,
+                epoch: epoch,
+                baseURL: baseURL,
+                apiKey: apiKey,
+                model: model,
+                apiMessages: apiMessages
+            )
+        }
+
+        liveStreams[conversationID] = LiveStream(
+            task: task,
+            epoch: epoch,
+            assistantMessageID: assistantID,
+            baseURL: baseURL,
+            apiKey: apiKey,
+            model: model,
+            apiMessages: apiMessages
+        )
+        refreshIsStreamingFlag()
+    }
+
+    /// SSE first; on lifecycle interrupt, finish with non-stream so background replies complete.
+    private func runStreamLoop(
+        conversationID: UUID,
+        assistantID: UUID,
+        epoch: UInt,
+        baseURL: String,
+        apiKey: String,
+        model: String,
+        apiMessages: [ChatMessage]
+    ) async {
+        var assembled = ""
+        do {
+            let stream = await service.streamChat(
+                baseURL: baseURL,
+                apiKey: apiKey,
+                model: model,
+                messages: apiMessages
+            )
+            for try await delta in stream {
+                if Task.isCancelled { break }
+                assembled += delta
+                applyAssistantDelta(
                     conversationID: conversationID,
                     messageID: assistantID,
                     content: assembled,
-                    error: nil,
-                    cancelled: Task.isCancelled,
+                    isStreaming: true,
                     epoch: epoch
                 )
-            } catch is CancellationError {
-                self.finishStream(
+            }
+
+            if Task.isCancelled {
+                // User stop / explicit cancel — keep partial, no error.
+                finishStream(
                     conversationID: conversationID,
                     messageID: assistantID,
                     content: assembled,
                     error: nil,
                     cancelled: true,
+                    softInterrupt: false,
                     epoch: epoch
                 )
-            } catch {
-                self.finishStream(
+            } else {
+                finishStream(
                     conversationID: conversationID,
                     messageID: assistantID,
                     content: assembled,
+                    error: nil,
+                    cancelled: false,
+                    softInterrupt: false,
+                    epoch: epoch
+                )
+            }
+        } catch is CancellationError {
+            finishStream(
+                conversationID: conversationID,
+                messageID: assistantID,
+                content: assembled,
+                error: nil,
+                cancelled: true,
+                softInterrupt: false,
+                epoch: epoch
+            )
+        } catch {
+            if Task.isCancelled {
+                finishStream(
+                    conversationID: conversationID,
+                    messageID: assistantID,
+                    content: assembled,
+                    error: nil,
+                    cancelled: true,
+                    softInterrupt: false,
+                    epoch: epoch
+                )
+                return
+            }
+
+            // Network / suspend flap: complete the full reply via non-stream while keep-alive holds us.
+            if Self.isLifecycleInterrupt(error) {
+                await completeViaNonStream(
+                    conversationID: conversationID,
+                    assistantID: assistantID,
+                    epoch: epoch,
+                    baseURL: baseURL,
+                    apiKey: apiKey,
+                    model: model,
+                    apiMessages: apiMessages,
+                    partial: assembled
+                )
+                return
+            }
+
+            finishStream(
+                conversationID: conversationID,
+                messageID: assistantID,
+                content: assembled,
+                error: error,
+                cancelled: false,
+                softInterrupt: false,
+                epoch: epoch
+            )
+        }
+    }
+
+    /// Prefer a full non-stream answer over a truncated SSE partial when the stream is interrupted.
+    private func completeViaNonStream(
+        conversationID: UUID,
+        assistantID: UUID,
+        epoch: UInt,
+        baseURL: String,
+        apiKey: String,
+        model: String,
+        apiMessages: [ChatMessage],
+        partial: String
+    ) async {
+        // Renew background execution window for the long non-stream call.
+        beginSharedBackgroundTaskIfNeeded()
+        do {
+            let text = try await service.nonStreamChat(
+                baseURL: baseURL,
+                apiKey: apiKey,
+                model: model,
+                messages: apiMessages
+            )
+            if Task.isCancelled {
+                finishStream(
+                    conversationID: conversationID,
+                    messageID: assistantID,
+                    content: text.isEmpty ? partial : text,
+                    error: nil,
+                    cancelled: true,
+                    softInterrupt: false,
+                    epoch: epoch
+                )
+            } else {
+                finishStream(
+                    conversationID: conversationID,
+                    messageID: assistantID,
+                    content: text.isEmpty ? partial : text,
+                    error: nil,
+                    cancelled: false,
+                    softInterrupt: false,
+                    epoch: epoch
+                )
+            }
+        } catch is CancellationError {
+            finishStream(
+                conversationID: conversationID,
+                messageID: assistantID,
+                content: partial,
+                error: nil,
+                cancelled: true,
+                softInterrupt: false,
+                epoch: epoch
+            )
+        } catch {
+            if !partial.isEmpty {
+                // Keep what we have rather than empty error bubble.
+                finishStream(
+                    conversationID: conversationID,
+                    messageID: assistantID,
+                    content: partial,
+                    error: nil,
+                    cancelled: false,
+                    softInterrupt: true,
+                    epoch: epoch
+                )
+            } else {
+                finishStream(
+                    conversationID: conversationID,
+                    messageID: assistantID,
+                    content: partial,
                     error: error,
                     cancelled: false,
+                    softInterrupt: false,
                     epoch: epoch
                 )
             }
         }
     }
 
-    func stop() {
-        streamTask?.cancel()
-        // Move UI to idle immediately (DESIGN interruptibility).
-        // Bump epoch so a late finishStream from the cancelled task cannot nil a future streamTask
-        // or force isStreaming=false after a quick re-send (Issue 6). Store finalization still runs
-        // for the cancelled messageID when that task reaches finishStream.
-        if isStreaming {
-            streamEpoch &+= 1
-            isStreaming = false
-            streamTask = nil
-            if var conv = active,
-               let idx = conv.messages.lastIndex(where: { $0.role == .assistant && $0.isStreaming }) {
-                conv.messages[idx].isStreaming = false
-                let content = conv.messages[idx].content
-                try? store?.updateMessageContent(messageID: conv.messages[idx].id, content: content)
+    /// Stop the open conversation's stream (or a specific conversation).
+    func stop(conversationID: UUID? = nil) {
+        let id = conversationID ?? active?.id
+        guard let id else { return }
+        guard let handle = liveStreams[id] else {
+            // No live task but UI may still show streaming flag — clear it.
+            markStreaming(conversationID: id, on: false)
+            if var conv = active, conv.id == id {
+                clearStreamingFlags(on: &conv)
                 active = conv
                 upsertConversationInList(conv)
             }
+            refreshIsStreamingFlag()
+            return
         }
+
+        // Invalidate epoch so a late finish cannot re-enter streaming UI for this id.
+        streamEpochs[id] = (streamEpochs[id] ?? handle.epoch) &+ 1
+        handle.task.cancel()
+        liveStreams.removeValue(forKey: id)
+        markStreaming(conversationID: id, on: false)
+        // Balance the retain() taken when this stream started.
+        ChatStreamKeepAlive.shared.release()
+
+        // Snapshot partial content into store + UI immediately (interruptibility).
+        if var conv = (active?.id == id ? active : conversations.first(where: { $0.id == id })) {
+            if let idx = conv.messages.firstIndex(where: { $0.id == handle.assistantMessageID }) {
+                conv.messages[idx].isStreaming = false
+                let content = conv.messages[idx].content
+                try? store?.updateMessageContent(messageID: handle.assistantMessageID, content: content)
+            } else if let idx = conv.messages.lastIndex(where: { $0.role == .assistant && $0.isStreaming }) {
+                conv.messages[idx].isStreaming = false
+                try? store?.updateMessageContent(messageID: conv.messages[idx].id, content: conv.messages[idx].content)
+            }
+            if active?.id == id {
+                active = conv
+            }
+            upsertConversationInList(conv)
+        }
+
+        endSharedBackgroundTaskIfIdle()
+        refreshIsStreamingFlag()
     }
 
     func copyMessage(_ message: ChatMessage) {
@@ -391,7 +609,52 @@ final class ChatViewModel: ObservableObject {
 
     // MARK: - Private helpers
 
-    /// Persist delta always by messageID; live-epoch only may mark `isStreaming` true on UI.
+    private func nextEpoch(for conversationID: UUID) -> UInt {
+        let next = (streamEpochs[conversationID] ?? 0) &+ 1
+        streamEpochs[conversationID] = next
+        return next
+    }
+
+    private func ownsEpoch(_ epoch: UInt, conversationID: UUID) -> Bool {
+        streamEpochs[conversationID] == epoch
+    }
+
+    private func markStreaming(conversationID: UUID, on: Bool) {
+        if on {
+            streamingConversationIDs.insert(conversationID)
+        } else {
+            streamingConversationIDs.remove(conversationID)
+        }
+        refreshIsStreamingFlag()
+    }
+
+    private func refreshIsStreamingFlag() {
+        let next = active.map { streamingConversationIDs.contains($0.id) } ?? false
+        if isStreaming != next {
+            isStreaming = next
+        }
+    }
+
+    private func mergeLiveStreamingState(into conv: ChatConversation) -> ChatConversation {
+        guard let handle = liveStreams[conv.id] else {
+            var cleared = conv
+            clearStreamingFlags(on: &cleared)
+            return cleared
+        }
+        var merged = conv
+        if let idx = merged.messages.firstIndex(where: { $0.id == handle.assistantMessageID }) {
+            merged.messages[idx].isStreaming = true
+        }
+        return merged
+    }
+
+    private func clearStreamingFlags(on conv: inout ChatConversation) {
+        for i in conv.messages.indices {
+            conv.messages[i].isStreaming = false
+        }
+    }
+
+    /// Persist delta always by messageID; only live-epoch may mark `isStreaming` true on UI.
     private func applyAssistantDelta(
         conversationID: UUID,
         messageID: UUID,
@@ -401,60 +664,105 @@ final class ChatViewModel: ObservableObject {
     ) {
         try? store?.updateMessageContent(messageID: messageID, content: content)
 
+        let live = ownsEpoch(epoch, conversationID: conversationID) && streamingFlag
+
         if var conv = active, conv.id == conversationID {
             if let idx = conv.messages.firstIndex(where: { $0.id == messageID }) {
                 conv.messages[idx].content = content
-                // Stale epochs must not re-light a stopped bubble or fight a newer stream.
-                conv.messages[idx].isStreaming = (epoch == streamEpoch) && streamingFlag
+                conv.messages[idx].isStreaming = live
             }
             conv.updatedAt = .now
             active = conv
             upsertConversationInList(conv)
-        } else if epoch == streamEpoch, let idx = conversations.firstIndex(where: { $0.id == conversationID }) {
-            conversations[idx].updatedAt = .now
+        } else if let idx = conversations.firstIndex(where: { $0.id == conversationID }) {
+            // Background conversation: keep list row fresh without hijacking `active`.
+            var conv = conversations[idx]
+            if let mIdx = conv.messages.firstIndex(where: { $0.id == messageID }) {
+                conv.messages[mIdx].content = content
+                conv.messages[mIdx].isStreaming = live
+            } else if let entity = try? store?.conversation(id: conversationID) {
+                conv = entity.toChatConversation()
+                if let mIdx = conv.messages.firstIndex(where: { $0.id == messageID }) {
+                    conv.messages[mIdx].content = content
+                    conv.messages[mIdx].isStreaming = live
+                }
+            }
+            conv.updatedAt = .now
+            conversations[idx] = conv
             conversations.sort { $0.updatedAt > $1.updatedAt }
         }
     }
 
     /// Conversation-ID-scoped finalization: always writes/deletes via store by messageID.
-    /// Clears `isStreaming` / `streamTask` only when this call owns the current `streamEpoch`.
     private func finishStream(
         conversationID: UUID,
         messageID: UUID,
         content: String,
         error: Error?,
         cancelled: Bool,
+        softInterrupt: Bool,
         epoch: UInt
     ) {
-        let ownsEpoch = (epoch == streamEpoch)
+        let owns = ownsEpoch(epoch, conversationID: conversationID)
         defer {
-            if ownsEpoch {
-                isStreaming = false
-                streamTask = nil
+            if owns {
+                if let handle = liveStreams[conversationID], handle.epoch == epoch {
+                    liveStreams.removeValue(forKey: conversationID)
+                }
+                markStreaming(conversationID: conversationID, on: false)
+                ChatStreamKeepAlive.shared.release()
+                endSharedBackgroundTaskIfIdle()
             }
+            refreshIsStreamingFlag()
         }
 
-        let emptyOnError = content.isEmpty && error != nil && !cancelled
+        let emptyOnError = content.isEmpty && error != nil && !cancelled && !softInterrupt
+        let appInBackground = UIApplication.shared.applicationState != .active
 
         // Always finalize this message in the store (even if a newer epoch is live).
         if emptyOnError {
             try? store?.deleteMessage(messageID: messageID)
-            if ownsEpoch {
-                if let error {
+            if owns {
+                if active?.id == conversationID, let error {
                     errorMessage = Self.chineseError(error)
+                    Haptics.error()
                 }
-                Haptics.error()
+                if appInBackground {
+                    LocalNotifier.notify(
+                        id: "chat.fail.\(conversationID.uuidString)",
+                        title: "回复失败",
+                        body: Self.chineseError(error ?? NetworkError.message("未知错误"))
+                    )
+                }
             }
         } else {
             try? store?.updateMessageContent(messageID: messageID, content: content)
-            if ownsEpoch {
-                if let error, !cancelled {
-                    errorMessage = Self.chineseError(error)
-                    Haptics.error()
-                } else if !cancelled {
-                    Haptics.success()
-                    // VoiceOver: announce completion (DESIGN §3.10).
-                    UIAccessibility.post(notification: .announcement, argument: "回复完成")
+            if owns {
+                if active?.id == conversationID {
+                    if let error, !cancelled, !softInterrupt {
+                        errorMessage = Self.chineseError(error)
+                        Haptics.error()
+                    } else if !cancelled && !softInterrupt {
+                        Haptics.success()
+                        UIAccessibility.post(notification: .announcement, argument: "回复完成")
+                    }
+                }
+                // Background completion ping so the user knows it finished off-screen.
+                if appInBackground, !cancelled, !softInterrupt || !content.isEmpty {
+                    let preview = content
+                        .replacingOccurrences(of: "\n", with: " ")
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                    let body: String
+                    if preview.isEmpty {
+                        body = softInterrupt ? "生成已中断" : "助手已完成回复"
+                    } else {
+                        body = String(preview.prefix(80))
+                    }
+                    LocalNotifier.notify(
+                        id: "chat.done.\(messageID.uuidString)",
+                        title: softInterrupt ? "回复已保存（可能不完整）" : "回复完成",
+                        body: body
+                    )
                 }
             }
         }
@@ -481,18 +789,21 @@ final class ChatViewModel: ObservableObject {
             active = conv
             upsertConversationInList(conv)
         } else if var refreshed = listConv {
-            // Only force all streaming flags off for live-epoch snapshots; stale finish
-            // must not clear a newer stream's bubble flags when reloading from store.
-            if ownsEpoch {
+            if owns {
                 for i in refreshed.messages.indices {
-                    refreshed.messages[i].isStreaming = false
+                    if refreshed.messages[i].id == messageID {
+                        refreshed.messages[i].isStreaming = false
+                        if !emptyOnError {
+                            refreshed.messages[i].content = content
+                        }
+                    }
                 }
             }
             if emptyOnError {
                 refreshed.messages.removeAll { $0.id == messageID }
             }
             upsertConversationInList(refreshed)
-        } else if ownsEpoch {
+        } else if owns {
             reload()
         }
     }
@@ -504,6 +815,141 @@ final class ChatViewModel: ObservableObject {
         } else {
             conversations.insert(conv, at: 0)
         }
+    }
+
+    // MARK: - Background task + lifecycle
+
+    private func installLifecycleObservers() {
+        guard lifecycleObservers.isEmpty else { return }
+        let center = NotificationCenter.default
+        let bg = center.addObserver(
+            forName: UIApplication.didEnterBackgroundNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.handleDidEnterBackground()
+            }
+        }
+        let fg = center.addObserver(
+            forName: UIApplication.willEnterForegroundNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.handleWillEnterForeground()
+            }
+        }
+        lifecycleObservers = [bg, fg]
+    }
+
+    private func handleDidEnterBackground() {
+        guard !streamingConversationIDs.isEmpty else { return }
+        // Extra retain so keep-alive survives brief stream-bookkeeping gaps while suspended.
+        if !backgroundExtraRetain {
+            ChatStreamKeepAlive.shared.retain()
+            backgroundExtraRetain = true
+        }
+        beginSharedBackgroundTaskIfNeeded()
+    }
+
+    private func handleWillEnterForeground() {
+        releaseBackgroundExtraRetainIfNeeded()
+        // Refresh flags for any streams that finished off-screen.
+        reload()
+    }
+
+    private func releaseBackgroundExtraRetainIfNeeded() {
+        guard backgroundExtraRetain else { return }
+        ChatStreamKeepAlive.shared.release()
+        backgroundExtraRetain = false
+    }
+
+    private func beginSharedBackgroundTaskIfNeeded() {
+        // Always renew so long generations get a fresh expiration window when possible.
+        if sharedBackgroundTaskID != .invalid {
+            UIApplication.shared.endBackgroundTask(sharedBackgroundTaskID)
+            sharedBackgroundTaskID = .invalid
+        }
+        sharedBackgroundTaskID = UIApplication.shared.beginBackgroundTask(withName: "ChatStream") { [weak self] in
+            Task { @MainActor in
+                self?.handleBackgroundTaskExpired()
+            }
+        }
+    }
+
+    private func endSharedBackgroundTaskIfIdle() {
+        guard streamingConversationIDs.isEmpty else { return }
+        releaseBackgroundExtraRetainIfNeeded()
+        guard sharedBackgroundTaskID != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(sharedBackgroundTaskID)
+        sharedBackgroundTaskID = .invalid
+    }
+
+    /// BG task budget ran out. Do **not** kill streams — audio keep-alive holds the process;
+    /// try to open another short BG window for non-stream fallback work.
+    private func handleBackgroundTaskExpired() {
+        if sharedBackgroundTaskID != .invalid {
+            UIApplication.shared.endBackgroundTask(sharedBackgroundTaskID)
+            sharedBackgroundTaskID = .invalid
+        }
+
+        guard !streamingConversationIDs.isEmpty else {
+            releaseBackgroundExtraRetainIfNeeded()
+            return
+        }
+        // Re-assert keep-alive session (handles audio interruptions).
+        ChatStreamKeepAlive.shared.retain()
+        ChatStreamKeepAlive.shared.release()
+        beginSharedBackgroundTaskIfNeeded()
+    }
+
+    /// Network / lifecycle interruptions that should not scare the user after app switch.
+    static func isLifecycleInterrupt(_ error: Error) -> Bool {
+        if error is CancellationError { return true }
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .cancelled,
+                 .networkConnectionLost,
+                 .timedOut,
+                 .notConnectedToInternet,
+                 .dataNotAllowed,
+                 .internationalRoamingOff,
+                 .callIsActive,
+                 .cannotConnectToHost,
+                 .cannotFindHost,
+                 .dnsLookupFailed,
+                 .secureConnectionFailed:
+                return true
+            default:
+                break
+            }
+        }
+        let ns = error as NSError
+        if ns.domain == NSURLErrorDomain {
+            switch ns.code {
+            case NSURLErrorCancelled,
+                 NSURLErrorNetworkConnectionLost,
+                 NSURLErrorTimedOut,
+                 NSURLErrorNotConnectedToInternet,
+                 NSURLErrorDataNotAllowed,
+                 NSURLErrorInternationalRoamingOff,
+                 NSURLErrorCallIsActive,
+                 NSURLErrorCannotConnectToHost,
+                 NSURLErrorCannotFindHost,
+                 NSURLErrorDNSLookupFailed,
+                 NSURLErrorSecureConnectionFailed:
+                return true
+            default:
+                break
+            }
+        }
+        // Some stacks wrap cancellation.
+        let text = error.localizedDescription.lowercased()
+        if text.contains("cancel") || text.contains("timed out") || text.contains("connection lost") {
+            return true
+        }
+        return false
     }
 
     static func chineseError(_ error: Error) -> String {
@@ -521,6 +967,7 @@ final class ChatViewModel: ObservableObject {
             case NSURLErrorCannotFindHost, NSURLErrorCannotConnectToHost: return "无法连接服务器"
             case NSURLErrorSecureConnectionFailed: return "安全连接失败"
             case NSURLErrorCancelled: return "已取消"
+            case NSURLErrorNetworkConnectionLost: return "连接中断，请重试"
             default: break
             }
         }

@@ -339,6 +339,9 @@ struct ServicesHubView: View {
                 item("komari", "Komari", settings.komariBaseURL, .komari) {
                     AnyView(KomariHomeView())
                 },
+                item("checkin", "签到中心", settings.isCheckinConfigured ? "GLaDOS / Emby / TG Bot 状态" : "未配置 · 设置里填写 Token", .checkin) {
+                    AnyView(CheckinHomeView())
+                },
                 item("ip", "IP 检测", "IPSuper 风格聚合 · 风险画像 · 流媒体", .ipCheck) {
                     AnyView(IPCheckHomeView())
                 }

@@ -56,6 +56,16 @@ struct SettingsView: View {
                             KomariSettingsPage(viewModel: viewModel)
                         }
                         projectLink(
+                            brand: .checkin,
+                            title: "签到服务",
+                            subtitle: settings.isCheckinConfigured
+                                ? hostHint(settings.checkinBaseURL)
+                                : "glados-checkin-web · APP_API_TOKEN",
+                            configured: settings.isCheckinConfigured
+                        ) {
+                            CheckinSettingsPage(viewModel: viewModel)
+                        }
+                        projectLink(
                             brand: .cloudflare,
                             title: "Cloudflare",
                             subtitle: settings.cloudflareAccountName.isEmpty
@@ -586,6 +596,56 @@ struct KomariSettingsPage: View {
         .toolbar {
             ToolbarItem(placement: .principal) {
                 ServiceBrandTitle(brand: .komari, title: "Komari")
+            }
+        }
+    }
+}
+
+struct CheckinSettingsPage: View {
+    @EnvironmentObject private var settings: AppSettings
+    @ObservedObject var viewModel: SettingsViewModel
+
+    var body: some View {
+        Form {
+            Section {
+                TextField("Base URL", text: $settings.checkinBaseURL)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.URL)
+                SecureField("API Token (APP_API_TOKEN)", text: $settings.checkinAPIToken)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .privacySensitive()
+            } header: {
+                Text("glados-checkin-web")
+            } footer: {
+                Text("对应服务端 .env 的 APP_API_TOKEN。App 只读 /api/v1/summary，不保存各站 Cookie/密码。")
+            }
+
+            Section {
+                ServiceProbeRow(state: viewModel.checkinProbe)
+                Button {
+                    Task { await viewModel.testCheckin() }
+                } label: {
+                    Label("测试签到接口", systemImage: "checkmark.seal")
+                }
+                .buttonStyle(PressableButtonStyle())
+                .disabled(viewModel.checkinProbe.isProbing)
+            } header: {
+                Text("检测")
+            }
+
+            Section("说明") {
+                Text("服务 Hub → 签到中心可查看 GLaDOS / EmbyMB / 周三晚 / Telegram Bot 等今日状态。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .navigationTitle("签到服务")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                ServiceBrandTitle(brand: .checkin, title: "签到服务")
             }
         }
     }

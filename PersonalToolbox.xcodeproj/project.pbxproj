@@ -27,6 +27,10 @@
 		000000000000000000000108 /* BiometricAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000107 /* BiometricAuth.swift */; };
 		00000000000000000000010A /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000109 /* Haptics.swift */; };
 		0000000000000000000001C9 /* LocalNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000001C8 /* LocalNotifier.swift */; };
+		0000000000000000000005C1 /* ChatStreamKeepAlive.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000005C0 /* ChatStreamKeepAlive.swift */; };
+		0000000000000000000005D1 /* CheckinModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000005D0 /* CheckinModels.swift */; };
+		0000000000000000000005D3 /* CheckinService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000005D2 /* CheckinService.swift */; };
+		0000000000000000000005D7 /* CheckinHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000005D6 /* CheckinHomeView.swift */; };
 		0000000000000000000001CB /* SystemVideoPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000001CA /* SystemVideoPlayer.swift */; };
 		00000000000000000000010C /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000010B /* KeychainStore.swift */; };
 		00000000000000000000010E /* NetworkClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000010D /* NetworkClient.swift */; };
@@ -142,6 +146,7 @@
 		000000000000000000000107 /* BiometricAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricAuth.swift; sourceTree = "<group>"; };
 		000000000000000000000109 /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
 		0000000000000000000001C8 /* LocalNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalNotifier.swift; sourceTree = "<group>"; };
+		0000000000000000000005C0 /* ChatStreamKeepAlive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatStreamKeepAlive.swift; sourceTree = "<group>"; };
 		0000000000000000000001CA /* SystemVideoPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemVideoPlayer.swift; sourceTree = "<group>"; };
 		00000000000000000000010B /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		00000000000000000000010D /* NetworkClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkClient.swift; sourceTree = "<group>"; };
@@ -157,6 +162,9 @@
 		000000000000000000000121 /* FilesListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilesListView.swift; sourceTree = "<group>"; };
 		000000000000000000000123 /* TaskRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskRowView.swift; sourceTree = "<group>"; };
 		000000000000000000000125 /* KomariHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KomariHomeView.swift; sourceTree = "<group>"; };
+		0000000000000000000005D0 /* CheckinModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckinModels.swift; sourceTree = "<group>"; };
+		0000000000000000000005D2 /* CheckinService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckinService.swift; sourceTree = "<group>"; };
+		0000000000000000000005D6 /* CheckinHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckinHomeView.swift; sourceTree = "<group>"; };
 		000000000000000000000127 /* KomariViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KomariViewModel.swift; sourceTree = "<group>"; };
 		000000000000000000000129 /* MonitorHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitorHomeView.swift; sourceTree = "<group>"; };
 		00000000000000000000012B /* MonitorViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonitorViewModel.swift; sourceTree = "<group>"; };
@@ -239,6 +247,15 @@
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
+		0000000000000000000005D8 /* Checkin */ = {
+			isa = PBXGroup;
+			children = (
+				0000000000000000000005D6 /* CheckinHomeView.swift */,
+			);
+			path = Checkin;
+			sourceTree = "<group>";
+		};
+
 		000000000000000000000550 /* LiveJS */ = {
 			isa = PBXGroup;
 			children = (
@@ -265,6 +282,7 @@
 				000000000000000000000107 /* BiometricAuth.swift */,
 				000000000000000000000109 /* Haptics.swift */,
 				0000000000000000000001C8 /* LocalNotifier.swift */,
+				0000000000000000000005C0 /* ChatStreamKeepAlive.swift */,
 				00000000000000000000052B /* ShareHandoff.swift */,
 				000000000000000000000504 /* LocalJSONStore.swift */,
 				000000000000000000000506 /* ActionRouter.swift */,
@@ -293,6 +311,7 @@
 			children = (
 				000000000000000000000139 /* AdminModels.swift */,
 				00000000000000000000013B /* ChatModels.swift */,
+				0000000000000000000005D0 /* CheckinModels.swift */,
 				00000000000000000000013D /* ConversationEntity.swift */,
 				00000000000000000000013F /* DownloadModels.swift */,
 				00000000000000000000052E /* LiveModels.swift */,
@@ -314,6 +333,7 @@
 				000000000000000000000145 /* ConversationStore.swift */,
 				000000000000000000000147 /* ImagineService.swift */,
 				000000000000000000000149 /* KomariService.swift */,
+				0000000000000000000005D2 /* CheckinService.swift */,
 				00000000000000000000014B /* Sub2APIService.swift */,
 				00000000000000000000014D /* Sub2AdminService.swift */,
 				00000000000000000000014F /* SublinkService.swift */,
@@ -485,6 +505,7 @@
 				00000000000000000000030B /* ServicesHub */,
 				00000000000000000000030C /* Sublink */,
 				00000000000000000000030D /* Komari */,
+				0000000000000000000005D8 /* Checkin */,
 				000000000000000000000311 /* Anniversary */,
 				000000000000000000000312 /* QRAssistant */,
 				000000000000000000000313 /* Translator */,
@@ -828,7 +849,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 43;
+				CURRENT_PROJECT_VERSION = 44;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				CODE_SIGN_ENTITLEMENTS = PersonalToolbox/PersonalToolbox.entitlements;
@@ -854,7 +875,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 43;
+				CURRENT_PROJECT_VERSION = 44;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				CODE_SIGN_ENTITLEMENTS = PersonalToolbox/PersonalToolbox.entitlements;
@@ -880,7 +901,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 43;
+				CURRENT_PROJECT_VERSION = 44;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
@@ -905,7 +926,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 43;
+				CURRENT_PROJECT_VERSION = 44;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;

@@ -8,6 +8,7 @@ final class SettingsViewModel: ObservableObject {
     @Published private(set) var ytProbe: ServiceProbeState = .unknown
     @Published private(set) var sublinkProbe: ServiceProbeState = .unknown
     @Published private(set) var komariProbe: ServiceProbeState = .unknown
+    @Published private(set) var checkinProbe: ServiceProbeState = .unknown
     @Published private(set) var cloudflareProbe: ServiceProbeState = .unknown
     @Published private(set) var discoveredModels: [String] = []
     @Published var logoutNotice: String?
@@ -18,6 +19,7 @@ final class SettingsViewModel: ObservableObject {
     private let yt = YTService.shared
     private let sublink = SublinkService.shared
     private let komari = KomariService.shared
+    private let checkin = CheckinService.shared
     private let cloudflare = CloudflareService.shared
     private let network = NetworkClient.shared
 
@@ -167,6 +169,35 @@ final class SettingsViewModel: ObservableObject {
             Haptics.success()
         } catch {
             komariProbe = .failure(Self.chineseError(error))
+            Haptics.error()
+        }
+    }
+
+    func testCheckin() async {
+        guard !checkinProbe.isProbing else { return }
+        let base = settings.checkinBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        let token = settings.checkinAPIToken.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !base.isEmpty, !token.isEmpty else {
+            checkinProbe = .failure("请填写 Base URL 与 API Token")
+            Haptics.error()
+            return
+        }
+        checkinProbe = .probing
+        let start = ContinuousClock.now
+        do {
+            let health = try await checkin.health(baseURL: base, apiToken: token)
+            let summary = try await checkin.summary(baseURL: base, apiToken: token)
+            let total = summary.counts?.totalValue ?? 0
+            let healthy = summary.counts?.healthyValue ?? 0
+            let failed = summary.counts?.failedValue ?? 0
+            let auth = health.auth ?? "token"
+            checkinProbe = .success(
+                latencyMs: elapsedMs(since: start),
+                detail: "\(auth) · \(healthy)/\(total) 正常 · 失败 \(failed)"
+            )
+            Haptics.success()
+        } catch {
+            checkinProbe = .failure(Self.chineseError(error))
             Haptics.error()
         }
     }

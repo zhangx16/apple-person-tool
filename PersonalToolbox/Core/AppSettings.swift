@@ -64,6 +64,17 @@ final class AppSettings: ObservableObject {
         didSet { UserDefaults.standard.set(komariBaseURL, forKey: Keys.komariBaseURL) }
     }
 
+    // MARK: - Check-in (glados-checkin-web)
+
+    /// Public base URL of glados-checkin-web (e.g. https://checkin.031216.xyz).
+    @Published var checkinBaseURL: String {
+        didSet { UserDefaults.standard.set(checkinBaseURL, forKey: Keys.checkinBaseURL) }
+    }
+    /// `APP_API_TOKEN` for `/api/v1/summary` (Bearer).
+    @Published var checkinAPIToken: String {
+        didSet { KeychainStore.set(checkinAPIToken, for: Keys.checkinAPIToken) }
+    }
+
     // MARK: - Cloudflare (CFPanel-style)
 
     /// API Token (Bearer) or Global API Key when email is set.
@@ -173,6 +184,8 @@ final class AppSettings: ObservableObject {
         static let sublinkUsername = "sublinkUsername"
         static let sublinkPassword = "sublinkPassword"
         static let komariBaseURL = "komariBaseURL"
+        static let checkinBaseURL = "checkinBaseURL"
+        static let checkinAPIToken = "checkinAPIToken"
         static let cloudflareAPIToken = "cloudflareAPIToken"
         static let cloudflareEmail = "cloudflareEmail"
         static let cloudflareAccountId = "cloudflareAccountId"
@@ -234,6 +247,8 @@ final class AppSettings: ObservableObject {
         sublinkUsername = d.string(forKey: Keys.sublinkUsername) ?? "admin"
         sublinkPassword = KeychainStore.get(Keys.sublinkPassword) ?? ""
         komariBaseURL = d.string(forKey: Keys.komariBaseURL) ?? "https://komari.996616.xyz"
+        checkinBaseURL = d.string(forKey: Keys.checkinBaseURL) ?? "https://checkin.031216.xyz"
+        checkinAPIToken = KeychainStore.get(Keys.checkinAPIToken) ?? ""
         cloudflareAPIToken = KeychainStore.get(Keys.cloudflareAPIToken) ?? ""
         cloudflareEmail = d.string(forKey: Keys.cloudflareEmail) ?? ""
         cloudflareAccountId = d.string(forKey: Keys.cloudflareAccountId) ?? ""
@@ -275,5 +290,10 @@ final class AppSettings: ObservableObject {
 
     var isCloudflareConfigured: Bool {
         !cloudflareAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var isCheckinConfigured: Bool {
+        !checkinBaseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !checkinAPIToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 }

@@ -109,9 +109,8 @@ final class ChatStreamKeepAlive: NSObject {
                 object: AVAudioSession.sharedInstance(),
                 queue: .main
             ) { [weak self] note in
-                Task { @MainActor in
-                    self?.handleInterruption(note)
-                }
+                // Already on main queue; avoid nested Task + weak self capture diagnostics.
+                self?.handleInterruption(note)
             }
         }
         if routeObserver == nil {
@@ -120,9 +119,7 @@ final class ChatStreamKeepAlive: NSObject {
                 object: AVAudioSession.sharedInstance(),
                 queue: .main
             ) { [weak self] _ in
-                Task { @MainActor in
-                    self?.resumeIfNeeded()
-                }
+                self?.resumeIfNeeded()
             }
         }
     }

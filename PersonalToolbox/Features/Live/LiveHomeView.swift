@@ -15,9 +15,10 @@ struct LiveHomeView: View {
         }
     }
 
-    private struct RoomRoute: Hashable {
+    private struct RoomRoute: Hashable, Identifiable {
         let token: UUID
         let room: LiveRoomItem
+        var id: UUID { token }
         init(room: LiveRoomItem) {
             self.token = UUID()
             self.room = room
@@ -33,6 +34,8 @@ struct LiveHomeView: View {
     @State private var isSearching = false
     @State private var searchError: String?
     @State private var path = NavigationPath()
+    /// B站单独用 sheet 打开，彻底绕开 LiveRoomView / VLC / NavigationPath 组合崩溃。
+    @State private var bilibiliSheet: RoomRoute?
     @FocusState private var searchFocused: Bool
     @State private var clipboardRoomHint: String?
     @EnvironmentObject private var settings: AppSettings
@@ -55,19 +58,32 @@ struct LiveHomeView: View {
             .navigationBarTitleDisplayMode(.large)
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .navigationDestination(for: RoomRoute.self) { route in
-                LiveRoomView(room: route.room)
+                // B站不应走进这里；双保险。
+                if route.room.platform == .bilibili {
+                    BilibiliLiveWebRoomView(room: route.room)
+                } else {
+                    LiveRoomView(room: route.room)
+                }
+            }
+            .sheet(item: $bilibiliSheet) { route in
+                NavigationStack {
+                    BilibiliLiveWebRoomView(room: route.room)
+                }
             }
             .onAppear {
-                follows.refreshMissingAvatars(for: platform)
+                // B站关注元数据刷新可能触发脆弱接口；仅刷新非 B 站或延后。
+                if platform != .bilibili {
+                    follows.refreshMissingAvatars(for: platform)
+                }
                 detectClipboardRoomId()
             }
             .onChange(of: mode) { _, newMode in
-                if newMode == .follow {
+                if newMode == .follow, platform != .bilibili {
                     follows.refreshMissingAvatars(for: platform)
                 }
             }
             .onChange(of: platform) { _, newPlatform in
-                if mode == .follow {
+                if mode == .follow, newPlatform != .bilibili {
                     follows.refreshMissingAvatars(for: newPlatform)
                 }
                 detectClipboardRoomId()
@@ -453,6 +469,10 @@ struct LiveHomeView: View {
             #selector(UIResponder.resignFirstResponder),
             to: nil, from: nil, for: nil
         )
+        if room.platform == .bilibili {
+            bilibiliSheet = RoomRoute(room: room)
+            return
+        }
         path.append(RoomRoute(room: room))
     }
 

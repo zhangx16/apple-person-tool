@@ -225,8 +225,7 @@ actor BilibiliLiveService {
         let trimmed = keyword.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return [] }
 
-        // Pure room id / short id: return a lightweight stub (detail loads on enter).
-        // Avoid getRoomDetail here — it does WBI + danmu and used to make search feel like a crash when it failed hard.
+        // Pure room id / short id: lightweight stub only (no network).
         if let rid = LiveBilibiliIDs.extractRoomId(from: trimmed),
            rid.unicodeScalars.allSatisfy({ CharacterSet.decimalDigits.contains($0) }) {
             return [
@@ -241,15 +240,18 @@ actor BilibiliLiveService {
             ]
         }
 
-        // Primary: search_type=live → result.live_room
-        if let rooms = try? await searchLiveRooms(keyword: trimmed, page: page, searchType: "live"),
-           !rooms.isEmpty {
-            return rooms
-        }
-        // Fallback: search_type=live_room → result is a flat list
-        if let rooms = try? await searchLiveRooms(keyword: trimmed, page: page, searchType: "live_room"),
-           !rooms.isEmpty {
-            return rooms
+        // Never throw out of search — empty list + UI hint is safer than hard failure paths.
+        do {
+            if let rooms = try? await searchLiveRooms(keyword: trimmed, page: page, searchType: "live"),
+               !rooms.isEmpty {
+                return rooms
+            }
+            if let rooms = try? await searchLiveRooms(keyword: trimmed, page: page, searchType: "live_room"),
+               !rooms.isEmpty {
+                return rooms
+            }
+        } catch {
+            // swallow
         }
         return []
     }
@@ -298,37 +300,25 @@ actor BilibiliLiveService {
             throw NetworkError.message("房间号为空")
         }
 
-        var detail: LiveRoomDetail?
-        // Prefer get_info first (no WBI, stable); then getInfoByRoom; then play stub.
+        // Minimal path only: get_info（无 WBI / 无弹幕 / 无 playInfo）。
+        // 进房 UI 已改为 H5 网页，详情只用于标题展示；越简单越不容易崩。
         if let d = try? await roomDetailFromGetInfo(roomId: rid) {
-            detail = d
+            return d
         }
-        if detail == nil, let d = try? await roomDetailFromInfoByRoom(roomId: rid) {
-            detail = d
-        }
-        if detail == nil {
-            detail = try await roomDetailFromPlayInfo(roomId: rid)
-        }
-        guard var resolved = detail else {
-            throw NetworkError.message("无法获取直播间信息")
-        }
-
-        // Enrich empty fields from secondary source.
-        if resolved.userName.isEmpty || resolved.userAvatar.isEmpty || resolved.cover.isEmpty {
-            if let extra = try? await roomDetailFromInfoByRoom(roomId: resolved.roomId) {
-                if resolved.userName.isEmpty { resolved.userName = extra.userName }
-                if resolved.userAvatar.isEmpty { resolved.userAvatar = extra.userAvatar }
-                if resolved.cover.isEmpty { resolved.cover = extra.cover }
-                if resolved.title.isEmpty { resolved.title = extra.title }
-                if resolved.categoryName.isEmpty { resolved.categoryName = extra.categoryName }
-            }
-        }
-
-        // Danmaku token is best-effort (SimpleLive: must not block room open).
-        if let danmu = try? await getDanmuInfo(roomId: resolved.roomId) {
-            resolved.danmakuJSON = LiveJSON.encodeJSONSafe(danmu)
-        }
-        return resolved
+        // Soft stub so web UI can still open.
+        return LiveRoomDetail(
+            platform: .bilibili,
+            roomId: rid,
+            title: "房间 \(rid)",
+            cover: "",
+            userName: "",
+            userAvatar: "",
+            online: 0,
+            isLive: true,
+            webURL: "https://live.bilibili.com/h5/\(rid)",
+            introduction: "",
+            danmakuJSON: "{}"
+        )
     }
 
     private func roomDetailFromGetInfo(roomId: String) async throws -> LiveRoomDetail {
@@ -437,109 +427,26 @@ actor BilibiliLiveService {
     // MARK: - Play (router API)
 
     func getPlayQualities(detail: LiveRoomDetail) async throws -> [LivePlayQuality] {
-        try await getPlayQualities(roomId: detail.roomId)
+        // B站 App 内改为纯 H5，不再拉清晰度列表（避免 playInfo 接口/解码链路）。
+        _ = detail
+        return []
     }
 
     func getPlayQualities(roomId: String) async throws -> [LivePlayQuality] {
-        let play = try await roomPlayInfo(roomId: roomId, qn: nil)
-        var map: [Int: String] = [:]
-        for item in dictArray(play["g_qn_desc"]) {
-            let qn = intVal(item["qn"])
-            if qn > 0 {
-                map[qn] = str(item["desc"]).ifEmpty("\(qn)")
-            }
-        }
-        // Collect accept_qn across all streams/formats/codecs (not only first).
-        var accepted = Set<Int>()
-        for stream in dictArray(play["stream"]) {
-            for format in dictArray(stream["format"]) {
-                for codec in dictArray(format["codec"]) {
-                    if let arr = codec["accept_qn"] as? [Any] {
-                        for a in arr {
-                            let q = intVal(a)
-                            if q > 0 { accepted.insert(q) }
-                        }
-                    } else if let arr = codec["accept_qn"] as? [Int] {
-                        accepted.formUnion(arr.filter { $0 > 0 })
-                    }
-                }
-            }
-        }
-        var qualities: [LivePlayQuality] = accepted.sorted(by: >).map { qn in
-            LivePlayQuality(name: map[qn] ?? "\(qn)", qn: qn)
-        }
-        if qualities.isEmpty {
-            qualities = [
-                LivePlayQuality(name: "高清", qn: 250),
-                LivePlayQuality(name: "超清", qn: 400),
-                LivePlayQuality(name: "流畅", qn: 150),
-                LivePlayQuality(name: "原画", qn: 10000)
-            ]
-        }
-        return qualities
+        _ = roomId
+        return []
     }
 
     func getPlayURLs(detail: LiveRoomDetail, quality: LivePlayQuality) async throws -> LivePlayResult {
-        try await getPlayURLs(roomId: detail.roomId, qn: quality.qn)
+        _ = detail
+        _ = quality
+        throw NetworkError.message("B站请使用网页播放")
     }
 
     func getPlayURLs(roomId: String, qn: Int) async throws -> LivePlayResult {
-        let play = try await roomPlayInfo(roomId: roomId, qn: qn, forPlayback: true)
-        struct Cand {
-            var url: String
-            var score: Int
-        }
-        var cands: [Cand] = []
-        for stream in dictArray(play["stream"]) {
-            for format in dictArray(stream["format"]) {
-                let formatName = str(format["format_name"]).lowercased()
-                for codec in dictArray(format["codec"]) {
-                    let codecName = str(codec["codec_name"]).lowercased()
-                    // Skip HEVC on iOS — MobileVLCKit / some devices hard-crash on hevc live.
-                    if codecName.contains("hevc") || codecName.contains("h265") || codecName == "hev1" {
-                        continue
-                    }
-                    let baseURL = str(codec["base_url"])
-                    for info in dictArray(codec["url_info"]) {
-                        let host = str(info["host"])
-                        let extra = str(info["extra"])
-                        let full = host + baseURL + extra
-                        guard full.hasPrefix("http"), URL(string: full) != nil else { continue }
-                        var score = 50
-                        if full.contains(".m3u8") || formatName == "ts" || formatName == "fmp4" {
-                            score += 100
-                        }
-                        if formatName == "fmp4" { score += 25 }
-                        if formatName == "ts" { score += 20 }
-                        if formatName == "flv" || full.contains(".flv") { score += 10 }
-                        if codecName.contains("avc") || codecName.contains("h264") { score += 40 }
-                        if full.contains("mcdn") { score -= 50 }
-                        cands.append(Cand(url: full, score: score))
-                    }
-                }
-            }
-        }
-        var picked = cands.sorted { a, b in
-            if a.score != b.score { return a.score > b.score }
-            let am = a.url.contains("mcdn")
-            let bm = b.url.contains("mcdn")
-            if am != bm { return !am && bm }
-            return false
-        }.map(\.url)
-        var seen = Set<String>()
-        picked = picked.filter { seen.insert($0).inserted }
-        guard !picked.isEmpty else {
-            throw NetworkError.message("未获取到可播放地址（可配置设置中的 B站 Cookie 后重试）")
-        }
-
-        if buvid3.isEmpty { await refreshBuvid() }
-        let cookie = sanitizeHeader(await cookieHeaderValue())
-        return LivePlayResult(urls: picked, headers: [
-            "Referer": "https://live.bilibili.com",
-            "Origin": "https://live.bilibili.com",
-            "User-Agent": ua,
-            "Cookie": cookie
-        ])
+        _ = roomId
+        _ = qn
+        throw NetworkError.message("B站请使用网页播放")
     }
 
     // MARK: - Internals

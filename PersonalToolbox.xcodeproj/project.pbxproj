@@ -6,7 +6,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0000000000000000000005B1 /* BilibiliLiveWebRoomView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000005B0 /* BilibiliLiveWebRoomView.swift */; };
+		0000000000000000000005C1 /* BilibiliLiveWebRoomView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000005C0 /* BilibiliLiveWebRoomView.swift */; };
 		000000000000000000000721 /* SmartNotifyService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000720 /* SmartNotifyService.swift */; };
 		000000000000000000000723 /* CheckinHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000722 /* CheckinHistoryStore.swift */; };
 		000000000000000000000725 /* NoteOfflineCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000724 /* NoteOfflineCache.swift */; };
@@ -132,7 +132,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		0000000000000000000005B0 /* BilibiliLiveWebRoomView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BilibiliLiveWebRoomView.swift; sourceTree = "<group>"; };
+		0000000000000000000005C0 /* BilibiliLiveWebRoomView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BilibiliLiveWebRoomView.swift; sourceTree = "<group>"; };
 		000000000000000000000720 /* SmartNotifyService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartNotifyService.swift; sourceTree = "<group>"; };
 		000000000000000000000722 /* CheckinHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckinHistoryStore.swift; sourceTree = "<group>"; };
 		000000000000000000000724 /* NoteOfflineCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteOfflineCache.swift; sourceTree = "<group>"; };
@@ -602,7 +602,7 @@
 			isa = PBXGroup;
 			children = (
 				000000000000000000000532 /* LiveHomeView.swift */,
-				0000000000000000000005B0 /* BilibiliLiveWebRoomView.swift */,
+				0000000000000000000005C0 /* BilibiliLiveWebRoomView.swift */,
 				000000000000000000000570 /* LiveRoomView.swift */,
 				000000000000000000000580 /* LiveVLCPlayerView.swift */,
 			);
@@ -727,6 +727,7 @@
 				0000000000000000000005F1 /* OrientationHelper.swift in Sources */,
 				0000000000000000000001C9 /* LocalNotifier.swift in Sources */,
 				000000000000000000000533 /* LiveHomeView.swift in Sources */,
+				0000000000000000000005C1 /* BilibiliLiveWebRoomView.swift in Sources */,
 				00000000000000000000052C /* ShareHandoff.swift in Sources */,
 				000000000000000000000505 /* LocalJSONStore.swift in Sources */,
 				000000000000000000000507 /* ActionRouter.swift in Sources */,
@@ -805,7 +806,6 @@
 			
 				00000000000000000000052F /* LiveModels.swift in Sources */,
 				000000000000000000000531 /* BilibiliLiveService.swift in Sources */,
-				0000000000000000000005B1 /* BilibiliLiveWebRoomView.swift in Sources */,
 				000000000000000000000541 /* HuyaLiveService.swift in Sources */,
 				000000000000000000000543 /* DouyuLiveService.swift in Sources */,
 				000000000000000000000545 /* DouyinLiveService.swift in Sources */,
@@ -890,7 +890,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 66;
+				CURRENT_PROJECT_VERSION = 67;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				CODE_SIGN_ENTITLEMENTS = PersonalToolbox/PersonalToolbox.entitlements;
@@ -916,7 +916,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 66;
+				CURRENT_PROJECT_VERSION = 67;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				CODE_SIGN_ENTITLEMENTS = PersonalToolbox/PersonalToolbox.entitlements;
@@ -942,7 +942,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 66;
+				CURRENT_PROJECT_VERSION = 67;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
@@ -967,7 +967,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 66;
+				CURRENT_PROJECT_VERSION = 67;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;

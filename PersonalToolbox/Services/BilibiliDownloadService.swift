@@ -1,7 +1,8 @@
 import Foundation
+import AVFoundation
 
 /// 本机 B 站视频下载 · 接口思路参考 nICEnnnnnnnLee/BilibiliDown（view + playurl）。
-/// 优先 `fnval=1` 单文件流，避免 iOS 上 dash 音视频分离需 ffmpeg。
+/// 优先 `fnval=1` 单文件流；仅 dash 分轨时本机下载音+视频并用 AVFoundation 合成（避免无声）。
 @MainActor
 final class BilibiliDownloadService {
     static let shared = BilibiliDownloadService()
@@ -142,33 +143,41 @@ final class BilibiliDownloadService {
 
         onProgress?(0.15, "获取播放地址 qn=\(qn)…")
         let play = try await fetchPlayURL(bvid: info.bvid, cid: page.cid, qn: qn)
-        guard let streamURL = play.url, let url = URL(string: streamURL) else {
+        guard let streamURL = play.url, let videoURL = URL(string: streamURL) else {
             throw NetworkError.message("未获取到可下载地址（可能需登录 Cookie）")
         }
         onLog?("线路：\(play.qualityLabel) · \(play.format)")
 
         try ensureDirectories()
-        onProgress?(0.25, "开始下载…")
         let partName = page.part.isEmpty ? info.title : "\(info.title)_P\(page.page)_\(page.part)"
         let fileName = sanitize("\(partName)_\(info.bvid).mp4")
         let dest = uniqueURL(in: videosDirectory, name: fileName)
 
-        var req = URLRequest(url: url)
-        req.timeoutInterval = 300
-        req.setValue(ua, forHTTPHeaderField: "User-Agent")
-        req.setValue("https://www.bilibili.com", forHTTPHeaderField: "Referer")
-        if !userCookie.isEmpty {
-            req.setValue(userCookie, forHTTPHeaderField: "Cookie")
+        // DASH split: download video + audio then mux so the file is not silent.
+        if let audioStr = play.audioURL, let audioURL = URL(string: audioStr) {
+            onProgress?(0.25, "下载视频轨…")
+            let videoPart = try await downloadToTemp(url: videoURL, onLog: onLog)
+            onProgress?(0.55, "下载音频轨…")
+            let audioPart = try await downloadToTemp(url: audioURL, onLog: onLog)
+            onProgress?(0.75, "合成音视频…")
+            do {
+                try await muxVideoAndAudio(video: videoPart, audio: audioPart, output: dest)
+            } catch {
+                try? FileManager.default.removeItem(at: videoPart)
+                try? FileManager.default.removeItem(at: audioPart)
+                throw NetworkError.message("音视频合成失败：\(error.localizedDescription)")
+            }
+            try? FileManager.default.removeItem(at: videoPart)
+            try? FileManager.default.removeItem(at: audioPart)
+        } else {
+            onProgress?(0.25, "开始下载…")
+            let temp = try await downloadToTemp(url: videoURL, onLog: onLog)
+            if FileManager.default.fileExists(atPath: dest.path) {
+                try FileManager.default.removeItem(at: dest)
+            }
+            try FileManager.default.moveItem(at: temp, to: dest)
         }
 
-        let (temp, response) = try await URLSession.shared.download(for: req)
-        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-            throw NetworkError.message("下载失败 HTTP \((response as? HTTPURLResponse)?.statusCode ?? -1)")
-        }
-        if FileManager.default.fileExists(atPath: dest.path) {
-            try FileManager.default.removeItem(at: dest)
-        }
-        try FileManager.default.moveItem(at: temp, to: dest)
         let bytes = Int64((try? dest.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
         guard bytes > 10_000 else {
             try? FileManager.default.removeItem(at: dest)
@@ -186,6 +195,101 @@ final class BilibiliDownloadService {
             bytes: bytes,
             thumbnailURL: info.cover.isEmpty ? nil : info.cover
         )
+    }
+
+    /// Authenticated CDN download into a unique temp file.
+    private func downloadToTemp(url: URL, onLog: ((String) -> Void)?) async throws -> URL {
+        var req = URLRequest(url: url)
+        req.timeoutInterval = 300
+        req.setValue(ua, forHTTPHeaderField: "User-Agent")
+        req.setValue("https://www.bilibili.com", forHTTPHeaderField: "Referer")
+        if !userCookie.isEmpty {
+            req.setValue(userCookie, forHTTPHeaderField: "Cookie")
+        }
+        let (temp, response) = try await URLSession.shared.download(for: req)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            throw NetworkError.message("下载失败 HTTP \((response as? HTTPURLResponse)?.statusCode ?? -1)")
+        }
+        let staged = FileManager.default.temporaryDirectory
+            .appendingPathComponent("bili-\(UUID().uuidString).part", isDirectory: false)
+        if FileManager.default.fileExists(atPath: staged.path) {
+            try FileManager.default.removeItem(at: staged)
+        }
+        try FileManager.default.moveItem(at: temp, to: staged)
+        return staged
+    }
+
+    /// Mux separate DASH video/audio into a playable MP4 (no ffmpeg).
+    private func muxVideoAndAudio(video: URL, audio: URL, output: URL) async throws {
+        let videoAsset = AVURLAsset(url: video)
+        let audioAsset = AVURLAsset(url: audio)
+        let composition = AVMutableComposition()
+
+        let vTracks = try await videoAsset.loadTracks(withMediaType: .video)
+        guard let srcVideo = vTracks.first,
+              let compVideo = composition.addMutableTrack(
+                withMediaType: .video,
+                preferredTrackID: kCMPersistentTrackID_Invalid
+              ) else {
+            throw NetworkError.message("视频轨不可读")
+        }
+        let vDuration = try await videoAsset.load(.duration)
+        try compVideo.insertTimeRange(
+            CMTimeRange(start: .zero, duration: vDuration),
+            of: srcVideo,
+            at: .zero
+        )
+        if let t = try? await srcVideo.load(.preferredTransform) {
+            compVideo.preferredTransform = t
+        }
+
+        let aTracks = try await audioAsset.loadTracks(withMediaType: .audio)
+        if let srcAudio = aTracks.first,
+           let compAudio = composition.addMutableTrack(
+                withMediaType: .audio,
+                preferredTrackID: kCMPersistentTrackID_Invalid
+           ) {
+            let aDuration = try await audioAsset.load(.duration)
+            let duration = CMTimeMinimum(vDuration, aDuration)
+            try compAudio.insertTimeRange(
+                CMTimeRange(start: .zero, duration: duration),
+                of: srcAudio,
+                at: .zero
+            )
+        } else {
+            throw NetworkError.message("音频轨不可读")
+        }
+
+        if FileManager.default.fileExists(atPath: output.path) {
+            try FileManager.default.removeItem(at: output)
+        }
+
+        // Prefer passthrough (no re-encode); fall back to highest quality if needed.
+        // iOS 17-safe: exportAsynchronously (async export() is iOS 18+).
+        let presets = [AVAssetExportPresetPassthrough, AVAssetExportPresetHighestQuality]
+        var lastError: Error?
+        for preset in presets {
+            guard let session = AVAssetExportSession(asset: composition, presetName: preset) else {
+                continue
+            }
+            session.outputURL = output
+            session.outputFileType = .mp4
+            session.shouldOptimizeForNetworkUse = true
+            await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+                session.exportAsynchronously { cont.resume() }
+            }
+            switch session.status {
+            case .completed:
+                return
+            case .failed:
+                lastError = session.error
+                try? FileManager.default.removeItem(at: output)
+            default:
+                lastError = session.error ?? NetworkError.message("导出状态 \(session.status.rawValue)")
+                try? FileManager.default.removeItem(at: output)
+            }
+        }
+        throw lastError ?? NetworkError.message("无法导出 MP4")
     }
 
     // MARK: - Resolve
@@ -258,16 +362,20 @@ final class BilibiliDownloadService {
 
     private struct PlayInfo {
         var url: String?
+        /// Present when streams are DASH-split; download + mux with `url` (video).
+        var audioURL: String?
         var qualityLabel: String
         var format: String
     }
 
     private func fetchPlayURL(bvid: String, cid: Int, qn: Int) async throws -> PlayInfo {
-        // Prefer single-file progressive (fnval=1) — BilibiliDown also falls back to flv/mp4 when needed.
+        // Prefer single-file progressive (fnval=1); then flv (0); then dash (16/80) with audio pair.
         let qns = [qn, 80, 64, 32, 16]
         var lastErr = "无地址"
+        var dashFallback: PlayInfo?
+
         for tryQn in qns {
-            for fnval in [1, 0] {
+            for fnval in [1, 0, 16, 80] {
                 var comps = URLComponents(string: "https://api.bilibili.com/x/player/playurl")!
                 comps.queryItems = [
                     URLQueryItem(name: "bvid", value: bvid),
@@ -293,23 +401,31 @@ final class BilibiliDownloadService {
                         }
                         if let stream {
                             let qnLabel = qualityName(tryQn, accept: data["accept_description"] as? [String])
-                            return PlayInfo(url: stream, qualityLabel: qnLabel, format: "durl/fnval=\(fnval)")
+                            return PlayInfo(
+                                url: stream,
+                                audioURL: nil,
+                                qualityLabel: qnLabel,
+                                format: "durl/fnval=\(fnval)"
+                            )
                         }
                     }
-                    // dash fallback: pick highest video only (silent) is bad; try audio+video note
+                    // DASH: pair highest video (near requested qn) with best audio — never video-only.
                     if let dash = data["dash"] as? [String: Any],
-                       let videos = dash["video"] as? [[String: Any]],
-                       let best = videos.max(by: { (int($0, "bandwidth") ?? 0) < (int($1, "bandwidth") ?? 0) }),
-                       let base = string(best, "baseUrl") ?? string(best, "base_url") {
-                        // Prefer if there's a single mixed isn't available — still return video track
-                        // with label so user knows; many phones can play video-only mp4/m4s poorly.
-                        // Skip dash-only for now if we can keep trying lower qn single file.
-                        lastErr = "仅 dash 分轨（需合并），尝试其它清晰度"
-                        // Store as last resort after loop
-                        if tryQn == qns.last, fnval == 0 {
-                            let qnLabel = qualityName(int(best, "id") ?? tryQn, accept: nil)
-                            return PlayInfo(url: base, qualityLabel: "\(qnLabel)·视频轨", format: "dash-video")
+                       let pair = pickDashPair(dash: dash, preferredQn: tryQn) {
+                        let qnLabel = qualityName(pair.videoQn, accept: nil)
+                        let info = PlayInfo(
+                            url: pair.videoURL,
+                            audioURL: pair.audioURL,
+                            qualityLabel: "\(qnLabel)·音视频",
+                            format: "dash/fnval=\(fnval)"
+                        )
+                        // Prefer progressive; keep first good dash as fallback.
+                        if dashFallback == nil { dashFallback = info }
+                        // If this request already asked for dash (fnval 16/80), take it immediately.
+                        if fnval == 16 || fnval == 80 {
+                            return info
                         }
+                        lastErr = "仅 dash 分轨，将合并音视频"
                         continue
                     }
                 } catch {
@@ -317,7 +433,39 @@ final class BilibiliDownloadService {
                 }
             }
         }
+        if let dashFallback { return dashFallback }
         throw NetworkError.message(lastErr)
+    }
+
+    private struct DashPair {
+        var videoURL: String
+        var audioURL: String
+        var videoQn: Int
+    }
+
+    /// Pick video near preferred qn + highest-bandwidth audio from dash payload.
+    private func pickDashPair(dash: [String: Any], preferredQn: Int) -> DashPair? {
+        guard let videos = dash["video"] as? [[String: Any]], !videos.isEmpty else { return nil }
+        let audios = dash["audio"] as? [[String: Any]] ?? []
+        // Prefer video whose id is closest to requested qn, then higher bandwidth.
+        let bestVideo = videos.max { a, b in
+            let qa = int(a, "id") ?? 0
+            let qb = int(b, "id") ?? 0
+            let da = abs(qa - preferredQn)
+            let db = abs(qb - preferredQn)
+            if da != db { return da > db }
+            return (int(a, "bandwidth") ?? 0) < (int(b, "bandwidth") ?? 0)
+        }
+        guard let bestVideo,
+              let vURL = string(bestVideo, "baseUrl") ?? string(bestVideo, "base_url") else {
+            return nil
+        }
+        guard let bestAudio = audios.max(by: { (int($0, "bandwidth") ?? 0) < (int($1, "bandwidth") ?? 0) }),
+              let aURL = string(bestAudio, "baseUrl") ?? string(bestAudio, "base_url") else {
+            // No audio in payload — cannot produce a non-silent file from this dash block.
+            return nil
+        }
+        return DashPair(videoURL: vURL, audioURL: aURL, videoQn: int(bestVideo, "id") ?? preferredQn)
     }
 
     private func qualityName(_ qn: Int, accept: [String]?) -> String {

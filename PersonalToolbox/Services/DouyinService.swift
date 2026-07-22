@@ -1,6 +1,7 @@
 import Foundation
 import WebKit
 import UIKit
+import AVFoundation
 
 /// Local Douyin share-link resolver + media downloader.
 /// Base: BlackCCCat Media-Downloader; quality / no-watermark selection
@@ -516,8 +517,16 @@ final class DouyinService: NSObject {
             throw NetworkError.message("视频文件过小，可能不是有效视频")
         }
 
+        // Some CDN play_addr lines are video-only (no soun track) — reject and try next candidate.
+        let hasAudio = await Self.fileHasAudioTrack(at: dest)
+        if !hasAudio {
+            onLog?("候选 \(candidate.label) 无音轨，换线路…")
+            try? FileManager.default.removeItem(at: dest)
+            throw NetworkError.message("下载结果无音轨")
+        }
+
         onProgress?(1, "下载完成：\(dest.lastPathComponent)")
-        onLog?("文件写入完成：\(dest.lastPathComponent) (\(ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)))")
+        onLog?("文件写入完成：\(dest.lastPathComponent) (\(ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file))) · 含音轨")
 
         return DouyinDownloadResult(
             id: UUID().uuidString,
@@ -531,6 +540,18 @@ final class DouyinService: NSObject {
             matchedCandidateLabel: candidate.label,
             thumbnailURL: Self.extractThumbnailURL(extracted)
         )
+    }
+
+    /// Probe local file for at least one audio track (AVFoundation).
+    private static func fileHasAudioTrack(at url: URL) async -> Bool {
+        let asset = AVURLAsset(url: url)
+        do {
+            let tracks = try await asset.loadTracks(withMediaType: .audio)
+            return !tracks.isEmpty
+        } catch {
+            // If probe fails, keep the file (better than discarding a valid download).
+            return true
+        }
     }
 
     private func downloadImages(

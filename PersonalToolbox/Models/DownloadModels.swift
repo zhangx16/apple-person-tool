@@ -66,6 +66,7 @@ struct YTFormatOption: Identifiable, Hashable {
 
     /// Production frontend presets (`/root/yt-dlp-web-ui/frontend/app.js` `qualityFormats`).
     static let presets: [YTFormatOption] = [
+        // Always require an audio stream (`+ba` / progressive `b`). Avoid bare `bv*` which is silent.
         .init(
             id: "best",
             label: "最佳",

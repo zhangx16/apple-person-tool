@@ -110,6 +110,7 @@ final class LiveRoomViewModel: ObservableObject {
         streamURL = nil
         streamHeaders = [:]
         streamIsFLV = false
+        // Session retain/release is owned by LiveVLCPlayerView / LiveRoomWebView lifecycle.
     }
 
     private func load() async {
@@ -320,6 +321,8 @@ final class LiveRoomViewModel: ObservableObject {
     }
 
     private func attachAV(asset: AVURLAsset) async -> Bool {
+        // AVPlayer path has no UIViewRepresentable retain pair; just pin category.
+        LiveAudioSession.reassertCategory()
         let item = AVPlayerItem(asset: asset)
         let p = AVPlayer(playerItem: item)
         p.automaticallyWaitsToMinimizeStalling = true
@@ -509,7 +512,8 @@ struct LiveRoomView: View {
     private var playerHero: some View {
         GeometryReader { geo in
             ZStack {
-                LivePlayerSurface(vm: vm)
+                // Tear down decoder while fullscreen so we never run two streams at once.
+                LivePlayerSurface(vm: vm, isActive: !isPlayerFullscreen)
 
                 // Locked: only side unlock (ignore other taps on chrome).
                 if vm.isControlsLocked {
@@ -1072,47 +1076,59 @@ struct LivePlatformMark: View {
 
 struct LivePlayerSurface: View {
     @ObservedObject var vm: LiveRoomViewModel
+    /// Only one surface may mount a decoder at a time.
+    /// Inline + fullscreen both observing the same VM used to create two VLC/Web
+    /// players → delayed double audio (very obvious on headphones).
+    var isActive: Bool = true
 
     var body: some View {
         ZStack {
             Color.black
-            switch vm.playMode {
-            case .web:
-                if let url = vm.webURL {
-                    LiveRoomWebView(url: url)
+            if isActive {
+                activeContent
+            }
+            // When inactive (covered by fullscreen), keep black chrome only — no second audio path.
+        }
+    }
+
+    @ViewBuilder
+    private var activeContent: some View {
+        switch vm.playMode {
+        case .web:
+            if let url = vm.webURL {
+                LiveRoomWebView(url: url)
+            } else {
+                Text("无网页地址").foregroundStyle(.white)
+            }
+        case .native:
+            if let url = vm.streamURL {
+                #if canImport(MobileVLCKit)
+                LiveVLCPlayerView(url: url, headers: vm.streamHeaders, isPlaying: true)
+                    .id(url.absoluteString)
+                #else
+                if let p = vm.systemPlayer {
+                    VideoPlayer(player: p)
                 } else {
-                    Text("无网页地址").foregroundStyle(.white)
+                    ProgressView().tint(.white)
                 }
-            case .native:
-                if let url = vm.streamURL {
-                    #if canImport(MobileVLCKit)
-                    LiveVLCPlayerView(url: url, headers: vm.streamHeaders, isPlaying: true)
-                        .id(url.absoluteString)
-                    #else
-                    if let p = vm.systemPlayer {
-                        VideoPlayer(player: p)
-                    } else {
-                        ProgressView().tint(.white)
-                    }
-                    #endif
-                } else if vm.isLoading {
-                    VStack(spacing: 10) {
-                        ProgressView().tint(.white)
-                        Text(vm.statusText)
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.9))
-                    }
-                } else {
-                    VStack(spacing: 8) {
-                        Image(systemName: "play.slash")
-                            .font(.title)
-                            .foregroundStyle(.white.opacity(0.7))
-                        Text(vm.errorMessage ?? "暂无画面")
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.8))
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal)
-                    }
+                #endif
+            } else if vm.isLoading {
+                VStack(spacing: 10) {
+                    ProgressView().tint(.white)
+                    Text(vm.statusText)
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.9))
+                }
+            } else {
+                VStack(spacing: 8) {
+                    Image(systemName: "play.slash")
+                        .font(.title)
+                        .foregroundStyle(.white.opacity(0.7))
+                    Text(vm.errorMessage ?? "暂无画面")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.8))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
                 }
             }
         }
@@ -1131,7 +1147,7 @@ struct LiveRoomFullscreenView: View {
 
     var body: some View {
         ZStack {
-            LivePlayerSurface(vm: vm)
+            LivePlayerSurface(vm: vm, isActive: true)
                 .ignoresSafeArea()
                 .contentShape(Rectangle())
                 .onTapGesture {
@@ -1287,6 +1303,8 @@ struct LiveRoomWebView: UIViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator() }
 
     func makeUIView(context: Context) -> WKWebView {
+        // Same pure-playback session as VLC so BT headsets stay on A2DP (not HFP).
+        LiveAudioSession.activateForPlayback()
         let config = WKWebViewConfiguration()
         config.allowsInlineMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = []
@@ -1313,7 +1331,13 @@ struct LiveRoomWebView: UIViewRepresentable {
 
     static func dismantleUIView(_ uiView: WKWebView, coordinator: Coordinator) {
         uiView.stopLoading()
+        // Mute any residual media elements before tear-down (avoids ghost audio under another surface).
+        uiView.evaluateJavaScript(
+            "document.querySelectorAll('video,audio').forEach(function(e){try{e.pause();e.muted=true;}catch(_){}})",
+            completionHandler: nil
+        )
         uiView.navigationDelegate = nil
+        LiveAudioSession.deactivateIfNeeded()
     }
 
     final class Coordinator: NSObject, WKNavigationDelegate {

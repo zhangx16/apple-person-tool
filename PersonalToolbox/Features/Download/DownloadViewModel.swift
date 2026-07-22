@@ -730,6 +730,13 @@ final class DownloadViewModel: ObservableObject {
 
         do {
             let staged = try await stageLocalFile(path: path, suggestedName: suggestedName, forPlay: true)
+            // Soft notice if the staged file has no audio track (old B 站/抖音线路).
+            let hasAudio = await DownloadMediaAudioProbe.hasAudioTrack(at: staged.url)
+            if !hasAudio {
+                infoBanner = "该文件无音轨，画面可播但无声音。请换清晰度或重新下载。"
+            }
+            // Pin playback session before the cover presents (silent switch / after Live).
+            _ = DownloadPlaybackAudio.activate()
             playItem = staged
             Haptics.success()
         } catch {

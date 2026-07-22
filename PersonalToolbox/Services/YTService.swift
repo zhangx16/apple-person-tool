@@ -204,9 +204,16 @@ actor YTService {
     ) async throws {
         try await withAuthRetry(baseURL: baseURL, username: username, password: password) {
             // Match yt-dlp-web-ui frontend payload + qualityFormats
+            // Pair video+audio and remux mp4 (matches yt-dlp-web-ui). Sort for AVPlayer-friendly codecs.
             let params: [String: Any] = [
                 "URL": url,
-                "Params": ["--no-playlist", "-f", preset.format, "--merge-output-format", "mp4"],
+                "Params": [
+                    "--no-playlist",
+                    "-f", preset.format,
+                    "--merge-output-format", "mp4",
+                    // Prefer streams that include audio and H.264 (best AVPlayer compatibility).
+                    "-S", "+hasaud,vcodec:h264,res,br"
+                ],
                 "Path": "",
                 "Rename": ""
             ]

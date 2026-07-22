@@ -253,13 +253,22 @@ final class LiveRoomViewModel: ObservableObject {
             }
 
             for urlString in ordered.prefix(6) {
-                guard let url = URL(string: urlString) else { continue }
-                let isFLV = urlString.lowercased().contains(".flv")
+                // Reject obviously broken / non-http URLs (defensive — bad CDN hosts).
+                let trimmedURL = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard let url = URL(string: trimmedURL),
+                      let scheme = url.scheme?.lowercased(),
+                      scheme == "http" || scheme == "https" else { continue }
+                let isFLV = trimmedURL.lowercased().contains(".flv")
+                // B 站 HEVC 线路在部分机型 + MobileVLCKit 上会直接 abort，已在 service 层过滤。
                 statusText = isFLV ? "VLC 播放 FLV…" : "连接 \(quality.name)…"
 
                 #if canImport(MobileVLCKit)
                 clearStream()
-                streamHeaders = result.headers
+                // Sanitize headers before VLC (CR/LF in Cookie has crashed LibVLC).
+                streamHeaders = result.headers.mapValues { v in
+                    v.replacingOccurrences(of: "\r", with: "")
+                        .replacingOccurrences(of: "\n", with: " ")
+                }
                 streamIsFLV = isFLV
                 streamURL = url
                 playMode = .native

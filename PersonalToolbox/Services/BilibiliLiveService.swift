@@ -3,6 +3,10 @@ import CryptoKit
 
 /// Bilibili live APIs ported from SimpleLive `bilibili_site.dart`
 /// (https://github.com/xiaoyaocz/dart_simple_live).
+///
+/// Defensive parsing throughout: NSDictionary/NSArray bridging from
+/// `JSONSerialization` must not use brittle `as? [[String: Any]]` alone
+/// (nil cast → empty results or unexpected control flow on device).
 actor BilibiliLiveService {
     static let shared = BilibiliLiveService()
 
@@ -46,12 +50,13 @@ actor BilibiliLiveService {
 
     // MARK: - Helpers
 
-    /// Extract room id from `live.bilibili.com/123` / `b23.tv` expanded URLs / pure digits.
+    /// Extract room id from `live.bilibili.com/123` / pure digits.
     nonisolated static func extractRoomId(from text: String) -> String? {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty { return nil }
-        if trimmed.allSatisfy(\.isNumber) { return trimmed }
-        // https://live.bilibili.com/1234567?...
+        if trimmed.unicodeScalars.allSatisfy({ CharacterSet.decimalDigits.contains($0) }) {
+            return trimmed
+        }
         let patterns = [
             #"live\.bilibili\.com/(?:h5/)?(\d+)"#,
             #"bilibili\.com/live/(\d+)"#,
@@ -59,7 +64,9 @@ actor BilibiliLiveService {
             #"[?&]room_id=(\d+)"#
         ]
         for pattern in patterns {
-            guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else { continue }
+            guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else {
+                continue
+            }
             let range = NSRange(trimmed.startIndex..<trimmed.endIndex, in: trimmed)
             if let m = regex.firstMatch(in: trimmed, range: range), m.numberOfRanges > 1,
                let r = Range(m.range(at: 1), in: trimmed) {
@@ -67,6 +74,91 @@ actor BilibiliLiveService {
             }
         }
         return nil
+    }
+
+    /// Safe string from heterogeneous JSON values (NSNumber / NSNull / nested).
+    private func str(_ any: Any?) -> String {
+        guard let any, !(any is NSNull) else { return "" }
+        if let s = any as? String { return s }
+        if let n = any as? NSNumber { return n.stringValue }
+        if let i = any as? Int { return "\(i)" }
+        if let i = any as? Int64 { return "\(i)" }
+        if let d = any as? Double { return String(Int(d)) }
+        return "\(any)"
+    }
+
+    private func intVal(_ any: Any?) -> Int {
+        if let i = any as? Int { return i }
+        if let i = any as? Int64 { return Int(i) }
+        if let n = any as? NSNumber { return n.intValue }
+        return Int(str(any)) ?? 0
+    }
+
+    private func dict(_ any: Any?) -> [String: Any]? {
+        if let d = any as? [String: Any] { return d }
+        if let d = any as? NSDictionary {
+            var out: [String: Any] = [:]
+            for (k, v) in d {
+                if let ks = k as? String { out[ks] = v }
+            }
+            return out
+        }
+        return nil
+    }
+
+    /// NSArray / [[String: Any]] bridge-safe.
+    private func dictArray(_ any: Any?) -> [[String: Any]] {
+        if let a = any as? [[String: Any]] { return a }
+        if let a = any as? [Any] {
+            return a.compactMap { dict($0) }
+        }
+        if let a = any as? NSArray {
+            return a.compactMap { dict($0) }
+        }
+        return []
+    }
+
+    private func absURL(_ raw: String, sizeSuffix: String = "") -> String {
+        var s = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !s.isEmpty else { return "" }
+        if s.hasPrefix("//") { s = "https:" + s }
+        if s.hasPrefix("http://") || s.hasPrefix("https://") {
+            // ok
+        } else if s.hasPrefix("/") {
+            s = "https://i0.hdslb.com" + s
+        } else {
+            s = "https://" + s
+        }
+        if !sizeSuffix.isEmpty, !s.contains("@") {
+            s += sizeSuffix
+        }
+        return s
+    }
+
+    /// Strip HTML tags without NSRegularExpression (avoids rare ICU edge crashes).
+    private func stripTags(_ text: String) -> String {
+        var out = ""
+        out.reserveCapacity(text.count)
+        var inTag = false
+        for ch in text {
+            if ch == "<" {
+                inTag = true
+                continue
+            }
+            if ch == ">" {
+                inTag = false
+                continue
+            }
+            if !inTag { out.append(ch) }
+        }
+        return out.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func sanitizeHeader(_ value: String) -> String {
+        value
+            .replacingOccurrences(of: "\r", with: "")
+            .replacingOccurrences(of: "\n", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     // MARK: - Public
@@ -77,20 +169,18 @@ actor BilibiliLiveService {
             query: ["need_entrance": "1", "parent_id": "0"],
             signed: false
         )
-        let data = json["data"] as? [[String: Any]] ?? []
+        let data = dictArray(json["data"])
         return data.map { item in
-            let parentId = "\(item["id"] ?? "")"
-            let subs = (item["list"] as? [[String: Any]] ?? []).map { sub in
-                var pic = "\(sub["pic"] ?? "")"
-                if !pic.isEmpty, !pic.contains("@") { pic += "@100w.png" }
-                return LiveSubCategory(
-                    id: "\(sub["id"] ?? "")",
-                    name: "\(sub["name"] ?? "")",
-                    parentId: "\(sub["parent_id"] ?? parentId)",
-                    pic: pic
+            let parentId = str(item["id"])
+            let subs = dictArray(item["list"]).map { sub in
+                LiveSubCategory(
+                    id: str(sub["id"]),
+                    name: str(sub["name"]),
+                    parentId: str(sub["parent_id"]).ifEmpty(parentId),
+                    pic: absURL(str(sub["pic"]), sizeSuffix: "@100w.png")
                 )
             }
-            return LiveCategory(id: parentId, name: "\(item["name"] ?? "")", children: subs)
+            return LiveCategory(id: parentId, name: str(item["name"]), children: subs)
         }
     }
 
@@ -106,8 +196,7 @@ actor BilibiliLiveService {
             ],
             signed: false
         )
-        let data = json["data"] as? [[String: Any]] ?? []
-        return data.compactMap { mapRoom($0) }
+        return dictArray(json["data"]).compactMap { mapRoom($0) }
     }
 
     func getRecommendRooms(page: Int = 1) async throws -> [LiveRoomItem] {
@@ -120,81 +209,118 @@ actor BilibiliLiveService {
         ]
         params = try await wbiSign(params)
         let json = try await getJSON(base, query: params)
-        let list = (json["data"] as? [String: Any])?["list"] as? [[String: Any]] ?? []
+        let list = dictArray(dict(json["data"])?["list"])
         return list.compactMap { mapRoom($0) }
     }
 
     func searchRooms(keyword: String, page: Int = 1) async throws -> [LiveRoomItem] {
-        // Pure digits → treat as room id (SimpleLive-style room open).
         let trimmed = keyword.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmed.isEmpty, trimmed.allSatisfy(\.isNumber) {
-            if let detail = try? await getRoomDetail(roomId: trimmed) {
-                return [
-                    LiveRoomItem(
-                        platform: .bilibili,
-                        roomId: detail.roomId,
-                        title: detail.title,
-                        cover: detail.cover,
-                        userName: detail.userName,
-                        online: detail.online,
-                        userAvatar: detail.userAvatar,
-                        categoryName: detail.categoryName
-                    )
-                ]
-            }
+        guard !trimmed.isEmpty else { return [] }
+
+        // Pure room id / short id: return a lightweight stub (detail loads on enter).
+        // Avoid getRoomDetail here — it does WBI + danmu and used to make search feel like a crash when it failed hard.
+        if let rid = Self.extractRoomId(from: trimmed),
+           rid.unicodeScalars.allSatisfy({ CharacterSet.decimalDigits.contains($0) }) {
+            return [
+                LiveRoomItem(
+                    platform: .bilibili,
+                    roomId: rid,
+                    title: "房间 \(rid)",
+                    cover: "",
+                    userName: "",
+                    online: 0
+                )
+            ]
         }
 
+        // Primary: search_type=live → result.live_room
+        if let rooms = try? await searchLiveRooms(keyword: trimmed, page: page, searchType: "live"),
+           !rooms.isEmpty {
+            return rooms
+        }
+        // Fallback: search_type=live_room → result is a flat list
+        if let rooms = try? await searchLiveRooms(keyword: trimmed, page: page, searchType: "live_room"),
+           !rooms.isEmpty {
+            return rooms
+        }
+        return []
+    }
+
+    private func searchLiveRooms(keyword: String, page: Int, searchType: String) async throws -> [LiveRoomItem] {
         let base = "https://api.bilibili.com/x/web-interface/search/type"
         let params: [String: String] = [
-            "search_type": "live",
+            "search_type": searchType,
             "cover_type": "user_cover",
-            "keyword": trimmed,
+            "keyword": keyword,
             "page": "\(page)",
             "highlight": "0",
             "single_column": "0"
         ]
         let json = try await getJSON(base, query: params, signed: false)
-        let liveRoom = ((json["data"] as? [String: Any])?["result"] as? [String: Any])?["live_room"] as? [[String: Any]] ?? []
-        return liveRoom.compactMap { item in
-            var title = "\(item["title"] ?? "")"
-            title = title.replacingOccurrences(of: #"<[^>]+>"#, with: "", options: .regularExpression)
-            let roomId = "\(item["roomid"] ?? "")"
-            guard !roomId.isEmpty else { return nil }
-            var cover = "\(item["cover"] ?? "")"
-            if cover.hasPrefix("//") { cover = "https:" + cover }
-            if !cover.hasPrefix("http"), !cover.isEmpty { cover = "https:" + cover }
-            if !cover.isEmpty, !cover.contains("@") { cover += "@400w.jpg" }
-            var face = "\(item["uface"] ?? item["user_cover"] ?? "")"
-            if face.hasPrefix("//") { face = "https:" + face }
-            return LiveRoomItem(
-                platform: .bilibili,
-                roomId: roomId,
-                title: title,
-                cover: cover,
-                userName: "\(item["uname"] ?? "")",
-                online: Int("\(item["online"] ?? 0)") ?? 0,
-                userAvatar: face,
-                categoryName: "\(item["cate_name"] ?? item["area_name"] ?? "")"
-            )
+        let data = dict(json["data"]) ?? [:]
+        let resultAny = data["result"]
+
+        var items: [[String: Any]] = []
+        if let resultDict = dict(resultAny) {
+            // { live_room: [...], live_user: [...] }
+            items = dictArray(resultDict["live_room"])
+            if items.isEmpty {
+                items = dictArray(resultDict["live_user"])
+            }
+        } else {
+            // Flat list (live_room search type)
+            items = dictArray(resultAny)
         }
+
+        var out: [LiveRoomItem] = []
+        var seen = Set<String>()
+        for item in items {
+            guard let room = mapRoom(item) else { continue }
+            // Dedupe — ForEach crash if duplicate Identifiable ids.
+            if seen.insert(room.roomId).inserted {
+                out.append(room)
+            }
+        }
+        return out
     }
 
     func getRoomDetail(roomId: String) async throws -> LiveRoomDetail {
-        // Prefer getInfoByRoom (anchor + area) then legacy get_info, then play-info stub.
-        var detail: LiveRoomDetail
-        if let d = try? await roomDetailFromInfoByRoom(roomId: roomId) {
-            detail = d
-        } else if let d = try? await roomDetailFromGetInfo(roomId: roomId) {
-            detail = d
-        } else {
-            detail = try await roomDetailFromPlayInfo(roomId: roomId)
+        let rid = roomId.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !rid.isEmpty else {
+            throw NetworkError.message("房间号为空")
         }
 
-        // Danmaku token is best-effort (SimpleLive: failure must not block room open).
-        if let danmu = try? await getDanmuInfo(roomId: detail.roomId) {
-            detail.danmakuJSON = LiveJSON.encodeJSONSafe(danmu)
+        var detail: LiveRoomDetail?
+        // Prefer get_info first (no WBI, stable); then getInfoByRoom; then play stub.
+        if let d = try? await roomDetailFromGetInfo(roomId: rid) {
+            detail = d
         }
-        return detail
+        if detail == nil, let d = try? await roomDetailFromInfoByRoom(roomId: rid) {
+            detail = d
+        }
+        if detail == nil {
+            detail = try await roomDetailFromPlayInfo(roomId: rid)
+        }
+        guard var resolved = detail else {
+            throw NetworkError.message("无法获取直播间信息")
+        }
+
+        // Enrich empty fields from secondary source.
+        if resolved.userName.isEmpty || resolved.userAvatar.isEmpty || resolved.cover.isEmpty {
+            if let extra = try? await roomDetailFromInfoByRoom(roomId: resolved.roomId) {
+                if resolved.userName.isEmpty { resolved.userName = extra.userName }
+                if resolved.userAvatar.isEmpty { resolved.userAvatar = extra.userAvatar }
+                if resolved.cover.isEmpty { resolved.cover = extra.cover }
+                if resolved.title.isEmpty { resolved.title = extra.title }
+                if resolved.categoryName.isEmpty { resolved.categoryName = extra.categoryName }
+            }
+        }
+
+        // Danmaku token is best-effort (SimpleLive: must not block room open).
+        if let danmu = try? await getDanmuInfo(roomId: resolved.roomId) {
+            resolved.danmakuJSON = LiveJSON.encodeJSONSafe(danmu)
+        }
+        return resolved
     }
 
     private func roomDetailFromGetInfo(roomId: String) async throws -> LiveRoomDetail {
@@ -204,25 +330,24 @@ actor BilibiliLiveService {
             signed: false,
             allowBusinessError: false
         )
-        guard let room = json["data"] as? [String: Any] else {
+        guard let room = dict(json["data"]) else {
             throw NetworkError.message("无法获取直播间信息")
         }
-        let realId = "\(room["room_id"] ?? roomId)"
-        var cover = "\(room["user_cover"] ?? room["keyframe"] ?? room["cover"] ?? "")"
-        if cover.hasPrefix("//") { cover = "https:" + cover }
+        let realId = str(room["room_id"]).ifEmpty(roomId)
+        let intro = stripTags(str(room["description"]))
         return LiveRoomDetail(
             platform: .bilibili,
             roomId: realId,
-            title: "\(room["title"] ?? "")",
-            cover: cover,
-            userName: "\(room["uname"] ?? "")",
+            title: stripTags(str(room["title"])),
+            cover: absURL(str(room["user_cover"]).ifEmpty(str(room["keyframe"])).ifEmpty(str(room["cover"]))),
+            userName: str(room["uname"]),
             userAvatar: "",
-            online: Int("\(room["online"] ?? room["attention"] ?? 0)") ?? 0,
-            isLive: (Int("\(room["live_status"] ?? 0)") ?? 0) == 1,
+            online: intVal(room["online"]).nonZero ?? intVal(room["attention"]),
+            isLive: intVal(room["live_status"]) == 1,
             webURL: "https://live.bilibili.com/\(realId)",
-            introduction: "\(room["description"] ?? "")",
+            introduction: String(intro.prefix(500)),
             danmakuJSON: "{}",
-            categoryName: "\(room["area_name"] ?? "")"
+            categoryName: str(room["area_name"])
         )
     }
 
@@ -231,36 +356,33 @@ actor BilibiliLiveService {
         var params = ["room_id": roomId]
         params = try await wbiSign(params)
         let json = try await getJSON(base, query: params)
-        guard let data = json["data"] as? [String: Any],
-              let room = data["room_info"] as? [String: Any] else {
+        guard let data = dict(json["data"]),
+              let room = dict(data["room_info"]) else {
             throw NetworkError.message("无法获取直播间信息")
         }
-        let realId = "\(room["room_id"] ?? roomId)"
-        let anchor = (data["anchor_info"] as? [String: Any])?["base_info"] as? [String: Any]
-        var face = "\(anchor?["face"] ?? "")"
-        if !face.isEmpty, !face.contains("@") { face += "@100w.jpg" }
-        var cover = "\(room["cover"] ?? "")"
-        if cover.hasPrefix("//") { cover = "https:" + cover }
+        let realId = str(room["room_id"]).ifEmpty(roomId)
+        let anchor = dict(dict(data["anchor_info"])?["base_info"])
+        let intro = stripTags(str(room["description"]))
         return LiveRoomDetail(
             platform: .bilibili,
             roomId: realId,
-            title: "\(room["title"] ?? "")",
-            cover: cover,
-            userName: "\(anchor?["uname"] ?? "")",
-            userAvatar: face,
-            online: Int("\(room["online"] ?? 0)") ?? 0,
-            isLive: (Int("\(room["live_status"] ?? 0)") ?? 0) == 1,
+            title: stripTags(str(room["title"])),
+            cover: absURL(str(room["cover"])),
+            userName: str(anchor?["uname"]),
+            userAvatar: absURL(str(anchor?["face"]), sizeSuffix: "@100w.jpg"),
+            online: intVal(room["online"]),
+            isLive: intVal(room["live_status"]) == 1,
             webURL: "https://live.bilibili.com/\(realId)",
-            introduction: "\(room["description"] ?? "")",
+            introduction: String(intro.prefix(500)),
             danmakuJSON: "{}",
-            categoryName: "\(room["area_name"] ?? "")"
+            categoryName: str(room["area_name"])
         )
     }
 
     private func roomDetailFromPlayInfo(roomId: String) async throws -> LiveRoomDetail {
         let data = try await roomPlayInfoData(roomId: roomId, qn: 250)
-        let live = (Int("\(data["live_status"] ?? 0)") ?? 0) == 1
-        let realId = "\(data["room_id"] ?? roomId)"
+        let live = intVal(data["live_status"]) == 1
+        let realId = str(data["room_id"]).ifEmpty(roomId)
         return LiveRoomDetail(
             platform: .bilibili,
             roomId: realId,
@@ -284,15 +406,19 @@ actor BilibiliLiveService {
             "https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuInfo",
             query: params
         )
-        guard let data = json["data"] as? [String: Any] else {
+        guard let data = dict(json["data"]) else {
             throw NetworkError.message("弹幕服务器信息不可用")
         }
-        let hosts = (data["host_list"] as? [[String: Any]] ?? []).compactMap { $0["host"] as? String }
+        let hosts = dictArray(data["host_list"]).compactMap { h -> String? in
+            let host = str(h["host"])
+            return host.isEmpty ? nil : host
+        }
         if buvid3.isEmpty { await refreshBuvid() }
         let cookie = await cookieHeaderValue()
+        // Only JSON-safe primitives (String / Int / Bool).
         return [
-            "roomId": Int(roomId) ?? 0,
-            "token": "\(data["token"] ?? "")",
+            "roomId": intVal(roomId),
+            "token": str(data["token"]),
             "serverHost": hosts.first ?? "broadcastlv.chat.bilibili.com",
             "buvid": buvid3,
             "uid": userIdFromCookie,
@@ -309,23 +435,32 @@ actor BilibiliLiveService {
     func getPlayQualities(roomId: String) async throws -> [LivePlayQuality] {
         let play = try await roomPlayInfo(roomId: roomId, qn: nil)
         var map: [Int: String] = [:]
-        for item in (play["g_qn_desc"] as? [[String: Any]]) ?? [] {
-            let qn = Int("\(item["qn"] ?? 0)") ?? 0
-            map[qn] = "\(item["desc"] ?? "清晰度")"
-        }
-        let streams = play["stream"] as? [[String: Any]] ?? []
-        let formats = (streams.first?["format"] as? [[String: Any]]) ?? []
-        let codecs = (formats.first?["codec"] as? [[String: Any]]) ?? []
-        let accepted = (codecs.first?["accept_qn"] as? [Any]) ?? []
-        var qualities: [LivePlayQuality] = []
-        for a in accepted {
-            let qn = Int("\(a)") ?? 0
+        for item in dictArray(play["g_qn_desc"]) {
+            let qn = intVal(item["qn"])
             if qn > 0 {
-                qualities.append(LivePlayQuality(name: map[qn] ?? "\(qn)", qn: qn))
+                map[qn] = str(item["desc"]).ifEmpty("\(qn)")
             }
         }
+        // Collect accept_qn across all streams/formats/codecs (not only first).
+        var accepted = Set<Int>()
+        for stream in dictArray(play["stream"]) {
+            for format in dictArray(stream["format"]) {
+                for codec in dictArray(format["codec"]) {
+                    if let arr = codec["accept_qn"] as? [Any] {
+                        for a in arr {
+                            let q = intVal(a)
+                            if q > 0 { accepted.insert(q) }
+                        }
+                    } else if let arr = codec["accept_qn"] as? [Int] {
+                        accepted.formUnion(arr.filter { $0 > 0 })
+                    }
+                }
+            }
+        }
+        var qualities: [LivePlayQuality] = accepted.sorted(by: >).map { qn in
+            LivePlayQuality(name: map[qn] ?? "\(qn)", qn: qn)
+        }
         if qualities.isEmpty {
-            // Fallback ladder (SimpleLive throws; we keep UX soft with known qn).
             qualities = [
                 LivePlayQuality(name: "高清", qn: 250),
                 LivePlayQuality(name: "超清", qn: 400),
@@ -341,42 +476,41 @@ actor BilibiliLiveService {
     }
 
     func getPlayURLs(roomId: String, qn: Int) async throws -> LivePlayResult {
-        // Align with SimpleLive: protocol 0,1 · format flv+fmp4 · prefer H.264.
-        // Also accept ts (format 1) for AVPlayer-friendly HLS.
         let play = try await roomPlayInfo(roomId: roomId, qn: qn, forPlayback: true)
         struct Cand {
             var url: String
             var score: Int
         }
         var cands: [Cand] = []
-        for stream in (play["stream"] as? [[String: Any]]) ?? [] {
-            for format in (stream["format"] as? [[String: Any]]) ?? [] {
-                let formatName = "\(format["format_name"] ?? "")".lowercased()
-                for codec in (format["codec"] as? [[String: Any]]) ?? [] {
-                    let codecName = "\(codec["codec_name"] ?? "")".lowercased()
-                    let baseURL = "\(codec["base_url"] ?? "")"
-                    for info in (codec["url_info"] as? [[String: Any]]) ?? [] {
-                        let host = "\(info["host"] ?? "")"
-                        let extra = "\(info["extra"] ?? "")"
+        for stream in dictArray(play["stream"]) {
+            for format in dictArray(stream["format"]) {
+                let formatName = str(format["format_name"]).lowercased()
+                for codec in dictArray(format["codec"]) {
+                    let codecName = str(codec["codec_name"]).lowercased()
+                    // Skip HEVC on iOS — MobileVLCKit / some devices hard-crash on hevc live.
+                    if codecName.contains("hevc") || codecName.contains("h265") || codecName == "hev1" {
+                        continue
+                    }
+                    let baseURL = str(codec["base_url"])
+                    for info in dictArray(codec["url_info"]) {
+                        let host = str(info["host"])
+                        let extra = str(info["extra"])
                         let full = host + baseURL + extra
-                        guard full.hasPrefix("http") else { continue }
-                        // Prefer HLS / fmp4 for stability; FLV still OK via VLC.
+                        guard full.hasPrefix("http"), URL(string: full) != nil else { continue }
                         var score = 50
                         if full.contains(".m3u8") || formatName == "ts" || formatName == "fmp4" {
                             score += 100
                         }
-                        if formatName == "fmp4" { score += 20 }
-                        if formatName == "ts" { score += 15 }
+                        if formatName == "fmp4" { score += 25 }
+                        if formatName == "ts" { score += 20 }
                         if formatName == "flv" || full.contains(".flv") { score += 10 }
-                        if codecName.contains("avc") || codecName.contains("h264") { score += 30 }
-                        if codecName.contains("hevc") || codecName.contains("h265") { score -= 10 }
-                        if full.contains("mcdn") { score -= 40 }
+                        if codecName.contains("avc") || codecName.contains("h264") { score += 40 }
+                        if full.contains("mcdn") { score -= 50 }
                         cands.append(Cand(url: full, score: score))
                     }
                 }
             }
         }
-        // Sort: score desc, non-mcdn first (SimpleLive mcdn last).
         var picked = cands.sorted { a, b in
             if a.score != b.score { return a.score > b.score }
             let am = a.url.contains("mcdn")
@@ -391,7 +525,7 @@ actor BilibiliLiveService {
         }
 
         if buvid3.isEmpty { await refreshBuvid() }
-        let cookie = await cookieHeaderValue()
+        let cookie = sanitizeHeader(await cookieHeaderValue())
         return LivePlayResult(urls: picked, headers: [
             "Referer": "https://live.bilibili.com",
             "Origin": "https://live.bilibili.com",
@@ -403,23 +537,28 @@ actor BilibiliLiveService {
     // MARK: - Internals
 
     private func mapRoom(_ item: [String: Any]) -> LiveRoomItem? {
-        let roomId = "\(item["roomid"] ?? item["room_id"] ?? "")"
-        guard !roomId.isEmpty else { return nil }
-        var cover = "\(item["cover"] ?? item["user_cover"] ?? item["system_cover"] ?? "")"
-        if cover.hasPrefix("//") { cover = "https:" + cover }
-        if !cover.isEmpty, !cover.contains("@") { cover += "@400w.jpg" }
-        var face = "\(item["face"] ?? item["uface"] ?? "")"
-        if face.hasPrefix("//") { face = "https:" + face }
-        if !face.isEmpty, !face.contains("@") { face += "@100w.jpg" }
+        let roomId = str(item["roomid"]).ifEmpty(str(item["room_id"]))
+        guard !roomId.isEmpty, roomId != "0" else { return nil }
+        let title = stripTags(str(item["title"]))
+        let userName = stripTags(str(item["uname"]))
+        let cover = absURL(
+            str(item["cover"]).ifEmpty(str(item["user_cover"])).ifEmpty(str(item["system_cover"])),
+            sizeSuffix: "@400w.jpg"
+        )
+        let face = absURL(
+            str(item["uface"]).ifEmpty(str(item["face"])),
+            sizeSuffix: "@100w.jpg"
+        )
+        let online = intVal(item["online"]).nonZero ?? intVal(item["attentions"])
         return LiveRoomItem(
             platform: .bilibili,
             roomId: roomId,
-            title: "\(item["title"] ?? "")",
+            title: title,
             cover: cover,
-            userName: "\(item["uname"] ?? "")",
-            online: Int("\(item["online"] ?? 0)") ?? 0,
+            userName: userName,
+            online: online,
             userAvatar: face,
-            categoryName: "\(item["area_name"] ?? item["cate_name"] ?? "")"
+            categoryName: str(item["cate_name"]).ifEmpty(str(item["area_name"]))
         )
     }
 
@@ -428,12 +567,12 @@ actor BilibiliLiveService {
         qn: Int?,
         forPlayback: Bool = false
     ) async throws -> [String: Any] {
+        _ = forPlayback
         try await throttlePlayInfo()
         var params: [String: String] = [
             "room_id": roomId,
             "protocol": "0,1",
-            // 0=flv 1=ts 2=fmp4
-            "format": forPlayback ? "0,1,2" : "0,1,2",
+            "format": "0,1,2",
             "codec": "0,1",
             "platform": "web",
             "dolby": "5",
@@ -441,7 +580,6 @@ actor BilibiliLiveService {
         ]
         if let qn { params["qn"] = "\(qn)" }
 
-        // Retry on 429 like SimpleLive.
         var lastError: Error?
         for attempt in 0..<3 {
             do {
@@ -450,8 +588,8 @@ actor BilibiliLiveService {
                     query: params,
                     signed: false
                 )
-                guard let data = json["data"] as? [String: Any] else {
-                    let msg = "\(json["message"] ?? "播放信息异常")"
+                guard let data = dict(json["data"]) else {
+                    let msg = str(json["message"]).ifEmpty("播放信息异常")
                     throw NetworkError.message(msg)
                 }
                 return data
@@ -481,9 +619,9 @@ actor BilibiliLiveService {
 
     private func roomPlayInfo(roomId: String, qn: Int?, forPlayback: Bool = false) async throws -> [String: Any] {
         let data = try await roomPlayInfoData(roomId: roomId, qn: qn, forPlayback: forPlayback)
-        guard let playurlInfo = data["playurl_info"] as? [String: Any],
-              let playurl = playurlInfo["playurl"] as? [String: Any] else {
-            if (Int("\(data["live_status"] ?? 0)") ?? 0) != 1 {
+        guard let playurlInfo = dict(data["playurl_info"]),
+              let playurl = dict(playurlInfo["playurl"]) else {
+            if intVal(data["live_status"]) != 1 {
                 throw NetworkError.message("当前未开播")
             }
             throw NetworkError.message("播放信息异常")
@@ -495,11 +633,11 @@ actor BilibiliLiveService {
         if buvid3.isEmpty {
             await refreshBuvid()
         }
-        let custom = userCookie
+        let custom = sanitizeHeader(userCookie)
         if custom.isEmpty {
             return "buvid3=\(buvid3);buvid4=\(buvid4);"
         }
-        if custom.contains("buvid3") {
+        if custom.lowercased().contains("buvid3") {
             return custom
         }
         return "\(custom);buvid3=\(buvid3);buvid4=\(buvid4);"
@@ -520,18 +658,21 @@ actor BilibiliLiveService {
                 query: [:],
                 signed: false
             )
-            if let data = json["data"] as? [String: Any] {
-                buvid3 = "\(data["b_3"] ?? "")"
-                buvid4 = "\(data["b_4"] ?? "")"
+            if let data = dict(json["data"]) {
+                buvid3 = str(data["b_3"])
+                buvid4 = str(data["b_4"])
             }
         } catch {
-            buvid3 = ""
-            buvid4 = ""
+            // Keep previous or empty — play may still work without buvid.
         }
     }
 
     private func wbiSign(_ params: [String: String]) async throws -> [String: String] {
         let (img, sub) = try await wbiKeys()
+        guard !img.isEmpty, !sub.isEmpty else {
+            // Without keys, return params unsigned (get_info path doesn't need them).
+            return params
+        }
         let mixin = mixinKey(img + sub)
         var p = params
         p["wts"] = "\(Int(Date().timeIntervalSince1970))"
@@ -556,13 +697,18 @@ actor BilibiliLiveService {
 
     private func wbiKeys() async throws -> (String, String) {
         if !imgKey.isEmpty, !subKey.isEmpty { return (imgKey, subKey) }
-        let json = try await getJSON("https://api.bilibili.com/x/web-interface/nav", query: [:], signed: false)
-        guard let data = json["data"] as? [String: Any],
-              let wbi = data["wbi_img"] as? [String: Any] else {
+        let json = try await getJSON(
+            "https://api.bilibili.com/x/web-interface/nav",
+            query: [:],
+            signed: false,
+            allowBusinessError: true
+        )
+        guard let data = dict(json["data"]),
+              let wbi = dict(data["wbi_img"]) else {
             return ("", "")
         }
-        let imgURL = "\(wbi["img_url"] ?? "")"
-        let subURL = "\(wbi["sub_url"] ?? "")"
+        let imgURL = str(wbi["img_url"])
+        let subURL = str(wbi["sub_url"])
         imgKey = ((imgURL as NSString).lastPathComponent as NSString).deletingPathExtension
         subKey = ((subURL as NSString).lastPathComponent as NSString).deletingPathExtension
         return (imgKey, subKey)
@@ -593,22 +739,52 @@ actor BilibiliLiveService {
         var req = URLRequest(url: final)
         req.timeoutInterval = 25
         let h = await headers()
-        for (k, v) in h { req.setValue(v, forHTTPHeaderField: k) }
+        for (k, v) in h {
+            req.setValue(sanitizeHeader(v), forHTTPHeaderField: k)
+        }
         let (data, resp) = try await URLSession.shared.data(for: req)
         guard let http = resp as? HTTPURLResponse else { throw NetworkError.invalidResponse }
         if http.statusCode == 429 {
             throw NetworkError.message("请求过于频繁 (429)")
         }
         guard (200..<300).contains(http.statusCode) else {
-            throw NetworkError.http(http.statusCode, String(data: data, encoding: .utf8) ?? "")
+            throw NetworkError.http(http.statusCode, String(data: data.prefix(200), encoding: .utf8) ?? "")
         }
-        guard let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+        guard !data.isEmpty else {
+            throw NetworkError.message("空响应")
+        }
+        let obj: Any
+        do {
+            obj = try JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed])
+        } catch {
             throw NetworkError.message("JSON 解析失败")
         }
-        if let code = obj["code"] as? Int, code != 0, !allowBusinessError {
-            let msg = "\(obj["message"] ?? obj["msg"] ?? "错误 \(code)")"
+        guard let dictObj = dict(obj) else {
+            throw NetworkError.message("JSON 格式异常")
+        }
+        if let code = dictObj["code"] as? Int, code != 0, !allowBusinessError {
+            // Also handle NSNumber code
+            let msg = str(dictObj["message"]).ifEmpty(str(dictObj["msg"])).ifEmpty("错误 \(code)")
             throw NetworkError.message(msg)
         }
-        return obj
+        if let codeNum = dictObj["code"] as? NSNumber, codeNum.intValue != 0, !allowBusinessError {
+            let code = codeNum.intValue
+            let msg = str(dictObj["message"]).ifEmpty(str(dictObj["msg"])).ifEmpty("错误 \(code)")
+            throw NetworkError.message(msg)
+        }
+        return dictObj
+    }
+}
+
+// MARK: - Small helpers
+
+private extension Int {
+    /// `self` if > 0, else nil (for online fallback chain).
+    var nonZero: Int? { self > 0 ? self : nil }
+}
+
+private extension String {
+    func ifEmpty(_ alt: String) -> String {
+        trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? alt : self
     }
 }

@@ -740,12 +740,13 @@ final class LiveDanmakuService: ObservableObject {
     }
 
     private func bigEndian32(_ v: Int) -> Data {
-        var be = UInt32(v).bigEndian
+        // Clamp — UInt32(Int) traps on negative / overflow and can abort the process.
+        var be = UInt32(clamping: v).bigEndian
         return Data(bytes: &be, count: 4)
     }
 
     private func bigEndian16(_ v: Int) -> Data {
-        var be = UInt16(v).bigEndian
+        var be = UInt16(clamping: v).bigEndian
         return Data(bytes: &be, count: 2)
     }
 

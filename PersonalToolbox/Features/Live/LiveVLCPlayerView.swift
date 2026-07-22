@@ -110,18 +110,27 @@ struct LiveVLCPlayerView: UIViewRepresentable {
                 currentURL = url
                 LiveAudioSession.reassertCategory()
                 let media = VLCMedia(url: url)
-                // HTTP headers for CDN anti-leech (Huya / Douyu / Kuaishou).
+                // HTTP headers for CDN anti-leech (Huya / Douyu / Kuaishou / Bilibili).
+                // Strip CR/LF — raw newlines in :http-header can hard-crash LibVLC.
+                func clean(_ s: String) -> String {
+                    s.replacingOccurrences(of: "\r", with: "")
+                        .replacingOccurrences(of: "\n", with: " ")
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                }
                 if let ua = headers["User-Agent"], !ua.isEmpty {
-                    media.addOption(":http-user-agent=\(ua)")
+                    media.addOption(":http-user-agent=\(clean(ua))")
                 }
                 if let ref = headers["Referer"], !ref.isEmpty {
-                    media.addOption(":http-referrer=\(ref)")
+                    media.addOption(":http-referrer=\(clean(ref))")
                 }
                 if let origin = headers["Origin"], !origin.isEmpty {
-                    media.addOption(":http-header=Origin: \(origin)")
+                    media.addOption(":http-header=Origin: \(clean(origin))")
                 }
                 if let cookie = headers["Cookie"], !cookie.isEmpty {
-                    media.addOption(":http-header=Cookie: \(cookie)")
+                    // Cap length — huge SESSDATA blobs have been seen to trip VLC option parser.
+                    var c = clean(cookie)
+                    if c.count > 1800 { c = String(c.prefix(1800)) }
+                    media.addOption(":http-header=Cookie: \(c)")
                 }
                 // Live stream: low cache, reconnect friendly.
                 media.addOption(":network-caching=1000")

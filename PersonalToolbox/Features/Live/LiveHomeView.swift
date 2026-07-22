@@ -421,7 +421,7 @@ struct LiveHomeView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 4)
                     }
-                    ForEach(searchResults) { room in
+                    ForEach(Array(searchResults.enumerated()), id: \.element.id) { _, room in
                         let followed = follows.isFollowing(platform: room.platform, roomId: room.roomId)
                         LiveStreamerCard(
                             title: room.title.isEmpty ? room.userName : room.title,

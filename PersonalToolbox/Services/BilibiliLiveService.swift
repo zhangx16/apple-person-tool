@@ -1,6 +1,35 @@
 import Foundation
 import CryptoKit
 
+/// Pure helpers (no actor) so SwiftUI can call without hopping isolation.
+enum LiveBilibiliIDs {
+    /// Extract room id from `live.bilibili.com/123` / pure digits / query params.
+    static func extractRoomId(from text: String) -> String? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty { return nil }
+        if trimmed.unicodeScalars.allSatisfy({ CharacterSet.decimalDigits.contains($0) }) {
+            return trimmed
+        }
+        let patterns = [
+            #"live\.bilibili\.com/(?:h5/)?(\d+)"#,
+            #"bilibili\.com/live/(\d+)"#,
+            #"[?&]roomid=(\d+)"#,
+            #"[?&]room_id=(\d+)"#
+        ]
+        for pattern in patterns {
+            guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else {
+                continue
+            }
+            let range = NSRange(trimmed.startIndex..<trimmed.endIndex, in: trimmed)
+            if let m = regex.firstMatch(in: trimmed, range: range), m.numberOfRanges > 1,
+               let r = Range(m.range(at: 1), in: trimmed) {
+                return String(trimmed[r])
+            }
+        }
+        return nil
+    }
+}
+
 /// Bilibili live APIs ported from SimpleLive `bilibili_site.dart`
 /// (https://github.com/xiaoyaocz/dart_simple_live).
 ///
@@ -50,30 +79,9 @@ actor BilibiliLiveService {
 
     // MARK: - Helpers
 
-    /// Extract room id from `live.bilibili.com/123` / pure digits.
+    /// Back-compat wrapper.
     nonisolated static func extractRoomId(from text: String) -> String? {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty { return nil }
-        if trimmed.unicodeScalars.allSatisfy({ CharacterSet.decimalDigits.contains($0) }) {
-            return trimmed
-        }
-        let patterns = [
-            #"live\.bilibili\.com/(?:h5/)?(\d+)"#,
-            #"bilibili\.com/live/(\d+)"#,
-            #"[?&]roomid=(\d+)"#,
-            #"[?&]room_id=(\d+)"#
-        ]
-        for pattern in patterns {
-            guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else {
-                continue
-            }
-            let range = NSRange(trimmed.startIndex..<trimmed.endIndex, in: trimmed)
-            if let m = regex.firstMatch(in: trimmed, range: range), m.numberOfRanges > 1,
-               let r = Range(m.range(at: 1), in: trimmed) {
-                return String(trimmed[r])
-            }
-        }
-        return nil
+        LiveBilibiliIDs.extractRoomId(from: text)
     }
 
     /// Safe string from heterogeneous JSON values (NSNumber / NSNull / nested).
@@ -219,7 +227,7 @@ actor BilibiliLiveService {
 
         // Pure room id / short id: return a lightweight stub (detail loads on enter).
         // Avoid getRoomDetail here — it does WBI + danmu and used to make search feel like a crash when it failed hard.
-        if let rid = Self.extractRoomId(from: trimmed),
+        if let rid = LiveBilibiliIDs.extractRoomId(from: trimmed),
            rid.unicodeScalars.allSatisfy({ CharacterSet.decimalDigits.contains($0) }) {
             return [
                 LiveRoomItem(

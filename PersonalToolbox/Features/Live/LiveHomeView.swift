@@ -143,7 +143,6 @@ struct LiveHomeView: View {
     // MARK: - Top chrome
 
     @Namespace private var modeNamespace
-    @Namespace private var platformNamespace
 
     private var topChrome: some View {
         VStack(spacing: 14) {
@@ -229,7 +228,8 @@ struct LiveHomeView: View {
                                             .strokeBorder(AppStroke.highlight, lineWidth: 0.5)
                                     }
                                     .shadow(color: LiveUI.brand(p).opacity(0.35), radius: 10, y: 3)
-                                    .matchedGeometryEffect(id: "platformPill", in: platformNamespace)
+                                // Avoid matchedGeometryEffect here — multi-pill + TabView has
+                                // caused intermittent hard crashes on some iOS 17 builds.
                             } else {
                                 Capsule()
                                     .fill(Color(.secondarySystemGroupedBackground))
@@ -462,8 +462,8 @@ struct LiveHomeView: View {
             searchError = "请输入搜索关键词"
             return
         }
-        // B站：搜索框也可贴直播间链接，归一成 room id。
-        if platform == .bilibili, let rid = BilibiliLiveService.extractRoomId(from: kw) {
+        // B站：搜索框也可贴直播间链接，归一成 room id（纯函数，不碰 actor）。
+        if platform == .bilibili, let rid = LiveBilibiliIDs.extractRoomId(from: kw) {
             kw = rid
         }
         searchFocused = false
@@ -471,7 +471,12 @@ struct LiveHomeView: View {
         searchError = nil
         defer { isSearching = false }
         do {
-            searchResults = try await LiveSiteRouter.search(platform: platform, keyword: kw, page: 1)
+            // Isolate network work; hop back to MainActor for UI state only.
+            let plat = platform
+            let query = kw
+            let rooms = try await LiveSiteRouter.search(platform: plat, keyword: query, page: 1)
+            guard !Task.isCancelled else { return }
+            searchResults = rooms
             if searchResults.isEmpty {
                 searchError = "无结果，试试房间号直达"
             }
@@ -497,7 +502,7 @@ struct LiveHomeView: View {
         }
         // B站支持粘贴 live.bilibili.com 链接或纯房间号。
         let rid: String
-        if platform == .bilibili, let extracted = BilibiliLiveService.extractRoomId(from: raw) {
+        if platform == .bilibili, let extracted = LiveBilibiliIDs.extractRoomId(from: raw) {
             rid = extracted
         } else {
             rid = raw

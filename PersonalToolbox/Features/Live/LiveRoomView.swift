@@ -46,9 +46,22 @@ final class LiveRoomViewModel: ObservableObject {
         self.room = room
         webURL = URL(string: defaultWebURL)
         // Restore last successful engine for this platform.
-        switch LivePlayPrefs.preferred(for: room.platform) {
-        case .web: playMode = .web
-        case .native: playMode = .native
+        // B站默认网页：H5 播放更稳；应用内走 AVPlayer(HLS) 而非 VLC（VLC 易崩）。
+        if room.platform == .bilibili {
+            let key = "livePlayMode.bilibili"
+            if UserDefaults.standard.string(forKey: key) == nil {
+                playMode = .web
+            } else {
+                switch LivePlayPrefs.preferred(for: .bilibili) {
+                case .web: playMode = .web
+                case .native: playMode = .native
+                }
+            }
+        } else {
+            switch LivePlayPrefs.preferred(for: room.platform) {
+            case .web: playMode = .web
+            case .native: playMode = .native
+            }
         }
     }
 
@@ -62,7 +75,8 @@ final class LiveRoomViewModel: ObservableObject {
 
     private var defaultWebURL: String {
         switch room.platform {
-        case .bilibili: return "https://live.bilibili.com/\(room.roomId)"
+        // H5 页比桌面站更轻，WKWebView 里更不容易被站点脚本拖垮。
+        case .bilibili: return "https://live.bilibili.com/h5/\(room.roomId)"
         case .huya: return "https://m.huya.com/\(room.roomId)"
         case .douyu: return "https://m.douyu.com/\(room.roomId)"
         case .douyin: return "https://live.douyin.com/\(room.roomId)"
@@ -214,7 +228,7 @@ final class LiveRoomViewModel: ObservableObject {
 
     private func mobileWebURL(for d: LiveRoomDetail) -> String {
         switch d.platform {
-        case .bilibili: return "https://live.bilibili.com/\(d.roomId)"
+        case .bilibili: return "https://live.bilibili.com/h5/\(d.roomId)"
         case .huya: return "https://m.huya.com/\(d.roomId)"
         case .douyu: return "https://m.douyu.com/\(d.roomId)"
         case .douyin: return "https://live.douyin.com/\(d.roomId)"
@@ -259,7 +273,28 @@ final class LiveRoomViewModel: ObservableObject {
                       let scheme = url.scheme?.lowercased(),
                       scheme == "http" || scheme == "https" else { continue }
                 let isFLV = trimmedURL.lowercased().contains(".flv")
-                // B 站 HEVC 线路在部分机型 + MobileVLCKit 上会直接 abort，已在 service 层过滤。
+                let lower = trimmedURL.lowercased()
+                let isHLS = lower.contains(".m3u8") || lower.contains("/hls/") || lower.contains("format=ts")
+                    || lower.contains("fmp4")
+
+                // B 站：坚决避开 VLC（多机型硬崩）。只用 AVPlayer 播 HLS；FLV 跳过。
+                if room.platform == .bilibili {
+                    if isFLV { continue }
+                    statusText = "AVPlayer 连接 \(quality.name)…"
+                    // Clear any prior VLC surface state before attaching AVPlayer.
+                    clearStream()
+                    if await startAVPlayer(url: url, headers: result.headers) {
+                        streamIsFLV = false
+                        streamURL = url
+                        streamHeaders = result.headers
+                        playMode = .native
+                        errorMessage = nil
+                        statusText = "播放中 · \(quality.name) · HLS"
+                        return true
+                    }
+                    continue
+                }
+
                 statusText = isFLV ? "VLC 播放 FLV…" : "连接 \(quality.name)…"
 
                 #if canImport(MobileVLCKit)
@@ -273,7 +308,7 @@ final class LiveRoomViewModel: ObservableObject {
                 streamURL = url
                 playMode = .native
                 errorMessage = nil
-                statusText = "播放中 · \(quality.name)" + (isFLV ? " · FLV" : " · HLS")
+                statusText = "播放中 · \(quality.name)" + (isFLV ? " · FLV" : (isHLS ? " · HLS" : ""))
                 return true
                 #else
                 if isFLV { continue }
@@ -1119,8 +1154,16 @@ struct LivePlayerSurface: View {
         case .native:
             if let url = vm.streamURL {
                 #if canImport(MobileVLCKit)
-                LiveVLCPlayerView(url: url, headers: vm.streamHeaders, isPlaying: true)
-                    .id(url.absoluteString)
+                // Prefer AVPlayer when the VM already attached one (B站 HLS path).
+                // Never force VLC on a URL that was opened with AVPlayer — LibVLC has
+                // hard-crashed on bilibili CDN streams on multiple devices.
+                if let p = vm.systemPlayer {
+                    VideoPlayer(player: p)
+                        .id(url.absoluteString + "-av")
+                } else {
+                    LiveVLCPlayerView(url: url, headers: vm.streamHeaders, isPlaying: true)
+                        .id(url.absoluteString + "-vlc")
+                }
                 #else
                 if let p = vm.systemPlayer {
                     VideoPlayer(player: p)
@@ -1324,13 +1367,21 @@ struct LiveRoomWebView: UIViewRepresentable {
         let config = WKWebViewConfiguration()
         config.allowsInlineMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = []
+        config.allowsPictureInPictureMediaPlayback = true
         if #available(iOS 15.0, *) {
             config.defaultWebpagePreferences.allowsContentJavaScript = true
+        }
+        // Isolate process — a site crash should not take down the whole app.
+        if #available(iOS 14.0, *) {
+            let pool = WKProcessPool()
+            config.processPool = pool
         }
         let web = WKWebView(frame: .zero, configuration: config)
         web.navigationDelegate = context.coordinator
         web.scrollView.isScrollEnabled = true
         web.allowsBackForwardNavigationGestures = true
+        web.isOpaque = false
+        web.backgroundColor = .black
         web.customUserAgent =
             "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
         context.coordinator.loaded = url

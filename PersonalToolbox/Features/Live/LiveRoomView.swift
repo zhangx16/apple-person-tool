@@ -62,6 +62,7 @@ final class LiveRoomViewModel: ObservableObject {
 
     private var defaultWebURL: String {
         switch room.platform {
+        case .bilibili: return "https://live.bilibili.com/\(room.roomId)"
         case .huya: return "https://m.huya.com/\(room.roomId)"
         case .douyu: return "https://m.douyu.com/\(room.roomId)"
         case .douyin: return "https://live.douyin.com/\(room.roomId)"
@@ -193,6 +194,10 @@ final class LiveRoomViewModel: ObservableObject {
             let msg = error.localizedDescription
             if room.platform == .douyin, msg.contains("Cookie") || msg.contains("风控") || msg.contains("登录") {
                 errorMessage = msg + " · 可在设置配置抖音直播 Cookie"
+            } else if room.platform == .bilibili,
+                      msg.contains("Cookie") || msg.contains("登录") || msg.contains("-352")
+                        || msg.contains("风控") || msg.contains("未获取到") {
+                errorMessage = msg + " · 可在设置配置 B站 Cookie（SESSDATA）"
             } else {
                 errorMessage = msg
             }
@@ -209,6 +214,7 @@ final class LiveRoomViewModel: ObservableObject {
 
     private func mobileWebURL(for d: LiveRoomDetail) -> String {
         switch d.platform {
+        case .bilibili: return "https://live.bilibili.com/\(d.roomId)"
         case .huya: return "https://m.huya.com/\(d.roomId)"
         case .douyu: return "https://m.douyu.com/\(d.roomId)"
         case .douyin: return "https://live.douyin.com/\(d.roomId)"
@@ -999,6 +1005,7 @@ struct LiveRoomView: View {
 enum LiveUI {
     static func brand(_ p: LivePlatform) -> Color {
         switch p {
+        case .bilibili: return Color(red: 0.0, green: 0.63, blue: 0.84) // #00A1D6
         case .huya: return Color(red: 1.0, green: 0.55, blue: 0.0)
         case .douyu: return Color(red: 1.0, green: 0.42, blue: 0.0)
         case .douyin: return Color(red: 0.12, green: 0.12, blue: 0.14)

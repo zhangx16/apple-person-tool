@@ -1,6 +1,8 @@
 import Foundation
 
 enum LivePlatform: String, CaseIterable, Identifiable, Hashable, Codable {
+    /// 哔哩哔哩直播（SimpleLive `bilibili_site.dart`）
+    case bilibili
     case huya
     case douyu
     case douyin
@@ -10,6 +12,7 @@ enum LivePlatform: String, CaseIterable, Identifiable, Hashable, Codable {
 
     var title: String {
         switch self {
+        case .bilibili: return "B站"
         case .huya: return "虎牙"
         case .douyu: return "斗鱼"
         case .douyin: return "抖音"
@@ -19,6 +22,7 @@ enum LivePlatform: String, CaseIterable, Identifiable, Hashable, Codable {
 
     var systemImage: String {
         switch self {
+        case .bilibili: return "play.rectangle.on.rectangle.fill"
         case .huya: return "gamecontroller.fill"
         case .douyu: return "tv.fill"
         case .douyin: return "music.note"
@@ -28,6 +32,7 @@ enum LivePlatform: String, CaseIterable, Identifiable, Hashable, Codable {
 
     var brandAssetName: String {
         switch self {
+        case .bilibili: return "IconLiveBilibili"
         case .huya: return "IconLiveHuya"
         case .douyu: return "IconLiveDouyu"
         case .douyin: return "IconLiveDouyinLive"
@@ -39,12 +44,14 @@ enum LivePlatform: String, CaseIterable, Identifiable, Hashable, Codable {
     var isFLVPrimary: Bool {
         switch self {
         case .huya, .douyu, .kuaishou: return true
-        case .douyin: return false
+        // B 站 / 抖音可出 HLS，VLC 仍可播 FLV。
+        case .bilibili, .douyin: return false
         }
     }
 
     var webHostHint: String {
         switch self {
+        case .bilibili: return "live.bilibili.com"
         case .huya: return "huya.com"
         case .douyu: return "douyu.com"
         case .douyin: return "live.douyin.com"
@@ -149,6 +156,7 @@ struct LivePlayResult: Hashable {
 enum LiveSiteRouter {
     static func search(platform: LivePlatform, keyword: String, page: Int = 1) async throws -> [LiveRoomItem] {
         switch platform {
+        case .bilibili: return try await BilibiliLiveService.shared.searchRooms(keyword: keyword, page: page)
         case .huya: return try await HuyaLiveService.shared.searchRooms(keyword: keyword, page: page)
         case .douyu: return try await DouyuLiveService.shared.searchRooms(keyword: keyword, page: page)
         case .douyin: return try await DouyinLiveService.shared.searchRooms(keyword: keyword, page: page)
@@ -162,6 +170,7 @@ enum LiveSiteRouter {
         }
         let detail: LiveRoomDetail
         switch platform {
+        case .bilibili: detail = try await BilibiliLiveService.shared.getRoomDetail(roomId: roomId)
         case .huya: detail = try await HuyaLiveService.shared.getRoomDetail(roomId: roomId)
         case .douyu: detail = try await DouyuLiveService.shared.getRoomDetail(roomId: roomId)
         case .douyin: detail = try await DouyinLiveService.shared.getRoomDetail(roomId: roomId)
@@ -173,6 +182,7 @@ enum LiveSiteRouter {
 
     static func playQualities(detail: LiveRoomDetail) async throws -> [LivePlayQuality] {
         switch detail.platform {
+        case .bilibili: return try await BilibiliLiveService.shared.getPlayQualities(detail: detail)
         case .huya: return try await HuyaLiveService.shared.getPlayQualities(detail: detail)
         case .douyu: return try await DouyuLiveService.shared.getPlayQualities(detail: detail)
         case .douyin: return try await DouyinLiveService.shared.getPlayQualities(detail: detail)
@@ -182,6 +192,8 @@ enum LiveSiteRouter {
 
     static func playURLs(detail: LiveRoomDetail, quality: LivePlayQuality) async throws -> LivePlayResult {
         switch detail.platform {
+        case .bilibili:
+            return try await BilibiliLiveService.shared.getPlayURLs(detail: detail, quality: quality)
         case .huya:
             return try await HuyaLiveService.shared.getPlayURLs(detail: detail, quality: quality)
         case .douyu:

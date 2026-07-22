@@ -846,7 +846,7 @@ struct BilibiliDownloadSettingsPage: View {
             } header: {
                 Text("登录 Cookie（BilibiliDown 同思路）")
             } footer: {
-                Text("浏览器登录 bilibili.com 后，复制 Cookie（建议含 SESSDATA、bili_jct、DedeUserID）。用于下载 Tab「B站」本机解析高清；不填也可下公开低清。")
+                Text("浏览器登录 bilibili.com 后，复制 Cookie（建议含 SESSDATA、bili_jct、DedeUserID）。用于：① 下载 Tab「B站」本机解析高清；② 直播 Tab「B站」拉流 / 弹幕。不填也可试用公开清晰度。")
             }
             Section("说明") {
                 Text("参考 nICEnnnnnnnLee/BilibiliDown 的 Cookie 登录与 playurl 拉流；App 内优先单文件流，无需桌面 ffmpeg。")

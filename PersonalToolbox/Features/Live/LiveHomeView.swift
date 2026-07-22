@@ -256,7 +256,10 @@ struct LiveHomeView: View {
             HStack(spacing: 10) {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(.secondary)
-                TextField("搜索主播 / 房间号", text: $keyword)
+                TextField(
+                    platform == .bilibili ? "搜索主播 / 房间号 / live.bilibili.com 链接" : "搜索主播 / 房间号",
+                    text: $keyword
+                )
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .submitLabel(.search)
@@ -454,10 +457,14 @@ struct LiveHomeView: View {
     }
 
     private func runSearch() async {
-        let kw = keyword.trimmingCharacters(in: .whitespacesAndNewlines)
+        var kw = keyword.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !kw.isEmpty else {
             searchError = "请输入搜索关键词"
             return
+        }
+        // B站：搜索框也可贴直播间链接，归一成 room id。
+        if platform == .bilibili, let rid = BilibiliLiveService.extractRoomId(from: kw) {
+            kw = rid
         }
         searchFocused = false
         isSearching = true
@@ -475,16 +482,25 @@ struct LiveHomeView: View {
             var msg = error.localizedDescription
             if platform == .douyin {
                 msg += " · 可到「设置 → 抖音直播」配置 Cookie"
+            } else if platform == .bilibili {
+                msg += " · 可到「设置 → B站 Cookie」配置 SESSDATA"
             }
             searchError = msg
         }
     }
 
     private func openRoomIdDirect() {
-        let rid = roomIdInput.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !rid.isEmpty else {
+        let raw = roomIdInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !raw.isEmpty else {
             searchError = "请输入房间号"
             return
+        }
+        // B站支持粘贴 live.bilibili.com 链接或纯房间号。
+        let rid: String
+        if platform == .bilibili, let extracted = BilibiliLiveService.extractRoomId(from: raw) {
+            rid = extracted
+        } else {
+            rid = raw
         }
         searchError = nil
         openRoom(

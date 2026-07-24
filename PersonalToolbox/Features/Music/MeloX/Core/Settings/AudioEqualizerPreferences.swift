@@ -13,7 +13,7 @@ enum AudioEqualizerBand: Int, CaseIterable, Identifiable, Sendable {
     case khz8
     case khz16
 
-    nonisolated static let count = khz16.rawValue + 1
+    static let count = khz16.rawValue + 1
 
     var id: Int { rawValue }
 
@@ -142,6 +142,7 @@ enum AudioEqualizerPreset: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
+@MainActor
 @Observable
 final class AudioEqualizerPreferences {
     nonisolated static let preampRange = -12.0...6.0

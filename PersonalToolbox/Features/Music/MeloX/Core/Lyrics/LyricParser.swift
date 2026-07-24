@@ -49,7 +49,7 @@ enum LyricParser {
 
     static func parseLRC(_ source: String) -> [LyricLine] {
         let lines = source
-            .split(whereSeparator: \Character.isNewline)
+            .split(whereSeparator: { $0.isNewline })
             .flatMap { parseLRCLines($0) }
             .sorted { $0.time < $1.time }
         return inferringDurations(in: lines)
@@ -57,7 +57,7 @@ enum LyricParser {
 
     static func parseYRC(_ source: String) -> [LyricLine] {
         source
-            .split(whereSeparator: \Character.isNewline)
+            .split(whereSeparator: { $0.isNewline })
             .compactMap { rawLine in
                 let line = String(rawLine).trimmingCharacters(in: .whitespacesAndNewlines)
                 if line.first == "{" {

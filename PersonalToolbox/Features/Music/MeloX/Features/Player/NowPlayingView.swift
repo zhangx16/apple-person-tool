@@ -39,50 +39,12 @@ struct NowPlayingView: View {
                 }
 
                 if let song = player.currentSong {
-                    if usesFullScreenTextPV {
-                        TextPVFullScreenPlayerView(
-                            page: $page,
-                            showsControls: $showsLyricsControls,
-                            song: song,
-                            lyrics: lyrics,
-                            errorMessage: lyricError,
-                            highlightedLyricID: highlightedLyricID,
-                            onDismiss: { dismiss() },
-                            onToggleInterface: toggleLyricsControls
-                        )
-                        .transition(.opacity)
-                    } else if proxy.size.width > proxy.size.height {
-                        NowPlayingLandscapeView(
-                            page: $page,
-                            showsLyricsControls: $showsLyricsControls,
-                            song: song,
-                            lyrics: lyrics,
-                            lyricError: lyricError,
-                            highlightedLyricID: highlightedLyricID,
-                            artworkNamespace: pageArtworkNamespace,
-                            onDismiss: { dismiss() }
-                        )
-                    } else {
-                        portraitContent(for: song)
-                    }
+                    // Xcode 15.4 compatibility build: portrait player only
+                    // (advanced TextPV / landscape / skyline lyrics excluded).
+                    portraitContent(for: song)
                 } else {
                     ContentUnavailableView("没有正在播放的歌曲", systemImage: "music.note")
                         .foregroundStyle(.white)
-                }
-
-                if usesFullScreenTextPV,
-                   showsTextPVLandscapeSuggestion,
-                   proxy.size.width <= proxy.size.height {
-                    Label("建议切换至横屏观看文字PV", systemImage: "rectangle.landscape.rotate")
-                        .font(.subheadline.weight(.semibold))
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 11)
-                        .background(.regularMaterial, in: .capsule)
-                        .shadow(color: .black.opacity(0.24), radius: 12, y: 5)
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                        .safeAreaPadding(.top, 58)
-                        .accessibilityLabel("建议切换至横屏观看文字PV")
                 }
             }
         }
@@ -229,20 +191,19 @@ struct NowPlayingView: View {
                 )
                 .transition(.opacity)
             case .lyrics:
-                NowPlayingLyricsPage(
-                    song: song,
-                    lyrics: lyrics,
-                    errorMessage: lyricError,
-                    highlightedLyricID: highlightedLyricID,
-                    isInterfaceHidden: hidesLyricsControls,
-                    artworkNamespace: pageArtworkNamespace,
-                    onToggleInterface: toggleLyricsControls,
-                    onShowDetails: showDetails
-                )
-                .accessibilityAction(
-                    named: showsLyricsControls ? "隐藏播放器控制" : "显示播放器控制"
-                ) {
-                    toggleLyricsControls()
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 10) {
+                        if let lyricError {
+                            Text(lyricError).foregroundStyle(.secondary)
+                        }
+                        ForEach(lyrics) { line in
+                            Text(line.text)
+                                .font(.body.weight(line.id == highlightedLyricID ? .bold : .regular))
+                                .foregroundStyle(line.id == highlightedLyricID ? Color.white : Color.white.opacity(0.55))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+                    .padding()
                 }
                 .transition(.opacity)
             case .queue:

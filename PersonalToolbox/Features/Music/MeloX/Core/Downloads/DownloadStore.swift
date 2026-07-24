@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 
+@MainActor
 @Observable
 final class DownloadStore {
     private(set) var downloads: [DownloadedSong]

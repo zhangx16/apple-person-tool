@@ -6,6 +6,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		000000000000000000008201 /* AudioEqualizerStubs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008200 /* AudioEqualizerStubs.swift */; };
 		000000000000000000008137 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 000000000000000000008136 /* GRDB */; };
 		000000000000000000008001 /* MusicRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008000 /* MusicRootView.swift */; };
 		000000000000000000008003 /* MeloXCompatibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008002 /* MeloXCompatibility.swift */; };
@@ -287,6 +288,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		000000000000000000008200 /* AudioEqualizerStubs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Playback/AudioEqualizerStubs.swift; sourceTree = "<group>"; };
 		000000000000000000008000 /* MusicRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicRootView.swift; sourceTree = "<group>"; };
 		000000000000000000008002 /* MeloXCompatibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloXCompatibility.swift; sourceTree = "<group>"; };
 		000000000000000000008004 /* AppLaunchExperience.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/App/AppLaunchExperience.swift; sourceTree = "<group>"; };
@@ -574,6 +576,7 @@
 			isa = PBXGroup;
 			children = (
 				000000000000000000008000 /* MusicRootView.swift */,
+				000000000000000000008200 /* AudioEqualizerStubs.swift */,
 				000000000000000000008002 /* MeloXCompatibility.swift */,
 				000000000000000000008004 /* AppLaunchExperience.swift */,
 				000000000000000000008006 /* AppNavigation.swift */,
@@ -1184,6 +1187,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				000000000000000000008201 /* AudioEqualizerStubs.swift in Sources */,
+				000000000000000000008061 /* TextPVPreferences.swift in Sources */,
+				00000000000000000000805F /* SkylineLyricsPreferences.swift in Sources */,
+				000000000000000000008051 /* AudioEqualizerPreferences.swift in Sources */,
 				000000000000000000008001 /* MusicRootView.swift in Sources */,
 				000000000000000000008003 /* MeloXCompatibility.swift in Sources */,
 				000000000000000000008005 /* AppLaunchExperience.swift in Sources */,
@@ -1213,9 +1220,6 @@
 				000000000000000000008035 /* NeteaseAPI.swift in Sources */,
 				000000000000000000008037 /* NeteaseDirectClient.swift in Sources */,
 				000000000000000000008039 /* NeteaseSocialAPI.swift in Sources */,
-				00000000000000000000803B /* AudioEqualizerDSP.swift in Sources */,
-				00000000000000000000803D /* AudioEqualizerProcessor.swift in Sources */,
-				00000000000000000000803F /* AudioEqualizerRenderState.swift in Sources */,
 				000000000000000000008041 /* AudioPlaybackEngine.swift in Sources */,
 				000000000000000000008043 /* NowPlayingSession.swift in Sources */,
 				000000000000000000008045 /* PlaybackHistoryRecorder.swift in Sources */,
@@ -1224,15 +1228,12 @@
 				00000000000000000000804B /* PlaybackQueue.swift in Sources */,
 				00000000000000000000804D /* PlaybackSource.swift in Sources */,
 				00000000000000000000804F /* PlayerStore.swift in Sources */,
-				000000000000000000008051 /* AudioEqualizerPreferences.swift in Sources */,
 				000000000000000000008053 /* LyricsRefreshRate.swift in Sources */,
 				000000000000000000008055 /* LyricsStyle.swift in Sources */,
 				000000000000000000008057 /* MeloXSettings.swift in Sources */,
 				000000000000000000008059 /* NavigationPreferences.swift in Sources */,
 				00000000000000000000805B /* PlayerScreenAwakeMode.swift in Sources */,
 				00000000000000000000805D /* PlayerVolumeControlMode.swift in Sources */,
-				00000000000000000000805F /* SkylineLyricsPreferences.swift in Sources */,
-				000000000000000000008061 /* TextPVPreferences.swift in Sources */,
 				000000000000000000008063 /* ScreenAwakeCoordinator.swift in Sources */,
 				000000000000000000008065 /* AppUpdateService.swift in Sources */,
 				000000000000000000008067 /* AccountHomeContent.swift in Sources */,
@@ -1255,55 +1256,16 @@
 				000000000000000000008089 /* NeteasePrivateMessagesView.swift in Sources */,
 				00000000000000000000808B /* OnboardingPages.swift in Sources */,
 				00000000000000000000808D /* OnboardingView.swift in Sources */,
-				00000000000000000000808F /* AppleMusicLyricsView.swift in Sources */,
 				000000000000000000008091 /* DeterministicRandom.swift in Sources */,
-				000000000000000000008093 /* EVALyricCompositionView.swift in Sources */,
-				000000000000000000008095 /* EVALyricsLatinLayouts.swift in Sources */,
-				000000000000000000008097 /* EVALyricsLayout.swift in Sources */,
-				000000000000000000008099 /* EVALyricsLongLayouts.swift in Sources */,
-				00000000000000000000809B /* EVALyricsShortLayouts.swift in Sources */,
-				00000000000000000000809D /* EVALyricsView.swift in Sources */,
-				00000000000000000000809F /* LyricGlowTextRenderer.swift in Sources */,
 				0000000000000000000080A1 /* LyricsTypography.swift in Sources */,
 				0000000000000000000080A3 /* MiniPlayerView.swift in Sources */,
 				0000000000000000000080A5 /* NowPlayingArtworkPage.swift in Sources */,
 				0000000000000000000080A7 /* NowPlayingBackground.swift in Sources */,
 				0000000000000000000080A9 /* NowPlayingControls.swift in Sources */,
-				0000000000000000000080AB /* NowPlayingLandscapeView.swift in Sources */,
-				0000000000000000000080AD /* NowPlayingLyricsPage.swift in Sources */,
 				0000000000000000000080AF /* NowPlayingQueuePage.swift in Sources */,
 				0000000000000000000080B1 /* NowPlayingSongDetailsPage.swift in Sources */,
 				0000000000000000000080B3 /* NowPlayingView.swift in Sources */,
 				0000000000000000000080B5 /* QueueView.swift in Sources */,
-				0000000000000000000080B7 /* SkylineAmbientLyricsView.swift in Sources */,
-				0000000000000000000080B9 /* SkylineCentralLyricsView.swift in Sources */,
-				0000000000000000000080BB /* SkylineLyricsView.swift in Sources */,
-				0000000000000000000080BD /* SynchronizedLyricText.swift in Sources */,
-				0000000000000000000080BF /* TextPVAtmosphericEffects.swift in Sources */,
-				0000000000000000000080C1 /* TextPVBackgroundEffects.swift in Sources */,
-				0000000000000000000080C3 /* TextPVBatchedEffectCanvas.swift in Sources */,
-				0000000000000000000080C5 /* TextPVCanvasSupport.swift in Sources */,
-				0000000000000000000080C7 /* TextPVCanvasSymbols.swift in Sources */,
-				0000000000000000000080C9 /* TextPVCardTextEffects.swift in Sources */,
-				0000000000000000000080CB /* TextPVCyberCrimeEffects.swift in Sources */,
-				0000000000000000000080CD /* TextPVEffectRenderer.swift in Sources */,
-				0000000000000000000080CF /* TextPVFullScreenPlayerView.swift in Sources */,
-				0000000000000000000080D1 /* TextPVHUDTextEffects.swift in Sources */,
-				0000000000000000000080D3 /* TextPVLyricsView.swift in Sources */,
-				0000000000000000000080D5 /* TextPVOverlayEffects.swift in Sources */,
-				0000000000000000000080D7 /* TextPVPathCache.swift in Sources */,
-				0000000000000000000080D9 /* TextPVPlayfulEffects.swift in Sources */,
-				0000000000000000000080DB /* TextPVPrimaryTextEffects.swift in Sources */,
-				0000000000000000000080DD /* TextPVRenderContext.swift in Sources */,
-				0000000000000000000080DF /* TextPVStageView.swift in Sources */,
-				0000000000000000000080E1 /* TextPVStaggeredTextEffects.swift in Sources */,
-				0000000000000000000080E3 /* TextPVStructuralEffects.swift in Sources */,
-				0000000000000000000080E5 /* TextPVStyleMenu.swift in Sources */,
-				0000000000000000000080E7 /* TextPVTemplate.swift in Sources */,
-				0000000000000000000080E9 /* TextPVTemplateCatalogDramatic.swift in Sources */,
-				0000000000000000000080EB /* TextPVTemplateCatalogFoundation.swift in Sources */,
-				0000000000000000000080ED /* TextPVTemplateCatalogPlayful.swift in Sources */,
-				0000000000000000000080EF /* TimedLyricTextBuilder.swift in Sources */,
 				0000000000000000000080F1 /* AddToPlaylistSheet.swift in Sources */,
 				0000000000000000000080F3 /* PlaylistDetailContent.swift in Sources */,
 				0000000000000000000080F5 /* PlaylistDetailView.swift in Sources */,
@@ -1313,14 +1275,11 @@
 				0000000000000000000080FD /* SearchView.swift in Sources */,
 				0000000000000000000080FF /* AboutView.swift in Sources */,
 				000000000000000000008101 /* ContentSettingsView.swift in Sources */,
-				000000000000000000008103 /* EqualizerSettingsView.swift in Sources */,
 				000000000000000000008105 /* GeneralSettingsView.swift in Sources */,
 				000000000000000000008107 /* MeloXSettingsView.swift in Sources */,
 				000000000000000000008109 /* NeteaseLoginView.swift in Sources */,
 				00000000000000000000810B /* PlayerSettingsView.swift in Sources */,
 				00000000000000000000810D /* SettingsAccountSection.swift in Sources */,
-				00000000000000000000810F /* SkylineLyricsSettingsView.swift in Sources */,
-				000000000000000000008111 /* TextPVSettingsView.swift in Sources */,
 				000000000000000000008113 /* NeteasePrivateMessageView.swift in Sources */,
 				000000000000000000008115 /* NeteaseSharePresentation.swift in Sources */,
 				000000000000000000008117 /* NeteaseShareSheet.swift in Sources */,
@@ -1524,7 +1483,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 76;
+				CURRENT_PROJECT_VERSION = 77;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				CODE_SIGN_ENTITLEMENTS = PersonalToolbox/PersonalToolbox.entitlements;
@@ -1551,7 +1510,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 76;
+				CURRENT_PROJECT_VERSION = 77;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				CODE_SIGN_ENTITLEMENTS = PersonalToolbox/PersonalToolbox.entitlements;
@@ -1578,7 +1537,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 76;
+				CURRENT_PROJECT_VERSION = 77;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
@@ -1604,7 +1563,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 76;
+				CURRENT_PROJECT_VERSION = 77;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;

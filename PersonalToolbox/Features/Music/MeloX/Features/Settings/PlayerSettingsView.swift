@@ -27,7 +27,7 @@ struct PlayerSettingsView: View {
                 }
 
                 NavigationLink {
-                    EqualizerSettingsView()
+                    Text("均衡器暂不可用（兼容构建）").foregroundStyle(.secondary)
                 } label: {
                     LabeledContent(
                         "均衡器",

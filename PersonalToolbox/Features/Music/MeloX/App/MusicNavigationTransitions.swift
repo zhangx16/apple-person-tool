@@ -80,8 +80,6 @@ private struct MusicNavigationTransitionModifier: ViewModifier {
     @ViewBuilder
     func body(content: Content) -> some View {
         // Zoom navigation transitions require iOS 18+; use default push on iOS 17.
-        _ = route
-        _ = namespace
         content
     }
 }

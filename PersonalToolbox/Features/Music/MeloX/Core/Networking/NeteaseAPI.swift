@@ -45,6 +45,7 @@ enum APIError: LocalizedError {
     }
 }
 
+@MainActor
 @Observable
 final class NeteaseAPI {
     @ObservationIgnored

@@ -45,18 +45,10 @@ final class LiveRoomViewModel: ObservableObject {
     init(room: LiveRoomItem) {
         self.room = room
         webURL = URL(string: defaultWebURL)
-        // Restore last successful engine for this platform.
-        // B站默认网页：H5 播放更稳；应用内走 AVPlayer(HLS) 而非 VLC（VLC 易崩）。
+        // SimpleLive: B站默认应用内拉流（media_kit / VLC）。
+        // 清除历史「默认网页」偏好，避免旧崩溃规避逻辑挡住原生播放。
         if room.platform == .bilibili {
-            let key = "livePlayMode.bilibili"
-            if UserDefaults.standard.string(forKey: key) == nil {
-                playMode = .web
-            } else {
-                switch LivePlayPrefs.preferred(for: .bilibili) {
-                case .web: playMode = .web
-                case .native: playMode = .native
-                }
-            }
+            playMode = .native
         } else {
             switch LivePlayPrefs.preferred(for: room.platform) {
             case .web: playMode = .web
@@ -85,15 +77,6 @@ final class LiveRoomViewModel: ObservableObject {
     }
 
     func start() {
-        // B站进房页已独立；若误入本 VM，只做网页占位、绝不拉流/挂解码器。
-        if room.platform == .bilibili {
-            playMode = .web
-            webURL = URL(string: defaultWebURL)
-            isLoading = false
-            statusText = "请使用 B站安全播放页"
-            clearStream()
-            return
-        }
         loadTask?.cancel()
         loadTask = Task { await load() }
     }
@@ -108,15 +91,6 @@ final class LiveRoomViewModel: ObservableObject {
     }
 
     func retryNative() {
-        if room.platform == .bilibili {
-            // B站禁用应用内解码器，始终走安全播放页 / 网页。
-            playMode = .web
-            LivePlayPrefs.remember(.web, for: .bilibili)
-            errorMessage = "B站请使用安全播放页（Safari）"
-            statusText = "请使用 B站安全播放页"
-            clearStream()
-            return
-        }
         playMode = .native
         LivePlayPrefs.remember(.native, for: room.platform)
         errorMessage = nil
@@ -295,29 +269,13 @@ final class LiveRoomViewModel: ObservableObject {
                 let isHLS = lower.contains(".m3u8") || lower.contains("/hls/") || lower.contains("format=ts")
                     || lower.contains("fmp4")
 
-                // B 站：坚决避开 VLC（多机型硬崩）。只用 AVPlayer 播 HLS；FLV 跳过。
-                if room.platform == .bilibili {
-                    if isFLV { continue }
-                    statusText = "AVPlayer 连接 \(quality.name)…"
-                    // Clear any prior VLC surface state before attaching AVPlayer.
-                    clearStream()
-                    if await startAVPlayer(url: url, headers: result.headers) {
-                        streamIsFLV = false
-                        streamURL = url
-                        streamHeaders = result.headers
-                        playMode = .native
-                        errorMessage = nil
-                        statusText = "播放中 · \(quality.name) · HLS"
-                        return true
-                    }
-                    continue
-                }
-
+                // SimpleLive media_kit path: native decoder for FLV/HLS (B站用 codec=0 AVC 线路).
                 statusText = isFLV ? "VLC 播放 FLV…" : "连接 \(quality.name)…"
 
                 #if canImport(MobileVLCKit)
                 clearStream()
                 // Sanitize headers before VLC (CR/LF in Cookie has crashed LibVLC).
+                // B站 SimpleLive 只下发 Referer + User-Agent，无 Cookie。
                 streamHeaders = result.headers.mapValues { v in
                     v.replacingOccurrences(of: "\r", with: "")
                         .replacingOccurrences(of: "\n", with: " ")
@@ -920,7 +878,7 @@ struct LiveRoomView: View {
             HStack(spacing: 10) {
                 engineButton(
                     title: "应用内",
-                    subtitle: "VLC · FLV",
+                    subtitle: room.platform == .bilibili ? "VLC · FLV/HLS" : "VLC · FLV",
                     icon: "play.rectangle.fill",
                     selected: vm.playMode == .native
                 ) {
@@ -1162,62 +1120,49 @@ struct LivePlayerSurface: View {
 
     @ViewBuilder
     private var activeContent: some View {
-        // 硬护栏：B站绝不挂 VLC / 页内 WKWebView（进房应走 BilibiliLiveWebRoomView）。
-        if vm.room.platform == .bilibili {
-            VStack(spacing: 10) {
-                Image(systemName: "safari")
-                    .font(.title2)
-                    .foregroundStyle(.white.opacity(0.85))
-                Text("B站请使用安全播放页")
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.9))
+        switch vm.playMode {
+        case .web:
+            if let url = vm.webURL {
+                LiveRoomWebView(url: url)
+            } else {
+                Text("无网页地址").foregroundStyle(.white)
             }
-        } else {
-            switch vm.playMode {
-            case .web:
-                if let url = vm.webURL {
-                    LiveRoomWebView(url: url)
+        case .native:
+            if let url = vm.streamURL {
+                #if canImport(MobileVLCKit)
+                // Prefer AVPlayer when the VM already attached one (HLS fallback).
+                // Otherwise VLC (SimpleLive media_kit role) for FLV/HLS.
+                if let p = vm.systemPlayer {
+                    VideoPlayer(player: p)
+                        .id(url.absoluteString + "-av")
                 } else {
-                    Text("无网页地址").foregroundStyle(.white)
+                    LiveVLCPlayerView(url: url, headers: vm.streamHeaders, isPlaying: true)
+                        .id(url.absoluteString + "-vlc")
                 }
-            case .native:
-                if let url = vm.streamURL {
-                    #if canImport(MobileVLCKit)
-                    // Prefer AVPlayer when the VM already attached one.
-                    // Never force VLC on a URL that was opened with AVPlayer — LibVLC has
-                    // hard-crashed on some CDN streams on multiple devices.
-                    if let p = vm.systemPlayer {
-                        VideoPlayer(player: p)
-                            .id(url.absoluteString + "-av")
-                    } else {
-                        LiveVLCPlayerView(url: url, headers: vm.streamHeaders, isPlaying: true)
-                            .id(url.absoluteString + "-vlc")
-                    }
-                    #else
-                    if let p = vm.systemPlayer {
-                        VideoPlayer(player: p)
-                    } else {
-                        ProgressView().tint(.white)
-                    }
-                    #endif
-                } else if vm.isLoading {
-                    VStack(spacing: 10) {
-                        ProgressView().tint(.white)
-                        Text(vm.statusText)
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.9))
-                    }
+                #else
+                if let p = vm.systemPlayer {
+                    VideoPlayer(player: p)
                 } else {
-                    VStack(spacing: 8) {
-                        Image(systemName: "play.slash")
-                            .font(.title)
-                            .foregroundStyle(.white.opacity(0.7))
-                        Text(vm.errorMessage ?? "暂无画面")
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.8))
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal)
-                    }
+                    ProgressView().tint(.white)
+                }
+                #endif
+            } else if vm.isLoading {
+                VStack(spacing: 10) {
+                    ProgressView().tint(.white)
+                    Text(vm.statusText)
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.9))
+                }
+            } else {
+                VStack(spacing: 8) {
+                    Image(systemName: "play.slash")
+                        .font(.title)
+                        .foregroundStyle(.white.opacity(0.7))
+                    Text(vm.errorMessage ?? "暂无画面")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.8))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
                 }
             }
         }

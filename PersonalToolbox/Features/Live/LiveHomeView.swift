@@ -34,8 +34,6 @@ struct LiveHomeView: View {
     @State private var isSearching = false
     @State private var searchError: String?
     @State private var path = NavigationPath()
-    /// B站单独用 sheet 打开，彻底绕开 LiveRoomView / VLC / NavigationPath 组合崩溃。
-    @State private var bilibiliSheet: RoomRoute?
     @FocusState private var searchFocused: Bool
     @State private var clipboardRoomHint: String?
     @EnvironmentObject private var settings: AppSettings
@@ -58,33 +56,20 @@ struct LiveHomeView: View {
             .navigationBarTitleDisplayMode(.large)
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .navigationDestination(for: RoomRoute.self) { route in
-                // B站不应走进这里；双保险（无 VLC / 无页内 WKWebView）。
-                if route.room.platform == .bilibili {
-                    BilibiliLiveWebRoomView(room: route.room)
-                } else {
-                    LiveRoomView(room: route.room)
-                }
-            }
-            // 纯信息 sheet（无 WebView）；真正播放走进程外 SFSafariViewController。
-            .sheet(item: $bilibiliSheet) { route in
-                NavigationStack {
-                    BilibiliLiveWebRoomView(room: route.room)
-                }
+                // 与 SimpleLive 一致：五站统一 LiveRoomView（B站原生 VLC/FLV）。
+                LiveRoomView(room: route.room)
             }
             .onAppear {
-                // B站关注元数据刷新走 get_info；仍跳过自动刷，避免切平台时连发请求。
-                if platform != .bilibili {
-                    follows.refreshMissingAvatars(for: platform)
-                }
+                follows.refreshMissingAvatars(for: platform)
                 detectClipboardRoomId()
             }
             .onChange(of: mode) { _, newMode in
-                if newMode == .follow, platform != .bilibili {
+                if newMode == .follow {
                     follows.refreshMissingAvatars(for: platform)
                 }
             }
             .onChange(of: platform) { _, newPlatform in
-                if mode == .follow, newPlatform != .bilibili {
+                if mode == .follow {
                     follows.refreshMissingAvatars(for: newPlatform)
                 }
                 detectClipboardRoomId()
@@ -470,14 +455,6 @@ struct LiveHomeView: View {
             #selector(UIResponder.resignFirstResponder),
             to: nil, from: nil, for: nil
         )
-        if room.platform == .bilibili {
-            // 等键盘收起后再 present，避免 “dismiss keyboard + present” 竞态闪退。
-            let route = RoomRoute(room: room)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                bilibiliSheet = route
-            }
-            return
-        }
         path.append(RoomRoute(room: room))
     }
 

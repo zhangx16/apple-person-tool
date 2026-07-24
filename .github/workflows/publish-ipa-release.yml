@@ -1,0 +1,85 @@
+name: Publish IPA Release
+
+# Pull the latest successful Ad Hoc IPA artifact and publish a public Release
+# so the VPS can sync without a personal PAT (artifacts API is auth-only).
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/triggers/publish-ipa"
+  workflow_run:
+    workflows: ["Build Ad Hoc IPA"]
+    types: [completed]
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    if: >
+      github.event_name != 'workflow_run'
+      || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve source run id
+        id: src
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            id="${{ github.event.workflow_run.id }}"
+          else
+            id="$(gh run list \
+              --repo "${{ github.repository }}" \
+              --workflow "build-ipa.yml" \
+              --status success \
+              --limit 1 \
+              --json databaseId \
+              --jq '.[0].databaseId')"
+          fi
+          if [[ -z "${id}" || "${id}" == "null" ]]; then
+            echo "No successful Build Ad Hoc IPA run found" >&2
+            exit 1
+          fi
+          echo "run_id=${id}" >> "$GITHUB_OUTPUT"
+          echo "Using artifact from run ${id}"
+
+      - name: Download PersonalToolbox-ipa artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: PersonalToolbox-ipa
+          run-id: ${{ steps.src.outputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: dist
+
+      - name: Locate IPA
+        id: ipa
+        run: |
+          set -euo pipefail
+          f="$(find dist -type f -name '*.ipa' | head -n 1)"
+          if [[ -z "${f}" ]]; then
+            echo "IPA not found in artifact" >&2
+            find dist -type f | head -n 50 >&2 || true
+            exit 1
+          fi
+          ls -lh "${f}"
+          echo "path=${f}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish / update ipa-latest release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG=ipa-latest
+          # Recreate lightweight tag + release so asset always matches latest build.
+          gh release delete "${TAG}" --repo "${{ github.repository }}" --yes 2>/dev/null || true
+          git fetch --tags origin 2>/dev/null || true
+          git tag -d "${TAG}" 2>/dev/null || true
+          gh release create "${TAG}" \
+            "${{ steps.ipa.outputs.path }}" \
+            --repo "${{ github.repository }}" \
+            --title "PersonalToolbox Ad Hoc IPA (latest)" \
+            --notes "Auto-published from Actions run ${{ steps.src.outputs.run_id }}. Ad Hoc — install only on registered devices." \
+            --latest

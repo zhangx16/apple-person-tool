@@ -1,42 +1,92 @@
 import SwiftUI
-import WebKit
-import AVFoundation
+import SafariServices
+import UIKit
+import ObjectiveC
 
-/// Isolated B站直播页：只开 H5 + 可选轻量标题刷新。
-/// 刻意不复用 `LiveRoomView` / VLC / AVPlayer 拉流链路（多机型硬崩）。
+/// B站直播进房页：进程外 Safari 播放。
+///
+/// 历史多次硬崩均与应用内链路相关（MobileVLCKit / AVPlayer 拉流 / 页内 WKWebView 加载
+/// live.bilibili.com H5）。`SFSafariViewController` 跑在独立进程，页面/解码异常不会拖垮 App。
 struct BilibiliLiveWebRoomView: View {
     let room: LiveRoomItem
     @Environment(\.dismiss) private var dismiss
+
     @State private var titleText: String = ""
     @State private var subtitleText: String = ""
-    @State private var statusText: String = "加载网页…"
+    @State private var statusText: String = "准备打开…"
     @State private var isLive: Bool?
     @State private var loadError: String?
+    @State private var didAutoOpen = false
 
     private var pageURL: URL {
-        let raw = room.roomId.trimmingCharacters(in: .whitespacesAndNewlines)
-        let rid = raw.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? raw
-        if let u = URL(string: "https://live.bilibili.com/h5/\(rid)") { return u }
-        if let u = URL(string: "https://live.bilibili.com/\(rid)") { return u }
-        return URL(string: "https://live.bilibili.com") ?? URL(fileURLWithPath: "/")
+        Self.h5URL(roomId: room.roomId)
+    }
+
+    /// 稳定的 H5 房间地址（纯数字 roomId；非法时回退首页）。
+    static func h5URL(roomId: String) -> URL {
+        let raw = roomId.trimmingCharacters(in: .whitespacesAndNewlines)
+        let rid = raw.filter(\.isNumber)
+        if !rid.isEmpty, let u = URL(string: "https://live.bilibili.com/h5/\(rid)") {
+            return u
+        }
+        if !raw.isEmpty,
+           let encoded = raw.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),
+           let u = URL(string: "https://live.bilibili.com/h5/\(encoded)") {
+            return u
+        }
+        return URL(string: "https://live.bilibili.com")!
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            ZStack {
-                Color.black
-                BilibiliH5WebView(url: pageURL)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                headerCard
+                infoCard
+                actionCard
+                tipCard
             }
-            .frame(maxWidth: .infinity)
-            .frame(minHeight: 280)
-            .aspectRatio(16 / 9, contentMode: .fit)
-            .background(Color.black)
+            .padding(16)
+            .padding(.bottom, 24)
+        }
+        .background(Color(.systemGroupedBackground).ignoresSafeArea())
+        .navigationTitle(navTitle)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("关闭") { dismiss() }
+            }
+        }
+        // 不在 body 里同步创建任何 Web/播放器视图（WKWebView / VLC 均已移除）。
+        .onAppear {
+            // 等 present 动画结束后再打开 Safari，避免转场竞态。
+            statusText = "即将打开直播页…"
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+                guard !didAutoOpen else { return }
+                didAutoOpen = true
+                openSafari()
+            }
+        }
+        .task {
+            // 延后网络：失败只影响标题，绝不阻塞进房。
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            await refreshMeta()
+        }
+    }
 
-            VStack(alignment: .leading, spacing: 10) {
+    private var navTitle: String {
+        let n = subtitleText.isEmpty ? room.userName : subtitleText
+        return n.isEmpty ? "B站直播" : n
+    }
+
+    // MARK: - Sections
+
+    private var headerCard: some View {
+        HStack(spacing: 12) {
+            LivePlatformMark(platform: .bilibili, size: 36)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("B站直播")
+                    .font(.headline)
                 HStack(spacing: 8) {
-                    LivePlatformMark(platform: .bilibili, size: 22)
-                    Text("B站直播")
-                        .font(.subheadline.weight(.semibold))
                     if let isLive {
                         Text(isLive ? "直播中" : "未开播")
                             .font(.caption2.weight(.bold))
@@ -45,184 +95,202 @@ struct BilibiliLiveWebRoomView: View {
                             .padding(.vertical, 3)
                             .background(isLive ? Color.red : Color.gray, in: Capsule())
                     }
-                    Spacer()
                     Text(statusText)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
-
-                Text(titleText.isEmpty ? (room.title.isEmpty ? "房间 \(room.roomId)" : room.title) : titleText)
-                    .font(.headline)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                if !subtitleText.isEmpty || !room.userName.isEmpty {
-                    Text(subtitleText.isEmpty ? room.userName : subtitleText)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-
-                Text("房间号 \(room.roomId)")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-
-                if let loadError, !loadError.isEmpty {
-                    Text(loadError)
-                        .font(.caption)
-                        .foregroundStyle(.orange)
-                }
-
-                Text("B站使用网页播放（H5），避免应用内解码崩溃。可在系统浏览器中打开同房间。")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-
-                HStack(spacing: 10) {
-                    Button {
-                        UIApplication.shared.open(pageURL)
-                    } label: {
-                        Label("系统浏览器打开", systemImage: "safari")
-                            .font(.subheadline.weight(.semibold))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                    }
-                    .buttonStyle(.bordered)
-
-                    Button {
-                        statusText = "刷新网页…"
-                        // Force reload by toggling identity via notification to web view is heavy;
-                        // re-present same URL is enough for most cases — user can pull dismiss/reopen.
-                        statusText = "请下拉关闭后重进，或用系统浏览器"
-                    } label: {
-                        Label("提示", systemImage: "arrow.clockwise")
-                            .font(.subheadline.weight(.semibold))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                    }
-                    .buttonStyle(.bordered)
-                }
             }
-            .padding(16)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(.systemGroupedBackground))
-
             Spacer(minLength: 0)
         }
-        .background(Color(.systemGroupedBackground).ignoresSafeArea())
-        .navigationTitle(room.userName.isEmpty ? "B站直播" : room.userName)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("关闭") { dismiss() }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private var infoCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(displayTitle)
+                .font(.title3.weight(.semibold))
+                .fixedSize(horizontal: false, vertical: true)
+
+            if !displayName.isEmpty {
+                Text(displayName)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            Text("房间号 \(room.roomId)")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+
+            if let loadError, !loadError.isEmpty {
+                Text(loadError)
+                    .font(.caption)
+                    .foregroundStyle(.orange)
             }
         }
-        .task {
-            await refreshMeta()
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private var actionCard: some View {
+        VStack(spacing: 10) {
+            Button {
+                openSafari()
+            } label: {
+                Label("打开直播（安全模式）", systemImage: "play.rectangle.fill")
+                    .font(.body.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .foregroundStyle(.white)
+                    .background(LiveUI.brand(.bilibili).brandGradient, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+            .buttonStyle(PressableButtonStyle())
+
+            HStack(spacing: 10) {
+                Button {
+                    UIApplication.shared.open(pageURL)
+                    statusText = "已交给系统浏览器"
+                } label: {
+                    Label("系统浏览器", systemImage: "safari")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                }
+                .buttonStyle(.bordered)
+
+                Button {
+                    UIPasteboard.general.string = pageURL.absoluteString
+                    statusText = "链接已复制"
+                } label: {
+                    Label("复制链接", systemImage: "doc.on.doc")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private var tipCard: some View {
+        Text("B站直播在独立 Safari 页播放，避免应用内解码/网页内核闪退。关闭播放页可回到本页重新打开。")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(.tertiarySystemFill).opacity(0.5), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    private var displayTitle: String {
+        if !titleText.isEmpty { return titleText }
+        if !room.title.isEmpty { return room.title }
+        return "房间 \(room.roomId)"
+    }
+
+    private var displayName: String {
+        if !subtitleText.isEmpty { return subtitleText }
+        return room.userName
+    }
+
+    // MARK: - Actions
+
+    private func openSafari() {
+        statusText = "打开直播页…"
+        BilibiliSafariPresenter.present(url: pageURL) {
+            statusText = "已返回 · 可再次打开"
         }
     }
 
     private func refreshMeta() async {
         let rid = room.roomId.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !rid.isEmpty else { return }
-        statusText = "读取房间信息…"
         do {
             let detail = try await BilibiliLiveService.shared.getRoomDetail(roomId: rid)
             await MainActor.run {
                 titleText = detail.title
                 subtitleText = detail.userName
                 isLive = detail.isLive
-                statusText = detail.isLive ? "网页播放中" : "未开播 · 网页可试"
+                if !(statusText.hasPrefix("打开") || statusText.hasPrefix("即将")) {
+                    statusText = detail.isLive ? "可播放" : "未开播 · 仍可打开页面"
+                }
                 loadError = nil
             }
         } catch {
             await MainActor.run {
-                statusText = "网页可直接试播"
                 loadError = error.localizedDescription
             }
         }
     }
 }
 
-// MARK: - Lightweight WKWebView (no LiveAudioSession coupling beyond best-effort)
+// MARK: - Out-of-process Safari presenter
 
-private struct BilibiliH5WebView: UIViewRepresentable {
-    let url: URL
-
-    func makeCoordinator() -> Coordinator { Coordinator() }
-
-    func makeUIView(context: Context) -> WKWebView {
-        // Best-effort audio session; ignore failures.
-        let session = AVAudioSession.sharedInstance()
-        try? session.setCategory(.playback, mode: .moviePlayback, options: [])
-        try? session.setActive(true)
-
-        let config = WKWebViewConfiguration()
-        config.allowsInlineMediaPlayback = true
-        config.mediaTypesRequiringUserActionForPlayback = []
-        config.allowsPictureInPictureMediaPlayback = true
-        config.websiteDataStore = .default()
-        if #available(iOS 14.0, *) {
-            config.processPool = WKProcessPool()
+/// 从当前最顶层 VC present `SFSafariViewController`（不嵌套 SwiftUI fullScreenCover）。
+enum BilibiliSafariPresenter {
+    @MainActor
+    static func present(url: URL, onFinish: (() -> Void)? = nil) {
+        guard let host = topViewController() else {
+            UIApplication.shared.open(url)
+            return
         }
-        if #available(iOS 15.0, *) {
-            config.defaultWebpagePreferences.allowsContentJavaScript = true
-        }
+        // 已在播 Safari 时不重复堆叠。
+        if host is SFSafariViewController { return }
+        if host.presentedViewController is SFSafariViewController { return }
 
-        let web = WKWebView(frame: .zero, configuration: config)
-        web.navigationDelegate = context.coordinator
-        web.isOpaque = false
-        web.backgroundColor = .black
-        web.scrollView.backgroundColor = .black
-        web.scrollView.bounces = true
-        web.allowsBackForwardNavigationGestures = true
-        web.customUserAgent =
-            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
-        context.coordinator.loaded = url
-        web.load(URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 30))
-        return web
-    }
-
-    func updateUIView(_ webView: WKWebView, context: Context) {
-        if context.coordinator.loaded != url {
-            context.coordinator.loaded = url
-            webView.load(URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 30))
-        }
-    }
-
-    static func dismantleUIView(_ uiView: WKWebView, coordinator: Coordinator) {
-        uiView.stopLoading()
-        uiView.navigationDelegate = nil
-        uiView.evaluateJavaScript(
-            "document.querySelectorAll('video,audio').forEach(function(e){try{e.pause();e.removeAttribute('src');e.load();}catch(_){}})",
-            completionHandler: nil
+        let safari = SFSafariViewController(url: url)
+        safari.dismissButtonStyle = .close
+        safari.preferredControlTintColor = UIColor(red: 0, green: 0.63, blue: 0.84, alpha: 1)
+        let proxy = SafariDismissProxy(onFinish: onFinish)
+        safari.delegate = proxy
+        // Retain proxy for the lifetime of the safari VC.
+        objc_setAssociatedObject(
+            safari,
+            &SafariDismissProxy.assocKey,
+            proxy,
+            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
         )
+        host.present(safari, animated: true)
     }
 
-    final class Coordinator: NSObject, WKNavigationDelegate {
-        var loaded: URL?
-
-        func webView(
-            _ webView: WKWebView,
-            decidePolicyFor navigationAction: WKNavigationAction,
-            decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
-        ) {
-            guard let u = navigationAction.request.url else {
-                decisionHandler(.cancel)
-                return
-            }
-            let scheme = (u.scheme ?? "").lowercased()
-            // Keep http(s) / about / blob; block app-store deep links that can suspend the app oddly.
-            if scheme == "http" || scheme == "https" || scheme == "about" || scheme == "blob" {
-                decisionHandler(.allow)
-            } else {
-                decisionHandler(.cancel)
-            }
+    @MainActor
+    private static func topViewController(base: UIViewController? = nil) -> UIViewController? {
+        let root: UIViewController?
+        if let base {
+            root = base
+        } else {
+            let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+            let window = scenes.flatMap(\.windows).first(where: \.isKeyWindow)
+                ?? scenes.flatMap(\.windows).first
+            root = window?.rootViewController
         }
-
-        func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-            // Soft fail — page may still partially render.
+        if let nav = root as? UINavigationController {
+            return topViewController(base: nav.visibleViewController)
         }
-
-        func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        if let tab = root as? UITabBarController {
+            return topViewController(base: tab.selectedViewController)
         }
+        if let presented = root?.presentedViewController {
+            return topViewController(base: presented)
+        }
+        return root
+    }
+}
+
+private final class SafariDismissProxy: NSObject, SFSafariViewControllerDelegate {
+    static var assocKey: UInt8 = 0
+    let onFinish: (() -> Void)?
+
+    init(onFinish: (() -> Void)?) {
+        self.onFinish = onFinish
+    }
+
+    func safariViewControllerDidFinish(_ controller: SFSafariViewController) {
+        onFinish?()
     }
 }

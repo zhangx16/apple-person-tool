@@ -85,6 +85,15 @@ final class LiveRoomViewModel: ObservableObject {
     }
 
     func start() {
+        // B站进房页已独立；若误入本 VM，只做网页占位、绝不拉流/挂解码器。
+        if room.platform == .bilibili {
+            playMode = .web
+            webURL = URL(string: defaultWebURL)
+            isLoading = false
+            statusText = "请使用 B站安全播放页"
+            clearStream()
+            return
+        }
         loadTask?.cancel()
         loadTask = Task { await load() }
     }
@@ -99,6 +108,15 @@ final class LiveRoomViewModel: ObservableObject {
     }
 
     func retryNative() {
+        if room.platform == .bilibili {
+            // B站禁用应用内解码器，始终走安全播放页 / 网页。
+            playMode = .web
+            LivePlayPrefs.remember(.web, for: .bilibili)
+            errorMessage = "B站请使用安全播放页（Safari）"
+            statusText = "请使用 B站安全播放页"
+            clearStream()
+            return
+        }
         playMode = .native
         LivePlayPrefs.remember(.native, for: room.platform)
         errorMessage = nil
@@ -1144,50 +1162,62 @@ struct LivePlayerSurface: View {
 
     @ViewBuilder
     private var activeContent: some View {
-        switch vm.playMode {
-        case .web:
-            if let url = vm.webURL {
-                LiveRoomWebView(url: url)
-            } else {
-                Text("无网页地址").foregroundStyle(.white)
+        // 硬护栏：B站绝不挂 VLC / 页内 WKWebView（进房应走 BilibiliLiveWebRoomView）。
+        if vm.room.platform == .bilibili {
+            VStack(spacing: 10) {
+                Image(systemName: "safari")
+                    .font(.title2)
+                    .foregroundStyle(.white.opacity(0.85))
+                Text("B站请使用安全播放页")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.9))
             }
-        case .native:
-            if let url = vm.streamURL {
-                #if canImport(MobileVLCKit)
-                // Prefer AVPlayer when the VM already attached one (B站 HLS path).
-                // Never force VLC on a URL that was opened with AVPlayer — LibVLC has
-                // hard-crashed on bilibili CDN streams on multiple devices.
-                if let p = vm.systemPlayer {
-                    VideoPlayer(player: p)
-                        .id(url.absoluteString + "-av")
+        } else {
+            switch vm.playMode {
+            case .web:
+                if let url = vm.webURL {
+                    LiveRoomWebView(url: url)
                 } else {
-                    LiveVLCPlayerView(url: url, headers: vm.streamHeaders, isPlaying: true)
-                        .id(url.absoluteString + "-vlc")
+                    Text("无网页地址").foregroundStyle(.white)
                 }
-                #else
-                if let p = vm.systemPlayer {
-                    VideoPlayer(player: p)
+            case .native:
+                if let url = vm.streamURL {
+                    #if canImport(MobileVLCKit)
+                    // Prefer AVPlayer when the VM already attached one.
+                    // Never force VLC on a URL that was opened with AVPlayer — LibVLC has
+                    // hard-crashed on some CDN streams on multiple devices.
+                    if let p = vm.systemPlayer {
+                        VideoPlayer(player: p)
+                            .id(url.absoluteString + "-av")
+                    } else {
+                        LiveVLCPlayerView(url: url, headers: vm.streamHeaders, isPlaying: true)
+                            .id(url.absoluteString + "-vlc")
+                    }
+                    #else
+                    if let p = vm.systemPlayer {
+                        VideoPlayer(player: p)
+                    } else {
+                        ProgressView().tint(.white)
+                    }
+                    #endif
+                } else if vm.isLoading {
+                    VStack(spacing: 10) {
+                        ProgressView().tint(.white)
+                        Text(vm.statusText)
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.9))
+                    }
                 } else {
-                    ProgressView().tint(.white)
-                }
-                #endif
-            } else if vm.isLoading {
-                VStack(spacing: 10) {
-                    ProgressView().tint(.white)
-                    Text(vm.statusText)
-                        .font(.caption)
-                        .foregroundStyle(.white.opacity(0.9))
-                }
-            } else {
-                VStack(spacing: 8) {
-                    Image(systemName: "play.slash")
-                        .font(.title)
-                        .foregroundStyle(.white.opacity(0.7))
-                    Text(vm.errorMessage ?? "暂无画面")
-                        .font(.caption)
-                        .foregroundStyle(.white.opacity(0.8))
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
+                    VStack(spacing: 8) {
+                        Image(systemName: "play.slash")
+                            .font(.title)
+                            .foregroundStyle(.white.opacity(0.7))
+                        Text(vm.errorMessage ?? "暂无画面")
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.8))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                    }
                 }
             }
         }

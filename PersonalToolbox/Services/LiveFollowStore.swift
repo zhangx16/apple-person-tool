@@ -154,6 +154,8 @@ final class LiveFollowStore: ObservableObject {
         guard !isRefreshingMeta else { return }
         let targets = items.filter { item in
             if let platform, item.platform != platform { return false }
+            // B站进房/列表刷状态历史上与脆弱接口叠在一起；元数据改为手动下拉时再轻量拉。
+            // 这里仍允许 B站，但走 get_info 软失败路径，且限制数量。
             if forceStatus { return true }
             let noFace = item.userAvatar.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             let noCate = item.categoryName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -169,7 +171,9 @@ final class LiveFollowStore: ObservableObject {
             }
             var changed = false
             // Limit concurrent pressure: sequential is safer for rate limits.
-            for item in targets.prefix(12) {
+            // B站只刷前 6 个，降低连发 get_info 压力。
+            let limit = targets.contains(where: { $0.platform == .bilibili }) ? 6 : 12
+            for item in targets.prefix(limit) {
                 do {
                     let detail = try await LiveSiteRouter.roomDetail(
                         platform: item.platform,

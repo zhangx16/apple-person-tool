@@ -58,20 +58,21 @@ struct LiveHomeView: View {
             .navigationBarTitleDisplayMode(.large)
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .navigationDestination(for: RoomRoute.self) { route in
-                // B站不应走进这里；双保险。
+                // B站不应走进这里；双保险（无 VLC / 无页内 WKWebView）。
                 if route.room.platform == .bilibili {
                     BilibiliLiveWebRoomView(room: route.room)
                 } else {
                     LiveRoomView(room: route.room)
                 }
             }
+            // 纯信息 sheet（无 WebView）；真正播放走进程外 SFSafariViewController。
             .sheet(item: $bilibiliSheet) { route in
                 NavigationStack {
                     BilibiliLiveWebRoomView(room: route.room)
                 }
             }
             .onAppear {
-                // B站关注元数据刷新可能触发脆弱接口；仅刷新非 B 站或延后。
+                // B站关注元数据刷新走 get_info；仍跳过自动刷，避免切平台时连发请求。
                 if platform != .bilibili {
                     follows.refreshMissingAvatars(for: platform)
                 }
@@ -470,7 +471,11 @@ struct LiveHomeView: View {
             to: nil, from: nil, for: nil
         )
         if room.platform == .bilibili {
-            bilibiliSheet = RoomRoute(room: room)
+            // 等键盘收起后再 present，避免 “dismiss keyboard + present” 竞态闪退。
+            let route = RoomRoute(room: room)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                bilibiliSheet = route
+            }
             return
         }
         path.append(RoomRoute(room: room))

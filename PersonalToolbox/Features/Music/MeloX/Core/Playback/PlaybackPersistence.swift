@@ -11,7 +11,6 @@ struct PlaybackSnapshot: Codable {
     let historySourceID: Int?
 }
 
-@MainActor
 final class PlaybackPersistence {
     private enum Key {
         static let snapshot = "player.playbackSnapshot"

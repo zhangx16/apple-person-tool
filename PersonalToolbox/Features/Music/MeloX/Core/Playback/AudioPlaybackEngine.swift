@@ -26,7 +26,6 @@ enum AudioPlaybackError: LocalizedError {
     }
 }
 
-@MainActor
 final class AudioPlaybackEngine {
     var onStateChanged: ((AudioPlaybackState) -> Void)?
     var onProgressChanged: ((TimeInterval) -> Void)?

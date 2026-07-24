@@ -29,7 +29,6 @@ enum MusicQuality: String, CaseIterable, Identifiable, Codable {
     }
 }
 
-@MainActor
 @Observable
 final class MeloXSettings {
     static let defaultPlayerVolumeControlMode: PlayerVolumeControlMode = .system

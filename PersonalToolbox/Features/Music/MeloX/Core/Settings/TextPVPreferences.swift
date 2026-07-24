@@ -118,7 +118,6 @@ enum TextPVStyle: String, CaseIterable, Identifiable {
     }
 }
 
-@MainActor
 @Observable
 final class TextPVPreferences {
     static let defaultStyle = TextPVStyle.blueBold

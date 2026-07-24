@@ -1,7 +1,6 @@
 import Foundation
 import OSLog
 
-@MainActor
 final class PlaybackHistoryRecorder {
     private static let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "MeloX",

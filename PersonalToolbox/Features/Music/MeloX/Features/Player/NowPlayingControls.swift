@@ -16,7 +16,7 @@ struct NowPlayingProgressControl: View {
                 ),
                 in: 0...progressMaximum
             )
-            .sliderThumbVisibility(.hidden)
+            
             .tint(.white)
             .accessibilityLabel("播放进度")
             .accessibilityValue("已播放 \(formatTime(player.progress))，总时长 \(formatTime(progressMaximum))")
@@ -263,7 +263,7 @@ struct NowPlayingPageSelector: View {
                     }
                 }
 
-                TextPVStyleMenu(page: $page)
+//                 TextPVStyleMenu(page: $page)
             } label: {
                 Image(systemName: "textformat.size")
                     .font(.title3)

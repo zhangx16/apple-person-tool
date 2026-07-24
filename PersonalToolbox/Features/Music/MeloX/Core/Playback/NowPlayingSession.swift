@@ -2,7 +2,6 @@ import AVFoundation
 import MediaPlayer
 import UIKit
 
-@MainActor
 final class NowPlayingSession {
     var onPlay: (() -> Void)?
     var onPause: (() -> Void)?

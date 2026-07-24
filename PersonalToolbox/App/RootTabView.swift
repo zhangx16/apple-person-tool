@@ -3,6 +3,7 @@ import SwiftUI
 enum AppTab: Hashable {
     case overview
     case live
+    case music
     case services
     case settings
 }
@@ -28,6 +29,11 @@ struct RootTabView: View {
                     .tabItem { Label("直播", systemImage: "play.tv") }
                     .tag(AppTab.live)
                     .accessibilityLabel("直播")
+
+                MusicRootView()
+                    .tabItem { Label("音乐", systemImage: "music.note") }
+                    .tag(AppTab.music)
+                    .accessibilityLabel("音乐")
 
                 ServicesHubView(selectedTab: $selectedTab)
                     .tabItem { Label("服务", systemImage: "shippingbox") }

@@ -1,0 +1,343 @@
+import Foundation
+import Observation
+
+@MainActor
+@Observable
+final class LibraryStore {
+    private(set) var profile: AccountProfile?
+    private(set) var accountDetail: AccountDetail?
+    private(set) var favoriteSongs: [Song] = []
+    private(set) var favoritePlaylists: [Playlist] = []
+    private(set) var recentSongs: [Song] = []
+    private(set) var favoriteSongTotalCount = 0
+    private(set) var favoriteSongsNextOffset = 0
+    private(set) var isLoadingMoreFavoriteSongs = false
+    private(set) var favoriteSongsLoadMoreError: String?
+    private(set) var phase: LoadingPhase = .loaded
+    private(set) var errorMessage: String?
+
+    @ObservationIgnored
+    private let api: NeteaseAPI
+
+    @ObservationIgnored
+    private let settings: MeloXSettings
+
+    @ObservationIgnored
+    private var loadedCookie: String?
+
+    @ObservationIgnored
+    private var refreshingCookie: String?
+
+    @ObservationIgnored
+    private var favoriteSongIDs: [Int] = []
+
+    @ObservationIgnored
+    private var favoriteSongIDSet: Set<Int> = []
+
+    @ObservationIgnored
+    private let favoriteSongPageSize = 100
+
+    init(api: NeteaseAPI, settings: MeloXSettings) {
+        self.api = api
+        self.settings = settings
+    }
+
+    var isLoggedIn: Bool {
+        !settings.cookie.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var ownedPlaylists: [Playlist] {
+        guard let userID = profile?.id else { return [] }
+        return favoritePlaylists.filter { $0.creator?.userID == userID }
+    }
+
+    var hasMoreFavoriteSongs: Bool {
+        favoriteSongsNextOffset < favoriteSongTotalCount
+    }
+
+    func contains(song: Song) -> Bool {
+        favoriteSongIDSet.contains(song.id)
+    }
+
+    func contains(playlist: Playlist) -> Bool {
+        favoritePlaylists.contains { $0.id == playlist.id }
+    }
+
+    func recordRecentlyPlayed(_ song: Song) {
+        recentSongs.removeAll { $0.id == song.id }
+        recentSongs.insert(song, at: 0)
+        if recentSongs.count > 100 {
+            recentSongs.removeLast(recentSongs.count - 100)
+        }
+    }
+
+    func canUnsubscribe(_ playlist: Playlist) -> Bool {
+        playlist.creator?.userID != profile?.id
+    }
+
+    func refresh(force: Bool = false) async {
+        let cookie = settings.cookie.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cookie.isEmpty else {
+            clearAccountData()
+            return
+        }
+        guard refreshingCookie != cookie else { return }
+        guard force || loadedCookie != cookie || phase != .loaded else { return }
+
+        if loadedCookie != cookie {
+            clearRemoteContent()
+        }
+        refreshingCookie = cookie
+        defer {
+            if refreshingCookie == cookie {
+                refreshingCookie = nil
+            }
+        }
+        phase = .loading
+        errorMessage = nil
+        favoriteSongsLoadMoreError = nil
+
+        do {
+            let loadedProfile = try await api.accountProfile()
+            try Task.checkCancellation()
+
+            profile = loadedProfile
+            loadedCookie = cookie
+
+            var partialFailures: [String] = []
+            do {
+                let loadedAccountDetail = try await api.userDetail(
+                    userID: loadedProfile.id
+                )
+                accountDetail = loadedAccountDetail
+                profile = loadedAccountDetail.profile
+            } catch is CancellationError {
+                return
+            } catch {
+                // The account endpoint still provides enough identity data
+                // for the settings row when extended profile details fail.
+            }
+
+            var loadedPlaylists: [Playlist] = []
+            do {
+                loadedPlaylists = try await api.userPlaylists(userID: loadedProfile.id)
+                // 网易云把“我喜欢的音乐”作为返回列表的第一项；参考项目
+                // 同样在歌单页隐藏这一项，歌曲页单独展示其中的歌曲。
+                favoritePlaylists = Array(loadedPlaylists.dropFirst())
+            } catch is CancellationError {
+                return
+            } catch {
+                partialFailures.append("歌单：\(error.localizedDescription)")
+            }
+
+            do {
+                let likedPlaylistID = loadedPlaylists.first?.id
+                let loadedSongIDs = try await api.likedSongIDs(
+                    userID: loadedProfile.id,
+                    likedPlaylistID: likedPlaylistID
+                )
+                let firstPage = try await api.songDetailsPage(
+                    ids: loadedSongIDs,
+                    offset: 0,
+                    limit: favoriteSongPageSize
+                )
+                try Task.checkCancellation()
+                favoriteSongIDs = loadedSongIDs
+                favoriteSongIDSet = Set(loadedSongIDs)
+                favoriteSongTotalCount = loadedSongIDs.count
+                favoriteSongs = firstPage.songs
+                favoriteSongsNextOffset = firstPage.nextOffset
+                favoriteSongsLoadMoreError = nil
+            } catch is CancellationError {
+                return
+            } catch {
+                partialFailures.append("收藏歌曲：\(error.localizedDescription)")
+            }
+
+            do {
+                recentSongs = try await api.recentSongs()
+            } catch is CancellationError {
+                return
+            } catch {
+                partialFailures.append("播放历史：\(error.localizedDescription)")
+            }
+
+            if !partialFailures.isEmpty {
+                errorMessage = "部分音乐库内容暂时无法读取。\n" + partialFailures.joined(separator: "\n")
+            }
+            phase = .loaded
+        } catch is CancellationError {
+            return
+        } catch APIError.notLoggedIn {
+            settings.clearAccount()
+            clearAccountData()
+        } catch {
+            if profile == nil {
+                phase = .failed(error.localizedDescription)
+            } else {
+                phase = .loaded
+                errorMessage = "账号刷新失败：\(error.localizedDescription)"
+            }
+        }
+    }
+
+    func loadMoreFavoriteSongs() async {
+        guard !isLoadingMoreFavoriteSongs,
+              hasMoreFavoriteSongs else {
+            return
+        }
+
+        let requestedOffset = favoriteSongsNextOffset
+        let requestedIDs = favoriteSongIDs
+        isLoadingMoreFavoriteSongs = true
+        favoriteSongsLoadMoreError = nil
+        defer {
+            isLoadingMoreFavoriteSongs = false
+        }
+
+        do {
+            let page = try await api.songDetailsPage(
+                ids: requestedIDs,
+                offset: requestedOffset,
+                limit: favoriteSongPageSize
+            )
+            try Task.checkCancellation()
+            guard favoriteSongIDs == requestedIDs,
+                  favoriteSongsNextOffset == requestedOffset else {
+                return
+            }
+
+            var loadedIDs = Set(favoriteSongs.map(\.id))
+            favoriteSongs.append(
+                contentsOf: page.songs.filter {
+                    loadedIDs.insert($0.id).inserted
+                }
+            )
+            favoriteSongsNextOffset = page.nextOffset
+        } catch is CancellationError {
+            return
+        } catch {
+            favoriteSongsLoadMoreError = error.localizedDescription
+        }
+    }
+
+    func toggle(song: Song) {
+        guard isLoggedIn else {
+            errorMessage = APIError.notLoggedIn.localizedDescription
+            return
+        }
+
+        let wasLiked = contains(song: song)
+        setLocalSong(song, isLiked: !wasLiked)
+
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                try await self.api.setSongLiked(id: song.id, isLiked: !wasLiked)
+            } catch {
+                self.setLocalSong(song, isLiked: wasLiked)
+                self.errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    func toggle(playlist: Playlist) {
+        guard isLoggedIn else {
+            errorMessage = APIError.notLoggedIn.localizedDescription
+            return
+        }
+
+        let wasSubscribed = contains(playlist: playlist)
+        guard !wasSubscribed || canUnsubscribe(playlist) else { return }
+        if wasSubscribed {
+            favoritePlaylists.removeAll { $0.id == playlist.id }
+        } else {
+            var summary = playlist
+            summary.tracks = []
+            favoritePlaylists.insert(summary, at: 0)
+        }
+
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                try await self.api.setPlaylistSubscribed(
+                    id: playlist.id,
+                    isSubscribed: !wasSubscribed
+                )
+            } catch {
+                if wasSubscribed {
+                    self.favoritePlaylists.insert(playlist, at: 0)
+                } else {
+                    self.favoritePlaylists.removeAll { $0.id == playlist.id }
+                }
+                self.errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    func add(song: Song, to playlist: Playlist) async throws {
+        guard isLoggedIn else { throw APIError.notLoggedIn }
+        guard playlist.creator?.userID == profile?.id else {
+            throw LibraryOperationError.playlistIsNotOwned
+        }
+        try await api.addSong(id: song.id, toPlaylistID: playlist.id)
+    }
+
+    func clearAccountData() {
+        loadedCookie = nil
+        clearRemoteContent()
+        phase = .loaded
+        errorMessage = nil
+    }
+
+    func clearError() {
+        errorMessage = nil
+    }
+
+    private func clearRemoteContent() {
+        profile = nil
+        accountDetail = nil
+        favoriteSongs = []
+        favoritePlaylists = []
+        recentSongs = []
+        favoriteSongIDs = []
+        favoriteSongIDSet = []
+        favoriteSongTotalCount = 0
+        favoriteSongsNextOffset = 0
+        isLoadingMoreFavoriteSongs = false
+        favoriteSongsLoadMoreError = nil
+    }
+
+    private func setLocalSong(
+        _ song: Song,
+        isLiked: Bool
+    ) {
+        if let index = favoriteSongIDs.firstIndex(of: song.id) {
+            favoriteSongIDs.remove(at: index)
+            if index < favoriteSongsNextOffset {
+                favoriteSongsNextOffset -= 1
+            }
+        }
+        favoriteSongIDSet.remove(song.id)
+        favoriteSongs.removeAll { $0.id == song.id }
+
+        if isLiked {
+            favoriteSongIDs.insert(song.id, at: 0)
+            favoriteSongIDSet.insert(song.id)
+            favoriteSongs.insert(song, at: 0)
+            favoriteSongsNextOffset += 1
+        }
+        favoriteSongTotalCount = favoriteSongIDs.count
+    }
+}
+
+private enum LibraryOperationError: LocalizedError {
+    case playlistIsNotOwned
+
+    var errorDescription: String? {
+        switch self {
+        case .playlistIsNotOwned:
+            "只能向自己创建的歌单添加歌曲。"
+        }
+    }
+}

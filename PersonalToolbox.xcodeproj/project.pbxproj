@@ -6,6 +6,161 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		000000000000000000008137 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 000000000000000000008136 /* GRDB */; };
+		000000000000000000008001 /* MusicRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008000 /* MusicRootView.swift */; };
+		000000000000000000008003 /* MeloXCompatibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008002 /* MeloXCompatibility.swift */; };
+		000000000000000000008005 /* AppLaunchExperience.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008004 /* AppLaunchExperience.swift */; };
+		000000000000000000008007 /* AppNavigation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008006 /* AppNavigation.swift */; };
+		000000000000000000008009 /* MusicNavigationTransitions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008008 /* MusicNavigationTransitions.swift */; };
+		00000000000000000000800B /* ArtworkAccentColorProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000800A /* ArtworkAccentColorProvider.swift */; };
+		00000000000000000000800D /* CloudMusicModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000800C /* CloudMusicModels.swift */; };
+		00000000000000000000800F /* CloudMusicStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000800E /* CloudMusicStore.swift */; };
+		000000000000000000008011 /* CloudUploadFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008010 /* CloudUploadFile.swift */; };
+		000000000000000000008013 /* DownloadDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008012 /* DownloadDatabase.swift */; };
+		000000000000000000008015 /* DownloadStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008014 /* DownloadStorage.swift */; };
+		000000000000000000008017 /* DownloadStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008016 /* DownloadStore.swift */; };
+		000000000000000000008019 /* DownloadTransferClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008018 /* DownloadTransferClient.swift */; };
+		00000000000000000000801B /* DownloadedSong.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000801A /* DownloadedSong.swift */; };
+		00000000000000000000801D /* AppRecommendationPrompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000801C /* AppRecommendationPrompt.swift */; };
+		00000000000000000000801F /* LibraryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000801E /* LibraryStore.swift */; };
+		000000000000000000008021 /* LyricModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008020 /* LyricModels.swift */; };
+		000000000000000000008023 /* LyricParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008022 /* LyricParser.swift */; };
+		000000000000000000008025 /* LyricPlaybackTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008024 /* LyricPlaybackTimeline.swift */; };
+		000000000000000000008027 /* APIResponses.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008026 /* APIResponses.swift */; };
+		000000000000000000008029 /* AccountModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008028 /* AccountModels.swift */; };
+		00000000000000000000802B /* MusicModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000802A /* MusicModels.swift */; };
+		00000000000000000000802D /* PrivateMessageModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000802C /* PrivateMessageModels.swift */; };
+		00000000000000000000802F /* SocialShareModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000802E /* SocialShareModels.swift */; };
+		000000000000000000008031 /* SongCollectionPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008030 /* SongCollectionPage.swift */; };
+		000000000000000000008033 /* SongCommentModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008032 /* SongCommentModels.swift */; };
+		000000000000000000008035 /* NeteaseAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008034 /* NeteaseAPI.swift */; };
+		000000000000000000008037 /* NeteaseDirectClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008036 /* NeteaseDirectClient.swift */; };
+		000000000000000000008039 /* NeteaseSocialAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008038 /* NeteaseSocialAPI.swift */; };
+		00000000000000000000803B /* AudioEqualizerDSP.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000803A /* AudioEqualizerDSP.swift */; };
+		00000000000000000000803D /* AudioEqualizerProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000803C /* AudioEqualizerProcessor.swift */; };
+		00000000000000000000803F /* AudioEqualizerRenderState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000803E /* AudioEqualizerRenderState.swift */; };
+		000000000000000000008041 /* AudioPlaybackEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008040 /* AudioPlaybackEngine.swift */; };
+		000000000000000000008043 /* NowPlayingSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008042 /* NowPlayingSession.swift */; };
+		000000000000000000008045 /* PlaybackHistoryRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008044 /* PlaybackHistoryRecorder.swift */; };
+		000000000000000000008047 /* PlaybackIssue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008046 /* PlaybackIssue.swift */; };
+		000000000000000000008049 /* PlaybackPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008048 /* PlaybackPersistence.swift */; };
+		00000000000000000000804B /* PlaybackQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000804A /* PlaybackQueue.swift */; };
+		00000000000000000000804D /* PlaybackSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000804C /* PlaybackSource.swift */; };
+		00000000000000000000804F /* PlayerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000804E /* PlayerStore.swift */; };
+		000000000000000000008051 /* AudioEqualizerPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008050 /* AudioEqualizerPreferences.swift */; };
+		000000000000000000008053 /* LyricsRefreshRate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008052 /* LyricsRefreshRate.swift */; };
+		000000000000000000008055 /* LyricsStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008054 /* LyricsStyle.swift */; };
+		000000000000000000008057 /* MeloXSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008056 /* MeloXSettings.swift */; };
+		000000000000000000008059 /* NavigationPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008058 /* NavigationPreferences.swift */; };
+		00000000000000000000805B /* PlayerScreenAwakeMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000805A /* PlayerScreenAwakeMode.swift */; };
+		00000000000000000000805D /* PlayerVolumeControlMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000805C /* PlayerVolumeControlMode.swift */; };
+		00000000000000000000805F /* SkylineLyricsPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000805E /* SkylineLyricsPreferences.swift */; };
+		000000000000000000008061 /* TextPVPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008060 /* TextPVPreferences.swift */; };
+		000000000000000000008063 /* ScreenAwakeCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008062 /* ScreenAwakeCoordinator.swift */; };
+		000000000000000000008065 /* AppUpdateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008064 /* AppUpdateService.swift */; };
+		000000000000000000008067 /* AccountHomeContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008066 /* AccountHomeContent.swift */; };
+		000000000000000000008069 /* AccountHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008068 /* AccountHomeView.swift */; };
+		00000000000000000000806B /* AlbumDetailContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000806A /* AlbumDetailContent.swift */; };
+		00000000000000000000806D /* AlbumDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000806C /* AlbumDetailView.swift */; };
+		00000000000000000000806F /* ArtistDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000806E /* ArtistDetailView.swift */; };
+		000000000000000000008071 /* CloudMusicView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008070 /* CloudMusicView.swift */; };
+		000000000000000000008073 /* DownloadsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008072 /* DownloadsView.swift */; };
+		000000000000000000008075 /* ExplorePlaylistComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008074 /* ExplorePlaylistComponents.swift */; };
+		000000000000000000008077 /* ExploreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008076 /* ExploreView.swift */; };
+		000000000000000000008079 /* DailySongsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008078 /* DailySongsView.swift */; };
+		00000000000000000000807B /* HomeComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000807A /* HomeComponents.swift */; };
+		00000000000000000000807D /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000807C /* HomeView.swift */; };
+		00000000000000000000807F /* NewAlbumsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000807E /* NewAlbumsView.swift */; };
+		000000000000000000008081 /* ProjectLicensesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008080 /* ProjectLicensesView.swift */; };
+		000000000000000000008083 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008082 /* LibraryView.swift */; };
+		000000000000000000008085 /* NeteaseConversationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008084 /* NeteaseConversationView.swift */; };
+		000000000000000000008087 /* NeteaseMessageContactsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008086 /* NeteaseMessageContactsView.swift */; };
+		000000000000000000008089 /* NeteasePrivateMessagesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008088 /* NeteasePrivateMessagesView.swift */; };
+		00000000000000000000808B /* OnboardingPages.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000808A /* OnboardingPages.swift */; };
+		00000000000000000000808D /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000808C /* OnboardingView.swift */; };
+		00000000000000000000808F /* AppleMusicLyricsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000808E /* AppleMusicLyricsView.swift */; };
+		000000000000000000008091 /* DeterministicRandom.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008090 /* DeterministicRandom.swift */; };
+		000000000000000000008093 /* EVALyricCompositionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008092 /* EVALyricCompositionView.swift */; };
+		000000000000000000008095 /* EVALyricsLatinLayouts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008094 /* EVALyricsLatinLayouts.swift */; };
+		000000000000000000008097 /* EVALyricsLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008096 /* EVALyricsLayout.swift */; };
+		000000000000000000008099 /* EVALyricsLongLayouts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008098 /* EVALyricsLongLayouts.swift */; };
+		00000000000000000000809B /* EVALyricsShortLayouts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000809A /* EVALyricsShortLayouts.swift */; };
+		00000000000000000000809D /* EVALyricsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000809C /* EVALyricsView.swift */; };
+		00000000000000000000809F /* LyricGlowTextRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000809E /* LyricGlowTextRenderer.swift */; };
+		0000000000000000000080A1 /* LyricsTypography.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080A0 /* LyricsTypography.swift */; };
+		0000000000000000000080A3 /* MiniPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080A2 /* MiniPlayerView.swift */; };
+		0000000000000000000080A5 /* NowPlayingArtworkPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080A4 /* NowPlayingArtworkPage.swift */; };
+		0000000000000000000080A7 /* NowPlayingBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080A6 /* NowPlayingBackground.swift */; };
+		0000000000000000000080A9 /* NowPlayingControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080A8 /* NowPlayingControls.swift */; };
+		0000000000000000000080AB /* NowPlayingLandscapeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080AA /* NowPlayingLandscapeView.swift */; };
+		0000000000000000000080AD /* NowPlayingLyricsPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080AC /* NowPlayingLyricsPage.swift */; };
+		0000000000000000000080AF /* NowPlayingQueuePage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080AE /* NowPlayingQueuePage.swift */; };
+		0000000000000000000080B1 /* NowPlayingSongDetailsPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080B0 /* NowPlayingSongDetailsPage.swift */; };
+		0000000000000000000080B3 /* NowPlayingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080B2 /* NowPlayingView.swift */; };
+		0000000000000000000080B5 /* QueueView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080B4 /* QueueView.swift */; };
+		0000000000000000000080B7 /* SkylineAmbientLyricsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080B6 /* SkylineAmbientLyricsView.swift */; };
+		0000000000000000000080B9 /* SkylineCentralLyricsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080B8 /* SkylineCentralLyricsView.swift */; };
+		0000000000000000000080BB /* SkylineLyricsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080BA /* SkylineLyricsView.swift */; };
+		0000000000000000000080BD /* SynchronizedLyricText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080BC /* SynchronizedLyricText.swift */; };
+		0000000000000000000080BF /* TextPVAtmosphericEffects.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080BE /* TextPVAtmosphericEffects.swift */; };
+		0000000000000000000080C1 /* TextPVBackgroundEffects.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080C0 /* TextPVBackgroundEffects.swift */; };
+		0000000000000000000080C3 /* TextPVBatchedEffectCanvas.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080C2 /* TextPVBatchedEffectCanvas.swift */; };
+		0000000000000000000080C5 /* TextPVCanvasSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080C4 /* TextPVCanvasSupport.swift */; };
+		0000000000000000000080C7 /* TextPVCanvasSymbols.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080C6 /* TextPVCanvasSymbols.swift */; };
+		0000000000000000000080C9 /* TextPVCardTextEffects.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080C8 /* TextPVCardTextEffects.swift */; };
+		0000000000000000000080CB /* TextPVCyberCrimeEffects.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080CA /* TextPVCyberCrimeEffects.swift */; };
+		0000000000000000000080CD /* TextPVEffectRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080CC /* TextPVEffectRenderer.swift */; };
+		0000000000000000000080CF /* TextPVFullScreenPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080CE /* TextPVFullScreenPlayerView.swift */; };
+		0000000000000000000080D1 /* TextPVHUDTextEffects.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080D0 /* TextPVHUDTextEffects.swift */; };
+		0000000000000000000080D3 /* TextPVLyricsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080D2 /* TextPVLyricsView.swift */; };
+		0000000000000000000080D5 /* TextPVOverlayEffects.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080D4 /* TextPVOverlayEffects.swift */; };
+		0000000000000000000080D7 /* TextPVPathCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080D6 /* TextPVPathCache.swift */; };
+		0000000000000000000080D9 /* TextPVPlayfulEffects.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080D8 /* TextPVPlayfulEffects.swift */; };
+		0000000000000000000080DB /* TextPVPrimaryTextEffects.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080DA /* TextPVPrimaryTextEffects.swift */; };
+		0000000000000000000080DD /* TextPVRenderContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080DC /* TextPVRenderContext.swift */; };
+		0000000000000000000080DF /* TextPVStageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080DE /* TextPVStageView.swift */; };
+		0000000000000000000080E1 /* TextPVStaggeredTextEffects.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080E0 /* TextPVStaggeredTextEffects.swift */; };
+		0000000000000000000080E3 /* TextPVStructuralEffects.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080E2 /* TextPVStructuralEffects.swift */; };
+		0000000000000000000080E5 /* TextPVStyleMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080E4 /* TextPVStyleMenu.swift */; };
+		0000000000000000000080E7 /* TextPVTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080E6 /* TextPVTemplate.swift */; };
+		0000000000000000000080E9 /* TextPVTemplateCatalogDramatic.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080E8 /* TextPVTemplateCatalogDramatic.swift */; };
+		0000000000000000000080EB /* TextPVTemplateCatalogFoundation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080EA /* TextPVTemplateCatalogFoundation.swift */; };
+		0000000000000000000080ED /* TextPVTemplateCatalogPlayful.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080EC /* TextPVTemplateCatalogPlayful.swift */; };
+		0000000000000000000080EF /* TimedLyricTextBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080EE /* TimedLyricTextBuilder.swift */; };
+		0000000000000000000080F1 /* AddToPlaylistSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080F0 /* AddToPlaylistSheet.swift */; };
+		0000000000000000000080F3 /* PlaylistDetailContent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080F2 /* PlaylistDetailContent.swift */; };
+		0000000000000000000080F5 /* PlaylistDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080F4 /* PlaylistDetailView.swift */; };
+		0000000000000000000080F7 /* PlaylistTrackList.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080F6 /* PlaylistTrackList.swift */; };
+		0000000000000000000080F9 /* PlaylistCategoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080F8 /* PlaylistCategoryView.swift */; };
+		0000000000000000000080FB /* SearchDiscoveryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080FA /* SearchDiscoveryView.swift */; };
+		0000000000000000000080FD /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080FC /* SearchView.swift */; };
+		0000000000000000000080FF /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080FE /* AboutView.swift */; };
+		000000000000000000008101 /* ContentSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008100 /* ContentSettingsView.swift */; };
+		000000000000000000008103 /* EqualizerSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008102 /* EqualizerSettingsView.swift */; };
+		000000000000000000008105 /* GeneralSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008104 /* GeneralSettingsView.swift */; };
+		000000000000000000008107 /* MeloXSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008106 /* MeloXSettingsView.swift */; };
+		000000000000000000008109 /* NeteaseLoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008108 /* NeteaseLoginView.swift */; };
+		00000000000000000000810B /* PlayerSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000810A /* PlayerSettingsView.swift */; };
+		00000000000000000000810D /* SettingsAccountSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000810C /* SettingsAccountSection.swift */; };
+		00000000000000000000810F /* SkylineLyricsSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000810E /* SkylineLyricsSettingsView.swift */; };
+		000000000000000000008111 /* TextPVSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008110 /* TextPVSettingsView.swift */; };
+		000000000000000000008113 /* NeteasePrivateMessageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008112 /* NeteasePrivateMessageView.swift */; };
+		000000000000000000008115 /* NeteaseSharePresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008114 /* NeteaseSharePresentation.swift */; };
+		000000000000000000008117 /* NeteaseShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008116 /* NeteaseShareSheet.swift */; };
+		000000000000000000008119 /* SongCommentRepliesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008118 /* SongCommentRepliesView.swift */; };
+		00000000000000000000811B /* SongCommentRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000811A /* SongCommentRow.swift */; };
+		00000000000000000000811D /* SongCommentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000811C /* SongCommentsView.swift */; };
+		00000000000000000000811F /* SongDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000811E /* SongDetailView.swift */; };
+		000000000000000000008121 /* ToplistsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008120 /* ToplistsView.swift */; };
+		000000000000000000008123 /* MeloXContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008122 /* MeloXContentView.swift */; };
+		000000000000000000008125 /* ArtworkImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008124 /* ArtworkImage.swift */; };
+		000000000000000000008127 /* ConnectionUnavailableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008126 /* ConnectionUnavailableView.swift */; };
+		000000000000000000008129 /* MediaCardGridLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008128 /* MediaCardGridLayout.swift */; };
+		00000000000000000000812B /* MediaCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000812A /* MediaCardView.swift */; };
+		00000000000000000000812D /* MusicCollectionPaginationFooter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000812C /* MusicCollectionPaginationFooter.swift */; };
+		00000000000000000000812F /* MusicCollectionTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000812E /* MusicCollectionTheme.swift */; };
+		000000000000000000008131 /* SectionTitle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008130 /* SectionTitle.swift */; };
+		000000000000000000008133 /* TrackRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008132 /* TrackRowView.swift */; };
 		0000000000000000000005C1 /* BilibiliLiveWebRoomView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000005C0 /* BilibiliLiveWebRoomView.swift */; };
 		000000000000000000000721 /* SmartNotifyService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000720 /* SmartNotifyService.swift */; };
 		000000000000000000000723 /* CheckinHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000722 /* CheckinHistoryStore.swift */; };
@@ -132,6 +287,160 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		000000000000000000008000 /* MusicRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicRootView.swift; sourceTree = "<group>"; };
+		000000000000000000008002 /* MeloXCompatibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloXCompatibility.swift; sourceTree = "<group>"; };
+		000000000000000000008004 /* AppLaunchExperience.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/App/AppLaunchExperience.swift; sourceTree = "<group>"; };
+		000000000000000000008006 /* AppNavigation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/App/AppNavigation.swift; sourceTree = "<group>"; };
+		000000000000000000008008 /* MusicNavigationTransitions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/App/MusicNavigationTransitions.swift; sourceTree = "<group>"; };
+		00000000000000000000800A /* ArtworkAccentColorProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Artwork/ArtworkAccentColorProvider.swift; sourceTree = "<group>"; };
+		00000000000000000000800C /* CloudMusicModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Cloud/CloudMusicModels.swift; sourceTree = "<group>"; };
+		00000000000000000000800E /* CloudMusicStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Cloud/CloudMusicStore.swift; sourceTree = "<group>"; };
+		000000000000000000008010 /* CloudUploadFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Cloud/CloudUploadFile.swift; sourceTree = "<group>"; };
+		000000000000000000008012 /* DownloadDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Downloads/DownloadDatabase.swift; sourceTree = "<group>"; };
+		000000000000000000008014 /* DownloadStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Downloads/DownloadStorage.swift; sourceTree = "<group>"; };
+		000000000000000000008016 /* DownloadStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Downloads/DownloadStore.swift; sourceTree = "<group>"; };
+		000000000000000000008018 /* DownloadTransferClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Downloads/DownloadTransferClient.swift; sourceTree = "<group>"; };
+		00000000000000000000801A /* DownloadedSong.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Downloads/DownloadedSong.swift; sourceTree = "<group>"; };
+		00000000000000000000801C /* AppRecommendationPrompt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Engagement/AppRecommendationPrompt.swift; sourceTree = "<group>"; };
+		00000000000000000000801E /* LibraryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Library/LibraryStore.swift; sourceTree = "<group>"; };
+		000000000000000000008020 /* LyricModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Lyrics/LyricModels.swift; sourceTree = "<group>"; };
+		000000000000000000008022 /* LyricParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Lyrics/LyricParser.swift; sourceTree = "<group>"; };
+		000000000000000000008024 /* LyricPlaybackTimeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Lyrics/LyricPlaybackTimeline.swift; sourceTree = "<group>"; };
+		000000000000000000008026 /* APIResponses.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Models/APIResponses.swift; sourceTree = "<group>"; };
+		000000000000000000008028 /* AccountModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Models/AccountModels.swift; sourceTree = "<group>"; };
+		00000000000000000000802A /* MusicModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Models/MusicModels.swift; sourceTree = "<group>"; };
+		00000000000000000000802C /* PrivateMessageModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Models/PrivateMessageModels.swift; sourceTree = "<group>"; };
+		00000000000000000000802E /* SocialShareModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Models/SocialShareModels.swift; sourceTree = "<group>"; };
+		000000000000000000008030 /* SongCollectionPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Models/SongCollectionPage.swift; sourceTree = "<group>"; };
+		000000000000000000008032 /* SongCommentModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Models/SongCommentModels.swift; sourceTree = "<group>"; };
+		000000000000000000008034 /* NeteaseAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Networking/NeteaseAPI.swift; sourceTree = "<group>"; };
+		000000000000000000008036 /* NeteaseDirectClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Networking/NeteaseDirectClient.swift; sourceTree = "<group>"; };
+		000000000000000000008038 /* NeteaseSocialAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Networking/NeteaseSocialAPI.swift; sourceTree = "<group>"; };
+		00000000000000000000803A /* AudioEqualizerDSP.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Playback/AudioEqualizerDSP.swift; sourceTree = "<group>"; };
+		00000000000000000000803C /* AudioEqualizerProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Playback/AudioEqualizerProcessor.swift; sourceTree = "<group>"; };
+		00000000000000000000803E /* AudioEqualizerRenderState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Playback/AudioEqualizerRenderState.swift; sourceTree = "<group>"; };
+		000000000000000000008040 /* AudioPlaybackEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Playback/AudioPlaybackEngine.swift; sourceTree = "<group>"; };
+		000000000000000000008042 /* NowPlayingSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Playback/NowPlayingSession.swift; sourceTree = "<group>"; };
+		000000000000000000008044 /* PlaybackHistoryRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Playback/PlaybackHistoryRecorder.swift; sourceTree = "<group>"; };
+		000000000000000000008046 /* PlaybackIssue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Playback/PlaybackIssue.swift; sourceTree = "<group>"; };
+		000000000000000000008048 /* PlaybackPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Playback/PlaybackPersistence.swift; sourceTree = "<group>"; };
+		00000000000000000000804A /* PlaybackQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Playback/PlaybackQueue.swift; sourceTree = "<group>"; };
+		00000000000000000000804C /* PlaybackSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Playback/PlaybackSource.swift; sourceTree = "<group>"; };
+		00000000000000000000804E /* PlayerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Playback/PlayerStore.swift; sourceTree = "<group>"; };
+		000000000000000000008050 /* AudioEqualizerPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Settings/AudioEqualizerPreferences.swift; sourceTree = "<group>"; };
+		000000000000000000008052 /* LyricsRefreshRate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Settings/LyricsRefreshRate.swift; sourceTree = "<group>"; };
+		000000000000000000008054 /* LyricsStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Settings/LyricsStyle.swift; sourceTree = "<group>"; };
+		000000000000000000008056 /* MeloXSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Settings/MeloXSettings.swift; sourceTree = "<group>"; };
+		000000000000000000008058 /* NavigationPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Settings/NavigationPreferences.swift; sourceTree = "<group>"; };
+		00000000000000000000805A /* PlayerScreenAwakeMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Settings/PlayerScreenAwakeMode.swift; sourceTree = "<group>"; };
+		00000000000000000000805C /* PlayerVolumeControlMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Settings/PlayerVolumeControlMode.swift; sourceTree = "<group>"; };
+		00000000000000000000805E /* SkylineLyricsPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Settings/SkylineLyricsPreferences.swift; sourceTree = "<group>"; };
+		000000000000000000008060 /* TextPVPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Settings/TextPVPreferences.swift; sourceTree = "<group>"; };
+		000000000000000000008062 /* ScreenAwakeCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/System/ScreenAwakeCoordinator.swift; sourceTree = "<group>"; };
+		000000000000000000008064 /* AppUpdateService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Updates/AppUpdateService.swift; sourceTree = "<group>"; };
+		000000000000000000008066 /* AccountHomeContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Account/AccountHomeContent.swift; sourceTree = "<group>"; };
+		000000000000000000008068 /* AccountHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Account/AccountHomeView.swift; sourceTree = "<group>"; };
+		00000000000000000000806A /* AlbumDetailContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Album/AlbumDetailContent.swift; sourceTree = "<group>"; };
+		00000000000000000000806C /* AlbumDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Album/AlbumDetailView.swift; sourceTree = "<group>"; };
+		00000000000000000000806E /* ArtistDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Artist/ArtistDetailView.swift; sourceTree = "<group>"; };
+		000000000000000000008070 /* CloudMusicView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Cloud/CloudMusicView.swift; sourceTree = "<group>"; };
+		000000000000000000008072 /* DownloadsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Downloads/DownloadsView.swift; sourceTree = "<group>"; };
+		000000000000000000008074 /* ExplorePlaylistComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Explore/ExplorePlaylistComponents.swift; sourceTree = "<group>"; };
+		000000000000000000008076 /* ExploreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Explore/ExploreView.swift; sourceTree = "<group>"; };
+		000000000000000000008078 /* DailySongsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Home/DailySongsView.swift; sourceTree = "<group>"; };
+		00000000000000000000807A /* HomeComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Home/HomeComponents.swift; sourceTree = "<group>"; };
+		00000000000000000000807C /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Home/HomeView.swift; sourceTree = "<group>"; };
+		00000000000000000000807E /* NewAlbumsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Home/NewAlbumsView.swift; sourceTree = "<group>"; };
+		000000000000000000008080 /* ProjectLicensesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Legal/ProjectLicensesView.swift; sourceTree = "<group>"; };
+		000000000000000000008082 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Library/LibraryView.swift; sourceTree = "<group>"; };
+		000000000000000000008084 /* NeteaseConversationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Messages/NeteaseConversationView.swift; sourceTree = "<group>"; };
+		000000000000000000008086 /* NeteaseMessageContactsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Messages/NeteaseMessageContactsView.swift; sourceTree = "<group>"; };
+		000000000000000000008088 /* NeteasePrivateMessagesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Messages/NeteasePrivateMessagesView.swift; sourceTree = "<group>"; };
+		00000000000000000000808A /* OnboardingPages.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Onboarding/OnboardingPages.swift; sourceTree = "<group>"; };
+		00000000000000000000808C /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Onboarding/OnboardingView.swift; sourceTree = "<group>"; };
+		00000000000000000000808E /* AppleMusicLyricsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/AppleMusicLyricsView.swift; sourceTree = "<group>"; };
+		000000000000000000008090 /* DeterministicRandom.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/DeterministicRandom.swift; sourceTree = "<group>"; };
+		000000000000000000008092 /* EVALyricCompositionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/EVALyricCompositionView.swift; sourceTree = "<group>"; };
+		000000000000000000008094 /* EVALyricsLatinLayouts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/EVALyricsLatinLayouts.swift; sourceTree = "<group>"; };
+		000000000000000000008096 /* EVALyricsLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/EVALyricsLayout.swift; sourceTree = "<group>"; };
+		000000000000000000008098 /* EVALyricsLongLayouts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/EVALyricsLongLayouts.swift; sourceTree = "<group>"; };
+		00000000000000000000809A /* EVALyricsShortLayouts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/EVALyricsShortLayouts.swift; sourceTree = "<group>"; };
+		00000000000000000000809C /* EVALyricsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/EVALyricsView.swift; sourceTree = "<group>"; };
+		00000000000000000000809E /* LyricGlowTextRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/LyricGlowTextRenderer.swift; sourceTree = "<group>"; };
+		0000000000000000000080A0 /* LyricsTypography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/LyricsTypography.swift; sourceTree = "<group>"; };
+		0000000000000000000080A2 /* MiniPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/MiniPlayerView.swift; sourceTree = "<group>"; };
+		0000000000000000000080A4 /* NowPlayingArtworkPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/NowPlayingArtworkPage.swift; sourceTree = "<group>"; };
+		0000000000000000000080A6 /* NowPlayingBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/NowPlayingBackground.swift; sourceTree = "<group>"; };
+		0000000000000000000080A8 /* NowPlayingControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/NowPlayingControls.swift; sourceTree = "<group>"; };
+		0000000000000000000080AA /* NowPlayingLandscapeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/NowPlayingLandscapeView.swift; sourceTree = "<group>"; };
+		0000000000000000000080AC /* NowPlayingLyricsPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/NowPlayingLyricsPage.swift; sourceTree = "<group>"; };
+		0000000000000000000080AE /* NowPlayingQueuePage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/NowPlayingQueuePage.swift; sourceTree = "<group>"; };
+		0000000000000000000080B0 /* NowPlayingSongDetailsPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/NowPlayingSongDetailsPage.swift; sourceTree = "<group>"; };
+		0000000000000000000080B2 /* NowPlayingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/NowPlayingView.swift; sourceTree = "<group>"; };
+		0000000000000000000080B4 /* QueueView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/QueueView.swift; sourceTree = "<group>"; };
+		0000000000000000000080B6 /* SkylineAmbientLyricsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/SkylineAmbientLyricsView.swift; sourceTree = "<group>"; };
+		0000000000000000000080B8 /* SkylineCentralLyricsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/SkylineCentralLyricsView.swift; sourceTree = "<group>"; };
+		0000000000000000000080BA /* SkylineLyricsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/SkylineLyricsView.swift; sourceTree = "<group>"; };
+		0000000000000000000080BC /* SynchronizedLyricText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/SynchronizedLyricText.swift; sourceTree = "<group>"; };
+		0000000000000000000080BE /* TextPVAtmosphericEffects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/TextPVAtmosphericEffects.swift; sourceTree = "<group>"; };
+		0000000000000000000080C0 /* TextPVBackgroundEffects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/TextPVBackgroundEffects.swift; sourceTree = "<group>"; };
+		0000000000000000000080C2 /* TextPVBatchedEffectCanvas.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/TextPVBatchedEffectCanvas.swift; sourceTree = "<group>"; };
+		0000000000000000000080C4 /* TextPVCanvasSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/TextPVCanvasSupport.swift; sourceTree = "<group>"; };
+		0000000000000000000080C6 /* TextPVCanvasSymbols.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/TextPVCanvasSymbols.swift; sourceTree = "<group>"; };
+		0000000000000000000080C8 /* TextPVCardTextEffects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/TextPVCardTextEffects.swift; sourceTree = "<group>"; };
+		0000000000000000000080CA /* TextPVCyberCrimeEffects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/TextPVCyberCrimeEffects.swift; sourceTree = "<group>"; };
+		0000000000000000000080CC /* TextPVEffectRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/TextPVEffectRenderer.swift; sourceTree = "<group>"; };
+		0000000000000000000080CE /* TextPVFullScreenPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/TextPVFullScreenPlayerView.swift; sourceTree = "<group>"; };
+		0000000000000000000080D0 /* TextPVHUDTextEffects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/TextPVHUDTextEffects.swift; sourceTree = "<group>"; };
+		0000000000000000000080D2 /* TextPVLyricsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/TextPVLyricsView.swift; sourceTree = "<group>"; };
+		0000000000000000000080D4 /* TextPVOverlayEffects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/TextPVOverlayEffects.swift; sourceTree = "<group>"; };
+		0000000000000000000080D6 /* TextPVPathCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/TextPVPathCache.swift; sourceTree = "<group>"; };
+		0000000000000000000080D8 /* TextPVPlayfulEffects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/TextPVPlayfulEffects.swift; sourceTree = "<group>"; };
+		0000000000000000000080DA /* TextPVPrimaryTextEffects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/TextPVPrimaryTextEffects.swift; sourceTree = "<group>"; };
+		0000000000000000000080DC /* TextPVRenderContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/TextPVRenderContext.swift; sourceTree = "<group>"; };
+		0000000000000000000080DE /* TextPVStageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/TextPVStageView.swift; sourceTree = "<group>"; };
+		0000000000000000000080E0 /* TextPVStaggeredTextEffects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/TextPVStaggeredTextEffects.swift; sourceTree = "<group>"; };
+		0000000000000000000080E2 /* TextPVStructuralEffects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/TextPVStructuralEffects.swift; sourceTree = "<group>"; };
+		0000000000000000000080E4 /* TextPVStyleMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/TextPVStyleMenu.swift; sourceTree = "<group>"; };
+		0000000000000000000080E6 /* TextPVTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/TextPVTemplate.swift; sourceTree = "<group>"; };
+		0000000000000000000080E8 /* TextPVTemplateCatalogDramatic.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/TextPVTemplateCatalogDramatic.swift; sourceTree = "<group>"; };
+		0000000000000000000080EA /* TextPVTemplateCatalogFoundation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/TextPVTemplateCatalogFoundation.swift; sourceTree = "<group>"; };
+		0000000000000000000080EC /* TextPVTemplateCatalogPlayful.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/TextPVTemplateCatalogPlayful.swift; sourceTree = "<group>"; };
+		0000000000000000000080EE /* TimedLyricTextBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/TimedLyricTextBuilder.swift; sourceTree = "<group>"; };
+		0000000000000000000080F0 /* AddToPlaylistSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Playlist/AddToPlaylistSheet.swift; sourceTree = "<group>"; };
+		0000000000000000000080F2 /* PlaylistDetailContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Playlist/PlaylistDetailContent.swift; sourceTree = "<group>"; };
+		0000000000000000000080F4 /* PlaylistDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Playlist/PlaylistDetailView.swift; sourceTree = "<group>"; };
+		0000000000000000000080F6 /* PlaylistTrackList.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Playlist/PlaylistTrackList.swift; sourceTree = "<group>"; };
+		0000000000000000000080F8 /* PlaylistCategoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Search/PlaylistCategoryView.swift; sourceTree = "<group>"; };
+		0000000000000000000080FA /* SearchDiscoveryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Search/SearchDiscoveryView.swift; sourceTree = "<group>"; };
+		0000000000000000000080FC /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Search/SearchView.swift; sourceTree = "<group>"; };
+		0000000000000000000080FE /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Settings/AboutView.swift; sourceTree = "<group>"; };
+		000000000000000000008100 /* ContentSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Settings/ContentSettingsView.swift; sourceTree = "<group>"; };
+		000000000000000000008102 /* EqualizerSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Settings/EqualizerSettingsView.swift; sourceTree = "<group>"; };
+		000000000000000000008104 /* GeneralSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Settings/GeneralSettingsView.swift; sourceTree = "<group>"; };
+		000000000000000000008106 /* MeloXSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Settings/MeloXSettingsView.swift; sourceTree = "<group>"; };
+		000000000000000000008108 /* NeteaseLoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Settings/NeteaseLoginView.swift; sourceTree = "<group>"; };
+		00000000000000000000810A /* PlayerSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Settings/PlayerSettingsView.swift; sourceTree = "<group>"; };
+		00000000000000000000810C /* SettingsAccountSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Settings/SettingsAccountSection.swift; sourceTree = "<group>"; };
+		00000000000000000000810E /* SkylineLyricsSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Settings/SkylineLyricsSettingsView.swift; sourceTree = "<group>"; };
+		000000000000000000008110 /* TextPVSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Settings/TextPVSettingsView.swift; sourceTree = "<group>"; };
+		000000000000000000008112 /* NeteasePrivateMessageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Sharing/NeteasePrivateMessageView.swift; sourceTree = "<group>"; };
+		000000000000000000008114 /* NeteaseSharePresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Sharing/NeteaseSharePresentation.swift; sourceTree = "<group>"; };
+		000000000000000000008116 /* NeteaseShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Sharing/NeteaseShareSheet.swift; sourceTree = "<group>"; };
+		000000000000000000008118 /* SongCommentRepliesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Song/SongCommentRepliesView.swift; sourceTree = "<group>"; };
+		00000000000000000000811A /* SongCommentRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Song/SongCommentRow.swift; sourceTree = "<group>"; };
+		00000000000000000000811C /* SongCommentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Song/SongCommentsView.swift; sourceTree = "<group>"; };
+		00000000000000000000811E /* SongDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Song/SongDetailView.swift; sourceTree = "<group>"; };
+		000000000000000000008120 /* ToplistsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Toplists/ToplistsView.swift; sourceTree = "<group>"; };
+		000000000000000000008122 /* MeloXContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/MeloXContentView.swift; sourceTree = "<group>"; };
+		000000000000000000008124 /* ArtworkImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Shared/ArtworkImage.swift; sourceTree = "<group>"; };
+		000000000000000000008126 /* ConnectionUnavailableView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Shared/ConnectionUnavailableView.swift; sourceTree = "<group>"; };
+		000000000000000000008128 /* MediaCardGridLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Shared/MediaCardGridLayout.swift; sourceTree = "<group>"; };
+		00000000000000000000812A /* MediaCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Shared/MediaCardView.swift; sourceTree = "<group>"; };
+		00000000000000000000812C /* MusicCollectionPaginationFooter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Shared/MusicCollectionPaginationFooter.swift; sourceTree = "<group>"; };
+		00000000000000000000812E /* MusicCollectionTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Shared/MusicCollectionTheme.swift; sourceTree = "<group>"; };
+		000000000000000000008130 /* SectionTitle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Shared/SectionTitle.swift; sourceTree = "<group>"; };
+		000000000000000000008132 /* TrackRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Shared/TrackRowView.swift; sourceTree = "<group>"; };
 		0000000000000000000005C0 /* BilibiliLiveWebRoomView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BilibiliLiveWebRoomView.swift; sourceTree = "<group>"; };
 		000000000000000000000720 /* SmartNotifyService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartNotifyService.swift; sourceTree = "<group>"; };
 		000000000000000000000722 /* CheckinHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckinHistoryStore.swift; sourceTree = "<group>"; };
@@ -261,6 +570,167 @@
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
+		000000000000000000008134 /* Music */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000008000 /* MusicRootView.swift */,
+				000000000000000000008002 /* MeloXCompatibility.swift */,
+				000000000000000000008004 /* AppLaunchExperience.swift */,
+				000000000000000000008006 /* AppNavigation.swift */,
+				000000000000000000008008 /* MusicNavigationTransitions.swift */,
+				00000000000000000000800A /* ArtworkAccentColorProvider.swift */,
+				00000000000000000000800C /* CloudMusicModels.swift */,
+				00000000000000000000800E /* CloudMusicStore.swift */,
+				000000000000000000008010 /* CloudUploadFile.swift */,
+				000000000000000000008012 /* DownloadDatabase.swift */,
+				000000000000000000008014 /* DownloadStorage.swift */,
+				000000000000000000008016 /* DownloadStore.swift */,
+				000000000000000000008018 /* DownloadTransferClient.swift */,
+				00000000000000000000801A /* DownloadedSong.swift */,
+				00000000000000000000801C /* AppRecommendationPrompt.swift */,
+				00000000000000000000801E /* LibraryStore.swift */,
+				000000000000000000008020 /* LyricModels.swift */,
+				000000000000000000008022 /* LyricParser.swift */,
+				000000000000000000008024 /* LyricPlaybackTimeline.swift */,
+				000000000000000000008026 /* APIResponses.swift */,
+				000000000000000000008028 /* AccountModels.swift */,
+				00000000000000000000802A /* MusicModels.swift */,
+				00000000000000000000802C /* PrivateMessageModels.swift */,
+				00000000000000000000802E /* SocialShareModels.swift */,
+				000000000000000000008030 /* SongCollectionPage.swift */,
+				000000000000000000008032 /* SongCommentModels.swift */,
+				000000000000000000008034 /* NeteaseAPI.swift */,
+				000000000000000000008036 /* NeteaseDirectClient.swift */,
+				000000000000000000008038 /* NeteaseSocialAPI.swift */,
+				00000000000000000000803A /* AudioEqualizerDSP.swift */,
+				00000000000000000000803C /* AudioEqualizerProcessor.swift */,
+				00000000000000000000803E /* AudioEqualizerRenderState.swift */,
+				000000000000000000008040 /* AudioPlaybackEngine.swift */,
+				000000000000000000008042 /* NowPlayingSession.swift */,
+				000000000000000000008044 /* PlaybackHistoryRecorder.swift */,
+				000000000000000000008046 /* PlaybackIssue.swift */,
+				000000000000000000008048 /* PlaybackPersistence.swift */,
+				00000000000000000000804A /* PlaybackQueue.swift */,
+				00000000000000000000804C /* PlaybackSource.swift */,
+				00000000000000000000804E /* PlayerStore.swift */,
+				000000000000000000008050 /* AudioEqualizerPreferences.swift */,
+				000000000000000000008052 /* LyricsRefreshRate.swift */,
+				000000000000000000008054 /* LyricsStyle.swift */,
+				000000000000000000008056 /* MeloXSettings.swift */,
+				000000000000000000008058 /* NavigationPreferences.swift */,
+				00000000000000000000805A /* PlayerScreenAwakeMode.swift */,
+				00000000000000000000805C /* PlayerVolumeControlMode.swift */,
+				00000000000000000000805E /* SkylineLyricsPreferences.swift */,
+				000000000000000000008060 /* TextPVPreferences.swift */,
+				000000000000000000008062 /* ScreenAwakeCoordinator.swift */,
+				000000000000000000008064 /* AppUpdateService.swift */,
+				000000000000000000008066 /* AccountHomeContent.swift */,
+				000000000000000000008068 /* AccountHomeView.swift */,
+				00000000000000000000806A /* AlbumDetailContent.swift */,
+				00000000000000000000806C /* AlbumDetailView.swift */,
+				00000000000000000000806E /* ArtistDetailView.swift */,
+				000000000000000000008070 /* CloudMusicView.swift */,
+				000000000000000000008072 /* DownloadsView.swift */,
+				000000000000000000008074 /* ExplorePlaylistComponents.swift */,
+				000000000000000000008076 /* ExploreView.swift */,
+				000000000000000000008078 /* DailySongsView.swift */,
+				00000000000000000000807A /* HomeComponents.swift */,
+				00000000000000000000807C /* HomeView.swift */,
+				00000000000000000000807E /* NewAlbumsView.swift */,
+				000000000000000000008080 /* ProjectLicensesView.swift */,
+				000000000000000000008082 /* LibraryView.swift */,
+				000000000000000000008084 /* NeteaseConversationView.swift */,
+				000000000000000000008086 /* NeteaseMessageContactsView.swift */,
+				000000000000000000008088 /* NeteasePrivateMessagesView.swift */,
+				00000000000000000000808A /* OnboardingPages.swift */,
+				00000000000000000000808C /* OnboardingView.swift */,
+				00000000000000000000808E /* AppleMusicLyricsView.swift */,
+				000000000000000000008090 /* DeterministicRandom.swift */,
+				000000000000000000008092 /* EVALyricCompositionView.swift */,
+				000000000000000000008094 /* EVALyricsLatinLayouts.swift */,
+				000000000000000000008096 /* EVALyricsLayout.swift */,
+				000000000000000000008098 /* EVALyricsLongLayouts.swift */,
+				00000000000000000000809A /* EVALyricsShortLayouts.swift */,
+				00000000000000000000809C /* EVALyricsView.swift */,
+				00000000000000000000809E /* LyricGlowTextRenderer.swift */,
+				0000000000000000000080A0 /* LyricsTypography.swift */,
+				0000000000000000000080A2 /* MiniPlayerView.swift */,
+				0000000000000000000080A4 /* NowPlayingArtworkPage.swift */,
+				0000000000000000000080A6 /* NowPlayingBackground.swift */,
+				0000000000000000000080A8 /* NowPlayingControls.swift */,
+				0000000000000000000080AA /* NowPlayingLandscapeView.swift */,
+				0000000000000000000080AC /* NowPlayingLyricsPage.swift */,
+				0000000000000000000080AE /* NowPlayingQueuePage.swift */,
+				0000000000000000000080B0 /* NowPlayingSongDetailsPage.swift */,
+				0000000000000000000080B2 /* NowPlayingView.swift */,
+				0000000000000000000080B4 /* QueueView.swift */,
+				0000000000000000000080B6 /* SkylineAmbientLyricsView.swift */,
+				0000000000000000000080B8 /* SkylineCentralLyricsView.swift */,
+				0000000000000000000080BA /* SkylineLyricsView.swift */,
+				0000000000000000000080BC /* SynchronizedLyricText.swift */,
+				0000000000000000000080BE /* TextPVAtmosphericEffects.swift */,
+				0000000000000000000080C0 /* TextPVBackgroundEffects.swift */,
+				0000000000000000000080C2 /* TextPVBatchedEffectCanvas.swift */,
+				0000000000000000000080C4 /* TextPVCanvasSupport.swift */,
+				0000000000000000000080C6 /* TextPVCanvasSymbols.swift */,
+				0000000000000000000080C8 /* TextPVCardTextEffects.swift */,
+				0000000000000000000080CA /* TextPVCyberCrimeEffects.swift */,
+				0000000000000000000080CC /* TextPVEffectRenderer.swift */,
+				0000000000000000000080CE /* TextPVFullScreenPlayerView.swift */,
+				0000000000000000000080D0 /* TextPVHUDTextEffects.swift */,
+				0000000000000000000080D2 /* TextPVLyricsView.swift */,
+				0000000000000000000080D4 /* TextPVOverlayEffects.swift */,
+				0000000000000000000080D6 /* TextPVPathCache.swift */,
+				0000000000000000000080D8 /* TextPVPlayfulEffects.swift */,
+				0000000000000000000080DA /* TextPVPrimaryTextEffects.swift */,
+				0000000000000000000080DC /* TextPVRenderContext.swift */,
+				0000000000000000000080DE /* TextPVStageView.swift */,
+				0000000000000000000080E0 /* TextPVStaggeredTextEffects.swift */,
+				0000000000000000000080E2 /* TextPVStructuralEffects.swift */,
+				0000000000000000000080E4 /* TextPVStyleMenu.swift */,
+				0000000000000000000080E6 /* TextPVTemplate.swift */,
+				0000000000000000000080E8 /* TextPVTemplateCatalogDramatic.swift */,
+				0000000000000000000080EA /* TextPVTemplateCatalogFoundation.swift */,
+				0000000000000000000080EC /* TextPVTemplateCatalogPlayful.swift */,
+				0000000000000000000080EE /* TimedLyricTextBuilder.swift */,
+				0000000000000000000080F0 /* AddToPlaylistSheet.swift */,
+				0000000000000000000080F2 /* PlaylistDetailContent.swift */,
+				0000000000000000000080F4 /* PlaylistDetailView.swift */,
+				0000000000000000000080F6 /* PlaylistTrackList.swift */,
+				0000000000000000000080F8 /* PlaylistCategoryView.swift */,
+				0000000000000000000080FA /* SearchDiscoveryView.swift */,
+				0000000000000000000080FC /* SearchView.swift */,
+				0000000000000000000080FE /* AboutView.swift */,
+				000000000000000000008100 /* ContentSettingsView.swift */,
+				000000000000000000008102 /* EqualizerSettingsView.swift */,
+				000000000000000000008104 /* GeneralSettingsView.swift */,
+				000000000000000000008106 /* MeloXSettingsView.swift */,
+				000000000000000000008108 /* NeteaseLoginView.swift */,
+				00000000000000000000810A /* PlayerSettingsView.swift */,
+				00000000000000000000810C /* SettingsAccountSection.swift */,
+				00000000000000000000810E /* SkylineLyricsSettingsView.swift */,
+				000000000000000000008110 /* TextPVSettingsView.swift */,
+				000000000000000000008112 /* NeteasePrivateMessageView.swift */,
+				000000000000000000008114 /* NeteaseSharePresentation.swift */,
+				000000000000000000008116 /* NeteaseShareSheet.swift */,
+				000000000000000000008118 /* SongCommentRepliesView.swift */,
+				00000000000000000000811A /* SongCommentRow.swift */,
+				00000000000000000000811C /* SongCommentsView.swift */,
+				00000000000000000000811E /* SongDetailView.swift */,
+				000000000000000000008120 /* ToplistsView.swift */,
+				000000000000000000008122 /* MeloXContentView.swift */,
+				000000000000000000008124 /* ArtworkImage.swift */,
+				000000000000000000008126 /* ConnectionUnavailableView.swift */,
+				000000000000000000008128 /* MediaCardGridLayout.swift */,
+				00000000000000000000812A /* MediaCardView.swift */,
+				00000000000000000000812C /* MusicCollectionPaginationFooter.swift */,
+				00000000000000000000812E /* MusicCollectionTheme.swift */,
+				000000000000000000008130 /* SectionTitle.swift */,
+				000000000000000000008132 /* TrackRowView.swift */,
+			);
+			path = Music;
+			sourceTree = "<group>";
+		};
 		0000000000000000000005E2 /* Overview */ = {
 			isa = PBXGroup;
 			children = (
@@ -516,6 +986,7 @@
 		000000000000000000000306 /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				000000000000000000008134 /* Music */,
 				000000000000000000000534 /* Live */,
 				000000000000000000000518 /* Tools */,
 				00000000000000000000030A /* Monitor */,
@@ -627,6 +1098,7 @@
 			name = PersonalToolbox;
 			packageProductDependencies = (
 				000000000000000000000701 /* Citadel */,
+				000000000000000000008136 /* GRDB */,
 			);
 			productName = PersonalToolbox;
 			productReference = 000000000000000000000202 /* PersonalToolbox.app */;
@@ -683,6 +1155,7 @@
 			projectRoot = "";
 			packageReferences = (
 				000000000000000000000700 /* XCRemoteSwiftPackageReference "Citadel" */,
+				000000000000000000008135 /* XCRemoteSwiftPackageReference "GRDB.swift" */,
 			);
 			targets = (
 				000000000000000000000203 /* PersonalToolbox */,
@@ -704,6 +1177,160 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				000000000000000000008001 /* MusicRootView.swift in Sources */,
+				000000000000000000008003 /* MeloXCompatibility.swift in Sources */,
+				000000000000000000008005 /* AppLaunchExperience.swift in Sources */,
+				000000000000000000008007 /* AppNavigation.swift in Sources */,
+				000000000000000000008009 /* MusicNavigationTransitions.swift in Sources */,
+				00000000000000000000800B /* ArtworkAccentColorProvider.swift in Sources */,
+				00000000000000000000800D /* CloudMusicModels.swift in Sources */,
+				00000000000000000000800F /* CloudMusicStore.swift in Sources */,
+				000000000000000000008011 /* CloudUploadFile.swift in Sources */,
+				000000000000000000008013 /* DownloadDatabase.swift in Sources */,
+				000000000000000000008015 /* DownloadStorage.swift in Sources */,
+				000000000000000000008017 /* DownloadStore.swift in Sources */,
+				000000000000000000008019 /* DownloadTransferClient.swift in Sources */,
+				00000000000000000000801B /* DownloadedSong.swift in Sources */,
+				00000000000000000000801D /* AppRecommendationPrompt.swift in Sources */,
+				00000000000000000000801F /* LibraryStore.swift in Sources */,
+				000000000000000000008021 /* LyricModels.swift in Sources */,
+				000000000000000000008023 /* LyricParser.swift in Sources */,
+				000000000000000000008025 /* LyricPlaybackTimeline.swift in Sources */,
+				000000000000000000008027 /* APIResponses.swift in Sources */,
+				000000000000000000008029 /* AccountModels.swift in Sources */,
+				00000000000000000000802B /* MusicModels.swift in Sources */,
+				00000000000000000000802D /* PrivateMessageModels.swift in Sources */,
+				00000000000000000000802F /* SocialShareModels.swift in Sources */,
+				000000000000000000008031 /* SongCollectionPage.swift in Sources */,
+				000000000000000000008033 /* SongCommentModels.swift in Sources */,
+				000000000000000000008035 /* NeteaseAPI.swift in Sources */,
+				000000000000000000008037 /* NeteaseDirectClient.swift in Sources */,
+				000000000000000000008039 /* NeteaseSocialAPI.swift in Sources */,
+				00000000000000000000803B /* AudioEqualizerDSP.swift in Sources */,
+				00000000000000000000803D /* AudioEqualizerProcessor.swift in Sources */,
+				00000000000000000000803F /* AudioEqualizerRenderState.swift in Sources */,
+				000000000000000000008041 /* AudioPlaybackEngine.swift in Sources */,
+				000000000000000000008043 /* NowPlayingSession.swift in Sources */,
+				000000000000000000008045 /* PlaybackHistoryRecorder.swift in Sources */,
+				000000000000000000008047 /* PlaybackIssue.swift in Sources */,
+				000000000000000000008049 /* PlaybackPersistence.swift in Sources */,
+				00000000000000000000804B /* PlaybackQueue.swift in Sources */,
+				00000000000000000000804D /* PlaybackSource.swift in Sources */,
+				00000000000000000000804F /* PlayerStore.swift in Sources */,
+				000000000000000000008051 /* AudioEqualizerPreferences.swift in Sources */,
+				000000000000000000008053 /* LyricsRefreshRate.swift in Sources */,
+				000000000000000000008055 /* LyricsStyle.swift in Sources */,
+				000000000000000000008057 /* MeloXSettings.swift in Sources */,
+				000000000000000000008059 /* NavigationPreferences.swift in Sources */,
+				00000000000000000000805B /* PlayerScreenAwakeMode.swift in Sources */,
+				00000000000000000000805D /* PlayerVolumeControlMode.swift in Sources */,
+				00000000000000000000805F /* SkylineLyricsPreferences.swift in Sources */,
+				000000000000000000008061 /* TextPVPreferences.swift in Sources */,
+				000000000000000000008063 /* ScreenAwakeCoordinator.swift in Sources */,
+				000000000000000000008065 /* AppUpdateService.swift in Sources */,
+				000000000000000000008067 /* AccountHomeContent.swift in Sources */,
+				000000000000000000008069 /* AccountHomeView.swift in Sources */,
+				00000000000000000000806B /* AlbumDetailContent.swift in Sources */,
+				00000000000000000000806D /* AlbumDetailView.swift in Sources */,
+				00000000000000000000806F /* ArtistDetailView.swift in Sources */,
+				000000000000000000008071 /* CloudMusicView.swift in Sources */,
+				000000000000000000008073 /* DownloadsView.swift in Sources */,
+				000000000000000000008075 /* ExplorePlaylistComponents.swift in Sources */,
+				000000000000000000008077 /* ExploreView.swift in Sources */,
+				000000000000000000008079 /* DailySongsView.swift in Sources */,
+				00000000000000000000807B /* HomeComponents.swift in Sources */,
+				00000000000000000000807D /* HomeView.swift in Sources */,
+				00000000000000000000807F /* NewAlbumsView.swift in Sources */,
+				000000000000000000008081 /* ProjectLicensesView.swift in Sources */,
+				000000000000000000008083 /* LibraryView.swift in Sources */,
+				000000000000000000008085 /* NeteaseConversationView.swift in Sources */,
+				000000000000000000008087 /* NeteaseMessageContactsView.swift in Sources */,
+				000000000000000000008089 /* NeteasePrivateMessagesView.swift in Sources */,
+				00000000000000000000808B /* OnboardingPages.swift in Sources */,
+				00000000000000000000808D /* OnboardingView.swift in Sources */,
+				00000000000000000000808F /* AppleMusicLyricsView.swift in Sources */,
+				000000000000000000008091 /* DeterministicRandom.swift in Sources */,
+				000000000000000000008093 /* EVALyricCompositionView.swift in Sources */,
+				000000000000000000008095 /* EVALyricsLatinLayouts.swift in Sources */,
+				000000000000000000008097 /* EVALyricsLayout.swift in Sources */,
+				000000000000000000008099 /* EVALyricsLongLayouts.swift in Sources */,
+				00000000000000000000809B /* EVALyricsShortLayouts.swift in Sources */,
+				00000000000000000000809D /* EVALyricsView.swift in Sources */,
+				00000000000000000000809F /* LyricGlowTextRenderer.swift in Sources */,
+				0000000000000000000080A1 /* LyricsTypography.swift in Sources */,
+				0000000000000000000080A3 /* MiniPlayerView.swift in Sources */,
+				0000000000000000000080A5 /* NowPlayingArtworkPage.swift in Sources */,
+				0000000000000000000080A7 /* NowPlayingBackground.swift in Sources */,
+				0000000000000000000080A9 /* NowPlayingControls.swift in Sources */,
+				0000000000000000000080AB /* NowPlayingLandscapeView.swift in Sources */,
+				0000000000000000000080AD /* NowPlayingLyricsPage.swift in Sources */,
+				0000000000000000000080AF /* NowPlayingQueuePage.swift in Sources */,
+				0000000000000000000080B1 /* NowPlayingSongDetailsPage.swift in Sources */,
+				0000000000000000000080B3 /* NowPlayingView.swift in Sources */,
+				0000000000000000000080B5 /* QueueView.swift in Sources */,
+				0000000000000000000080B7 /* SkylineAmbientLyricsView.swift in Sources */,
+				0000000000000000000080B9 /* SkylineCentralLyricsView.swift in Sources */,
+				0000000000000000000080BB /* SkylineLyricsView.swift in Sources */,
+				0000000000000000000080BD /* SynchronizedLyricText.swift in Sources */,
+				0000000000000000000080BF /* TextPVAtmosphericEffects.swift in Sources */,
+				0000000000000000000080C1 /* TextPVBackgroundEffects.swift in Sources */,
+				0000000000000000000080C3 /* TextPVBatchedEffectCanvas.swift in Sources */,
+				0000000000000000000080C5 /* TextPVCanvasSupport.swift in Sources */,
+				0000000000000000000080C7 /* TextPVCanvasSymbols.swift in Sources */,
+				0000000000000000000080C9 /* TextPVCardTextEffects.swift in Sources */,
+				0000000000000000000080CB /* TextPVCyberCrimeEffects.swift in Sources */,
+				0000000000000000000080CD /* TextPVEffectRenderer.swift in Sources */,
+				0000000000000000000080CF /* TextPVFullScreenPlayerView.swift in Sources */,
+				0000000000000000000080D1 /* TextPVHUDTextEffects.swift in Sources */,
+				0000000000000000000080D3 /* TextPVLyricsView.swift in Sources */,
+				0000000000000000000080D5 /* TextPVOverlayEffects.swift in Sources */,
+				0000000000000000000080D7 /* TextPVPathCache.swift in Sources */,
+				0000000000000000000080D9 /* TextPVPlayfulEffects.swift in Sources */,
+				0000000000000000000080DB /* TextPVPrimaryTextEffects.swift in Sources */,
+				0000000000000000000080DD /* TextPVRenderContext.swift in Sources */,
+				0000000000000000000080DF /* TextPVStageView.swift in Sources */,
+				0000000000000000000080E1 /* TextPVStaggeredTextEffects.swift in Sources */,
+				0000000000000000000080E3 /* TextPVStructuralEffects.swift in Sources */,
+				0000000000000000000080E5 /* TextPVStyleMenu.swift in Sources */,
+				0000000000000000000080E7 /* TextPVTemplate.swift in Sources */,
+				0000000000000000000080E9 /* TextPVTemplateCatalogDramatic.swift in Sources */,
+				0000000000000000000080EB /* TextPVTemplateCatalogFoundation.swift in Sources */,
+				0000000000000000000080ED /* TextPVTemplateCatalogPlayful.swift in Sources */,
+				0000000000000000000080EF /* TimedLyricTextBuilder.swift in Sources */,
+				0000000000000000000080F1 /* AddToPlaylistSheet.swift in Sources */,
+				0000000000000000000080F3 /* PlaylistDetailContent.swift in Sources */,
+				0000000000000000000080F5 /* PlaylistDetailView.swift in Sources */,
+				0000000000000000000080F7 /* PlaylistTrackList.swift in Sources */,
+				0000000000000000000080F9 /* PlaylistCategoryView.swift in Sources */,
+				0000000000000000000080FB /* SearchDiscoveryView.swift in Sources */,
+				0000000000000000000080FD /* SearchView.swift in Sources */,
+				0000000000000000000080FF /* AboutView.swift in Sources */,
+				000000000000000000008101 /* ContentSettingsView.swift in Sources */,
+				000000000000000000008103 /* EqualizerSettingsView.swift in Sources */,
+				000000000000000000008105 /* GeneralSettingsView.swift in Sources */,
+				000000000000000000008107 /* MeloXSettingsView.swift in Sources */,
+				000000000000000000008109 /* NeteaseLoginView.swift in Sources */,
+				00000000000000000000810B /* PlayerSettingsView.swift in Sources */,
+				00000000000000000000810D /* SettingsAccountSection.swift in Sources */,
+				00000000000000000000810F /* SkylineLyricsSettingsView.swift in Sources */,
+				000000000000000000008111 /* TextPVSettingsView.swift in Sources */,
+				000000000000000000008113 /* NeteasePrivateMessageView.swift in Sources */,
+				000000000000000000008115 /* NeteaseSharePresentation.swift in Sources */,
+				000000000000000000008117 /* NeteaseShareSheet.swift in Sources */,
+				000000000000000000008119 /* SongCommentRepliesView.swift in Sources */,
+				00000000000000000000811B /* SongCommentRow.swift in Sources */,
+				00000000000000000000811D /* SongCommentsView.swift in Sources */,
+				00000000000000000000811F /* SongDetailView.swift in Sources */,
+				000000000000000000008121 /* ToplistsView.swift in Sources */,
+				000000000000000000008123 /* MeloXContentView.swift in Sources */,
+				000000000000000000008125 /* ArtworkImage.swift in Sources */,
+				000000000000000000008127 /* ConnectionUnavailableView.swift in Sources */,
+				000000000000000000008129 /* MediaCardGridLayout.swift in Sources */,
+				00000000000000000000812B /* MediaCardView.swift in Sources */,
+				00000000000000000000812D /* MusicCollectionPaginationFooter.swift in Sources */,
+				00000000000000000000812F /* MusicCollectionTheme.swift in Sources */,
+				000000000000000000008131 /* SectionTitle.swift in Sources */,
+				000000000000000000008133 /* TrackRowView.swift in Sources */,
 				000000000000000000000102 /* PersonalToolboxApp.swift in Sources */,
 				000000000000000000000104 /* RootTabView.swift in Sources */,
 				0000000000000000000005E1 /* OverviewHomeView.swift in Sources */,
@@ -834,6 +1461,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				000000000000000000008137 /* GRDB in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -890,7 +1518,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 72;
+				CURRENT_PROJECT_VERSION = 73;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				CODE_SIGN_ENTITLEMENTS = PersonalToolbox/PersonalToolbox.entitlements;
@@ -916,7 +1544,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 72;
+				CURRENT_PROJECT_VERSION = 73;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				CODE_SIGN_ENTITLEMENTS = PersonalToolbox/PersonalToolbox.entitlements;
@@ -942,7 +1570,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 72;
+				CURRENT_PROJECT_VERSION = 73;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
@@ -967,7 +1595,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 72;
+				CURRENT_PROJECT_VERSION = 73;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
@@ -1012,9 +1640,22 @@
 				minimumVersion = 0.12.0;
 			};
 		};
+		000000000000000000008135 /* XCRemoteSwiftPackageReference "GRDB.swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/groue/GRDB.swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 7.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		000000000000000000008136 /* GRDB */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 000000000000000000008135 /* XCRemoteSwiftPackageReference "GRDB.swift" */;
+			productName = GRDB;
+		};
 		000000000000000000000701 /* Citadel */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 000000000000000000000700 /* XCRemoteSwiftPackageReference "Citadel" */;

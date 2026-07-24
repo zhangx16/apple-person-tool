@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import AVFoundation
+import MediaPlayer
 
 /// Live playback audio session: pure output (no mic), A2DP for Bluetooth headsets.
 /// Avoids playAndRecord / HFP call-path routing that causes headphone echo.
@@ -47,6 +48,58 @@ enum LiveAudioSession {
     }
 }
 
+// MARK: - System volume / brightness (fullscreen gestures)
+
+/// System volume via hidden `MPVolumeView` slider (public API).
+enum LiveSystemVolume {
+    private static var volumeView: MPVolumeView?
+    private static var slider: UISlider?
+
+    static var current: Float {
+        AVAudioSession.sharedInstance().outputVolume
+    }
+
+    static func set(_ value: Float) {
+        let clamped = max(0, min(1, value))
+        ensureSlider()
+        // Defer one runloop so the volume view attaches its slider if first use.
+        if let slider {
+            slider.value = clamped
+        } else {
+            DispatchQueue.main.async {
+                ensureSlider()
+                slider?.value = clamped
+            }
+        }
+    }
+
+    private static func ensureSlider() {
+        if slider != nil { return }
+        let view = MPVolumeView(frame: CGRect(x: -2000, y: -2000, width: 1, height: 1))
+        view.showsRouteButton = false
+        view.alpha = 0.01
+        volumeView = view
+        // Attach off-screen so the internal slider exists.
+        if let window = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene })
+            .flatMap(\.windows)
+            .first(where: \.isKeyWindow) {
+            window.addSubview(view)
+        }
+        slider = view.subviews.compactMap { $0 as? UISlider }.first
+    }
+}
+
+enum LiveSystemBrightness {
+    static var current: CGFloat {
+        UIScreen.main.brightness
+    }
+
+    static func set(_ value: CGFloat) {
+        UIScreen.main.brightness = max(0, min(1, value))
+    }
+}
+
 #if canImport(MobileVLCKit)
 import MobileVLCKit
 
@@ -56,9 +109,13 @@ struct LiveVLCPlayerView: UIViewRepresentable {
     let url: URL
     var headers: [String: String] = [:]
     var isPlaying: Bool = true
+    /// Fired when LibVLC reports error / unexpected end (for reconnect).
+    var onPlaybackFailed: (() -> Void)? = nil
+    /// Fired when playback reaches playing state (reset retry counters).
+    var onPlaying: (() -> Void)? = nil
 
     func makeCoordinator() -> Coordinator {
-        Coordinator()
+        Coordinator(onPlaybackFailed: onPlaybackFailed, onPlaying: onPlaying)
     }
 
     func makeUIView(context: Context) -> PlayerHostView {
@@ -67,16 +124,21 @@ struct LiveVLCPlayerView: UIViewRepresentable {
         LiveAudioSession.activateForPlayback()
         let player = VLCMediaPlayer()
         player.drawable = host
+        player.delegate = context.coordinator
         // Prefer stereo media playback volume; never leave mic monitoring paths open.
         player.audio?.volume = 100
         player.audio?.isMuted = false
         context.coordinator.player = player
+        context.coordinator.onPlaybackFailed = onPlaybackFailed
+        context.coordinator.onPlaying = onPlaying
         context.coordinator.startRouteObserver()
         context.coordinator.apply(url: url, headers: headers, play: isPlaying)
         return host
     }
 
     func updateUIView(_ uiView: PlayerHostView, context: Context) {
+        context.coordinator.onPlaybackFailed = onPlaybackFailed
+        context.coordinator.onPlaying = onPlaying
         context.coordinator.apply(url: url, headers: headers, play: isPlaying)
     }
 
@@ -84,10 +146,20 @@ struct LiveVLCPlayerView: UIViewRepresentable {
         coordinator.stop()
     }
 
-    final class Coordinator {
+    final class Coordinator: NSObject, VLCMediaPlayerDelegate {
         var player: VLCMediaPlayer?
+        var onPlaybackFailed: (() -> Void)?
+        var onPlaying: (() -> Void)?
         private var currentURL: URL?
         private var routeObserver: NSObjectProtocol?
+        private var lastFailReportAt: Date = .distantPast
+        private var hasReachedPlaying = false
+        private var failWorkItem: DispatchWorkItem?
+
+        init(onPlaybackFailed: (() -> Void)?, onPlaying: (() -> Void)?) {
+            self.onPlaybackFailed = onPlaybackFailed
+            self.onPlaying = onPlaying
+        }
 
         func startRouteObserver() {
             guard routeObserver == nil else { return }
@@ -96,16 +168,13 @@ struct LiveVLCPlayerView: UIViewRepresentable {
                 object: nil,
                 queue: .main
             ) { [weak self] _ in
-                // Headphone plug/unplug can flip iOS to HFP; re-pin playback + A2DP.
                 LiveAudioSession.reassertCategory()
                 guard let player = self?.player, player.isPlaying else { return }
-                // Nudge audio pipeline after route change so a second delayed path is not left open.
                 player.audio?.isMuted = false
             }
         }
 
         func apply(url: URL, headers: [String: String], play: Bool) {
-            // LibVLC must be driven on the main thread (SimpleLive media_kit is also main-isolate).
             if !Thread.isMainThread {
                 DispatchQueue.main.async { [weak self] in
                     self?.apply(url: url, headers: headers, play: play)
@@ -115,15 +184,12 @@ struct LiveVLCPlayerView: UIViewRepresentable {
             guard let player else { return }
             if currentURL != url {
                 currentURL = url
+                hasReachedPlaying = false
                 LiveAudioSession.reassertCategory()
-                // Stop previous media cleanly before swapping (avoids double-decoder teardown crashes).
                 if player.isPlaying {
                     player.stop()
                 }
                 let media = VLCMedia(url: url)
-                // HTTP headers for CDN anti-leech.
-                // SimpleLive B站只带 Referer + User-Agent；Cookie 对 CDN 非必须且易触发解析问题。
-                // Strip CR/LF — raw newlines in :http-header can hard-crash LibVLC.
                 func clean(_ s: String) -> String {
                     s.replacingOccurrences(of: "\r", with: "")
                         .replacingOccurrences(of: "\n", with: " ")
@@ -138,19 +204,19 @@ struct LiveVLCPlayerView: UIViewRepresentable {
                 if let origin = headers["Origin"], !origin.isEmpty {
                     media.addOption(":http-header=Origin: \(clean(origin))")
                 }
-                // Prefer not passing Cookie unless short (B站 play path omits it).
                 if let cookie = headers["Cookie"], !cookie.isEmpty {
                     var c = clean(cookie)
                     if c.count > 512 { c = String(c.prefix(512)) }
                     media.addOption(":http-header=Cookie: \(c)")
                 }
-                // Live stream: low cache, reconnect friendly (media_kit defaults).
-                media.addOption(":network-caching=1000")
-                media.addOption(":live-caching=1000")
+                // Live-friendly buffering / reconnect (SimpleLive media_kit style).
+                media.addOption(":network-caching=1500")
+                media.addOption(":live-caching=1500")
                 media.addOption(":clock-jitter=0")
                 media.addOption(":clock-synchro=0")
                 media.addOption(":no-audio-time-stretch")
-                // Prefer software decode path stability on older devices.
+                media.addOption(":http-reconnect")
+                media.addOption(":http-continuous")
                 media.addOption(":avcodec-hw=none")
                 player.media = media
             }
@@ -170,16 +236,67 @@ struct LiveVLCPlayerView: UIViewRepresentable {
                 DispatchQueue.main.async { [weak self] in self?.stop() }
                 return
             }
+            failWorkItem?.cancel()
+            failWorkItem = nil
             if let routeObserver {
                 NotificationCenter.default.removeObserver(routeObserver)
                 self.routeObserver = nil
             }
+            player?.delegate = nil
             player?.stop()
             player?.media = nil
             player?.drawable = nil
             player = nil
             currentURL = nil
             LiveAudioSession.deactivateIfNeeded()
+        }
+
+        // MARK: VLCMediaPlayerDelegate
+
+        func mediaPlayerStateChanged(_ aNotification: Notification) {
+            guard let player else { return }
+            let state = player.state
+            // Use raw values loosely — MobileVLCKit state set varies slightly by version.
+            switch state {
+            case .playing:
+                if !hasReachedPlaying {
+                    hasReachedPlaying = true
+                    onPlaying?()
+                }
+            case .error:
+                reportFailure(reason: "vlc_error")
+            case .ended:
+                // Live should not end; treat as stall / disconnect.
+                if hasReachedPlaying {
+                    reportFailure(reason: "vlc_ended")
+                }
+            case .stopped:
+                // Ignore stop during intentional media swap / teardown.
+                break
+            default:
+                // Some builds report buffering/opening/esAdded; treat esAdded-like as playing once.
+                if String(describing: state).lowercased().contains("esadded") ||
+                    String(describing: state).lowercased().contains("playing") {
+                    if !hasReachedPlaying {
+                        hasReachedPlaying = true
+                        onPlaying?()
+                    }
+                }
+            }
+        }
+
+        private func reportFailure(reason: String) {
+            // Debounce burst errors from LibVLC.
+            let now = Date()
+            guard now.timeIntervalSince(lastFailReportAt) > 1.5 else { return }
+            lastFailReportAt = now
+            failWorkItem?.cancel()
+            let work = DispatchWorkItem { [weak self] in
+                self?.onPlaybackFailed?()
+            }
+            failWorkItem = work
+            // Small delay so intentional stop() during URL swap doesn't fire reconnect.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: work)
         }
     }
 
@@ -196,6 +313,8 @@ struct LiveVLCPlayerView: View {
     let url: URL
     var headers: [String: String] = [:]
     var isPlaying: Bool = true
+    var onPlaybackFailed: (() -> Void)? = nil
+    var onPlaying: (() -> Void)? = nil
 
     var body: some View {
         ZStack {

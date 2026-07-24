@@ -33,11 +33,26 @@ final class LiveRoomViewModel: ObservableObject {
     @Published private(set) var streamIsFLV = false
     /// Locks player chrome (no accidental hide/show / quality taps). SimpleLive-style.
     @Published var isControlsLocked = false
+    /// Bumps to remount VLC on same URL (decoder restart, SimpleLive Issue #57 style).
+    @Published private(set) var streamEpoch: Int = 0
 
     private var loadTask: Task<Void, Never>?
     private var failWatchTask: Task<Void, Never>?
+    private var reconnectTask: Task<Void, Never>?
     private var headerLoader: LiveHeaderResourceLoader?
     private var avPlayer: AVPlayer?
+
+    /// CDN candidates for current quality (SimpleLive playUrls + line switch).
+    private var playCandidates: [URL] = []
+    private var playCandidateIndex: Int = 0
+    private var currentQuality: LivePlayQuality?
+    /// Re-open same URL up to 3 times (SimpleLive stream error retry).
+    private var streamErrorRetryCount: Int = 0
+    /// Re-open / line-switch attempts after decoder restarts exhausted.
+    private var mediaErrorRetryCount: Int = 0
+    private var lastStreamErrorAt: Date?
+    private var isReconnecting = false
+    private var playbackGeneration: Int = 0
 
     /// Exposed for rare AVPlayer fallback (HLS only, no VLC binary).
     var systemPlayer: AVPlayer? { avPlayer }
@@ -86,7 +101,10 @@ final class LiveRoomViewModel: ObservableObject {
         loadTask = nil
         failWatchTask?.cancel()
         failWatchTask = nil
+        reconnectTask?.cancel()
+        reconnectTask = nil
         isControlsLocked = false
+        isReconnecting = false
         clearStream()
     }
 
@@ -98,6 +116,9 @@ final class LiveRoomViewModel: ObservableObject {
     }
 
     func switchToWeb() {
+        reconnectTask?.cancel()
+        reconnectTask = nil
+        isReconnecting = false
         clearStream()
         playMode = .web
         LivePlayPrefs.remember(.web, for: room.platform)
@@ -117,7 +138,101 @@ final class LiveRoomViewModel: ObservableObject {
         streamURL = nil
         streamHeaders = [:]
         streamIsFLV = false
+        playCandidates = []
+        playCandidateIndex = 0
         // Session retain/release is owned by LiveVLCPlayerView / LiveRoomWebView lifecycle.
+    }
+
+    // MARK: - Playback health (SimpleLive reconnect)
+
+    /// Called by VLC surface when decoder reaches playing.
+    func notifyPlayerPlaying() {
+        streamErrorRetryCount = 0
+        mediaErrorRetryCount = 0
+        isReconnecting = false
+        lastStreamErrorAt = nil
+        if let q = currentQuality, statusText.hasPrefix("重连") || statusText.hasPrefix("切换线路") {
+            statusText = "播放中 · \(q.name)" + (streamIsFLV ? " · FLV" : "")
+        }
+    }
+
+    /// Called by VLC surface on error / unexpected end — try restart / next line / refresh.
+    func notifyPlayerFailed() {
+        guard playMode == .native, streamURL != nil else { return }
+        guard !isReconnecting else { return }
+        let now = Date()
+        if let last = lastStreamErrorAt, now.timeIntervalSince(last) < 2 {
+            return
+        }
+        lastStreamErrorAt = now
+        isReconnecting = true
+        let gen = playbackGeneration
+        reconnectTask?.cancel()
+        reconnectTask = Task { [weak self] in
+            guard let self else { return }
+            // SimpleLive: wait ~1s then reopen decoder / switch line.
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            guard !Task.isCancelled, self.playbackGeneration == gen else { return }
+            await self.recoverPlayback(generation: gen)
+        }
+    }
+
+    private func recoverPlayback(generation: Int) async {
+        guard playbackGeneration == generation, playMode == .native else {
+            isReconnecting = false
+            return
+        }
+
+        // 1) Re-open same URL (decoder restart) up to 3 times.
+        if streamErrorRetryCount < 3, let url = streamURL {
+            streamErrorRetryCount += 1
+            statusText = "重连中 (\(streamErrorRetryCount)/3)…"
+            streamEpoch += 1
+            // Force VLC remount even if URL string unchanged.
+            streamURL = url
+            isReconnecting = false
+            return
+        }
+
+        // 2) Next CDN line (SimpleLive changePlayLine).
+        if playCandidateIndex + 1 < playCandidates.count {
+            playCandidateIndex += 1
+            streamErrorRetryCount = 0
+            let next = playCandidates[playCandidateIndex]
+            let isFLV = next.absoluteString.lowercased().contains(".flv")
+            statusText = "切换线路 \(playCandidateIndex + 1)/\(playCandidates.count)…"
+            streamIsFLV = isFLV
+            streamEpoch += 1
+            streamURL = next
+            isReconnecting = false
+            return
+        }
+
+        // 3) Refresh play URLs for current quality (SimpleLive setPlayer refreshUrls).
+        if mediaErrorRetryCount < 2, let q = currentQuality, detail != nil {
+            mediaErrorRetryCount += 1
+            streamErrorRetryCount = 0
+            statusText = "刷新线路 (\(mediaErrorRetryCount)/2)…"
+            let ok = await play(quality: q)
+            if !ok {
+                // try other qualities once
+                for other in qualities where other.id != q.id {
+                    selectedId = other.id
+                    if await play(quality: other) {
+                        isReconnecting = false
+                        return
+                    }
+                }
+                fallbackToWeb(reason: "断流重试失败，已切网页")
+            }
+            isReconnecting = false
+            return
+        }
+
+        statusText = "直播中断"
+        errorMessage = "多次重连失败，可切换线路或切网页"
+        isReconnecting = false
+        fallbackToWeb(reason: "长时间断流，已切网页")
     }
 
     private func load() async {
@@ -239,18 +354,23 @@ final class LiveRoomViewModel: ObservableObject {
     func selectQuality(_ q: LivePlayQuality) {
         selectedId = q.id
         playMode = .native
+        streamErrorRetryCount = 0
+        mediaErrorRetryCount = 0
+        isReconnecting = false
+        reconnectTask?.cancel()
         Task { await play(quality: q) }
     }
 
     @discardableResult
     private func play(quality: LivePlayQuality) async -> Bool {
         guard let detail else { return false }
+        currentQuality = quality
         statusText = "拉取线路 \(quality.name)…"
         do {
             let result = try await LiveSiteRouter.playURLs(detail: detail, quality: quality)
             guard !Task.isCancelled else { return false }
 
-            // Prefer order: HLS first (lighter), then FLV (needs VLC), skip empty.
+            // SimpleLive: mcdn last; keep original order otherwise (FLV primary for live).
             let ordered = Self.rankURLs(result.urls)
             guard !ordered.isEmpty else {
                 errorMessage = nil
@@ -258,49 +378,77 @@ final class LiveRoomViewModel: ObservableObject {
                 return false
             }
 
-            for urlString in ordered.prefix(6) {
-                // Reject obviously broken / non-http URLs (defensive — bad CDN hosts).
+            var urls: [URL] = []
+            for urlString in ordered.prefix(8) {
                 let trimmedURL = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard let url = URL(string: trimmedURL),
                       let scheme = url.scheme?.lowercased(),
                       scheme == "http" || scheme == "https" else { continue }
-                let isFLV = trimmedURL.lowercased().contains(".flv")
-                let lower = trimmedURL.lowercased()
-                let isHLS = lower.contains(".m3u8") || lower.contains("/hls/") || lower.contains("format=ts")
-                    || lower.contains("fmp4")
+                urls.append(url)
+            }
+            guard let first = urls.first else {
+                statusText = "线路均不可用"
+                return false
+            }
 
-                // SimpleLive media_kit path: native decoder for FLV/HLS (B站用 codec=0 AVC 线路).
-                statusText = isFLV ? "VLC 播放 FLV…" : "连接 \(quality.name)…"
+            let headers = result.headers.mapValues { v in
+                v.replacingOccurrences(of: "\r", with: "")
+                    .replacingOccurrences(of: "\n", with: " ")
+            }
+            let isFLV = first.absoluteString.lowercased().contains(".flv")
+            let isHLS = first.absoluteString.lowercased().contains(".m3u8")
 
-                #if canImport(MobileVLCKit)
-                clearStream()
-                // Sanitize headers before VLC (CR/LF in Cookie has crashed LibVLC).
-                // B站 SimpleLive 只下发 Referer + User-Agent，无 Cookie。
-                streamHeaders = result.headers.mapValues { v in
-                    v.replacingOccurrences(of: "\r", with: "")
-                        .replacingOccurrences(of: "\n", with: " ")
+            #if canImport(MobileVLCKit)
+            // Keep AVPlayer cleared; attach all candidates for line-switch reconnect.
+            avPlayer?.pause()
+            avPlayer?.replaceCurrentItem(with: nil)
+            avPlayer = nil
+            headerLoader = nil
+            playCandidates = urls
+            playCandidateIndex = 0
+            streamErrorRetryCount = 0
+            playbackGeneration += 1
+            streamHeaders = headers
+            streamIsFLV = isFLV
+            streamEpoch += 1
+            streamURL = first
+            playMode = .native
+            errorMessage = nil
+            statusText = "播放中 · \(quality.name)" + (isFLV ? " · FLV" : (isHLS ? " · HLS" : ""))
+            return true
+            #else
+            if isFLV {
+                // Without VLC, try first non-FLV.
+                for url in urls where !url.absoluteString.lowercased().contains(".flv") {
+                    if await startAVPlayer(url: url, headers: headers) {
+                        playCandidates = urls
+                        playCandidateIndex = urls.firstIndex(of: url) ?? 0
+                        streamIsFLV = false
+                        streamURL = url
+                        streamHeaders = headers
+                        playMode = .native
+                        errorMessage = nil
+                        statusText = "播放中 · \(quality.name)"
+                        return true
+                    }
                 }
-                streamIsFLV = isFLV
-                streamURL = url
+                statusText = "线路均不可用"
+                return false
+            }
+            if await startAVPlayer(url: first, headers: headers) {
+                playCandidates = urls
+                playCandidateIndex = 0
+                streamIsFLV = false
+                streamURL = first
+                streamHeaders = headers
                 playMode = .native
                 errorMessage = nil
-                statusText = "播放中 · \(quality.name)" + (isFLV ? " · FLV" : (isHLS ? " · HLS" : ""))
+                statusText = "播放中 · \(quality.name)"
                 return true
-                #else
-                if isFLV { continue }
-                if await startAVPlayer(url: url, headers: result.headers) {
-                    streamIsFLV = false
-                    streamURL = url
-                    streamHeaders = result.headers
-                    playMode = .native
-                    errorMessage = nil
-                    statusText = "播放中 · \(quality.name)"
-                    return true
-                }
-                #endif
             }
             statusText = "线路均不可用"
             return false
+            #endif
         } catch is CancellationError {
             return false
         } catch {
@@ -312,19 +460,13 @@ final class LiveRoomViewModel: ObservableObject {
     }
 
     private static func rankURLs(_ urls: [String]) -> [String] {
+        // Align SimpleLive: demote mcdn only; keep FLV/HLS order from site.
         urls
             .filter { URL(string: $0) != nil }
             .sorted { a, b in
-                let am = a.contains(".m3u8") || a.contains("m3u8")
-                let bm = b.contains(".m3u8") || b.contains("m3u8")
-                if am != bm { return am && !bm }
-                let aflv = a.lowercased().contains(".flv")
-                let bflv = b.lowercased().contains(".flv")
-                // Prefer non-mcdn
                 let amd = a.contains("mcdn")
                 let bmd = b.contains("mcdn")
                 if amd != bmd { return !amd && bmd }
-                if aflv != bflv { return !aflv && bflv }
                 return false
             }
     }
@@ -1134,10 +1276,16 @@ struct LivePlayerSurface: View {
                 // Otherwise VLC (SimpleLive media_kit role) for FLV/HLS.
                 if let p = vm.systemPlayer {
                     VideoPlayer(player: p)
-                        .id(url.absoluteString + "-av")
+                        .id(url.absoluteString + "-av-\(vm.streamEpoch)")
                 } else {
-                    LiveVLCPlayerView(url: url, headers: vm.streamHeaders, isPlaying: true)
-                        .id(url.absoluteString + "-vlc")
+                    LiveVLCPlayerView(
+                        url: url,
+                        headers: vm.streamHeaders,
+                        isPlaying: true,
+                        onPlaybackFailed: { vm.notifyPlayerFailed() },
+                        onPlaying: { vm.notifyPlayerPlaying() }
+                    )
+                    .id(url.absoluteString + "-vlc-\(vm.streamEpoch)")
                 }
                 #else
                 if let p = vm.systemPlayer {
@@ -1169,142 +1317,178 @@ struct LivePlayerSurface: View {
     }
 }
 
-/// Fullscreen player — SimpleLive / 主流直播风格控制条 + 锁定
+/// Fullscreen player — SimpleLive 风格：竖滑亮度/音量、锁定可隐藏、控制条
 struct LiveRoomFullscreenView: View {
     @ObservedObject var vm: LiveRoomViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var showChrome = true
+    /// 锁定时解锁条默认隐藏，点击画面再显示（避免挡画面）。
+    @State private var showLockChrome = false
+    @State private var gestureTip: String?
+    @State private var gestureBaseBrightness: CGFloat = 0.5
+    @State private var gestureBaseVolume: Float = 0.5
+    @State private var gestureIsLeft = true
+    @State private var gestureActive = false
+    @State private var lockChromeHideTask: Task<Void, Never>?
 
     private var brand: Color {
         LiveUI.brand(vm.detail?.platform ?? .huya)
     }
 
     var body: some View {
-        ZStack {
-            LivePlayerSurface(vm: vm, isActive: true)
-                .ignoresSafeArea()
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    guard !vm.isControlsLocked else { return }
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        showChrome.toggle()
-                    }
-                }
-
-            if vm.isControlsLocked {
-                // Only unlock affordances on both sides (anti mis-touch).
-                HStack {
-                    unlockSideButton
-                    Spacer()
-                    unlockSideButton
-                }
-                .padding(.horizontal, 12)
-            } else if showChrome {
-                VStack(spacing: 0) {
-                    HStack(spacing: 12) {
-                        Button { dismiss() } label: {
-                            Image(systemName: "chevron.down")
-                                .font(.title3.weight(.semibold))
-                                .foregroundStyle(.white)
-                                .frame(width: 40, height: 40)
-                                .background(Color.white.opacity(0.15), in: Circle())
-                        }
-                        VStack(alignment: .leading, spacing: 2) {
-                            HStack(spacing: 6) {
-                                LiveUI.liveBadge(isLive: vm.detail?.isLive == true)
-                                Text(vm.detail?.userName ?? "直播")
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.white)
-                                    .lineLimit(1)
-                            }
-                            Text(vm.detail?.title ?? "")
-                                .font(.caption2)
-                                .foregroundStyle(.white.opacity(0.8))
-                                .lineLimit(1)
-                        }
-                        Spacer()
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.15)) {
-                                vm.isControlsLocked = true
-                                showChrome = false
-                            }
-                        } label: {
-                            Image(systemName: "lock.open")
-                                .font(.body.weight(.semibold))
-                                .foregroundStyle(.white)
-                                .frame(width: 40, height: 40)
-                                .background(Color.white.opacity(0.15), in: Circle())
-                        }
-                        .accessibilityLabel("锁定控件")
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 12)
-
-                    Spacer()
-
-                    if vm.playMode == .native, !vm.qualities.isEmpty {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
-                                ForEach(vm.qualities) { q in
-                                    let on = vm.selectedId == q.id
-                                    Button { vm.selectQuality(q) } label: {
-                                        Text(q.name)
-                                            .font(.caption.weight(.semibold))
-                                            .padding(.horizontal, 12)
-                                            .padding(.vertical, 8)
-                                            .foregroundStyle(on ? Color.black : Color.white)
-                                            .background(on ? Color.white : Color.white.opacity(0.2), in: Capsule())
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
-                            .padding(.horizontal, 16)
-                        }
-                        .padding(.bottom, 10)
-                    }
-
-                    HStack {
-                        Text(vm.statusText)
-                            .font(.caption2)
-                            .foregroundStyle(.white.opacity(0.85))
-                        Spacer()
-                        Button {
-                            if vm.playMode == .native { vm.switchToWeb() }
-                            else { vm.retryNative() }
-                        } label: {
-                            Text(vm.playMode == .native ? "切网页" : "切应用内")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(brand.opacity(0.9), in: Capsule())
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 24)
-                }
-                .background(
-                    LinearGradient(
-                        colors: [Color.black.opacity(0.6), .clear, Color.black.opacity(0.55)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
+        GeometryReader { geo in
+            ZStack {
+                LivePlayerSurface(vm: vm, isActive: true)
                     .ignoresSafeArea()
-                    .allowsHitTesting(false)
-                )
+
+                // Full-screen hit layer: tap + vertical drag (brightness/volume).
+                // Placed under chrome so buttons still receive hits.
+                Color.clear
+                    .contentShape(Rectangle())
+                    .simultaneousGesture(fullscreenDragGesture(size: geo.size))
+                    .onTapGesture {
+                        handleSurfaceTap()
+                    }
+
+                if vm.isControlsLocked {
+                    if showLockChrome {
+                        HStack {
+                            unlockSideButton
+                            Spacer()
+                            unlockSideButton
+                        }
+                        .padding(.horizontal, 12)
+                        .transition(.opacity)
+                    }
+                } else if showChrome {
+                    fullscreenChrome
+                }
+
+                if let gestureTip {
+                    Text(gestureTip)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(Color.black.opacity(0.55), in: Capsule())
+                        .transition(.opacity)
+                }
             }
         }
         .statusBarHidden(true)
         .persistentSystemOverlays(.hidden)
         .onAppear {
-            // Fullscreen live: force landscape immediately.
             OrientationHelper.lockLandscape()
         }
         .onDisappear {
-            // Leaving fullscreen: restore portrait for the rest of the app.
+            lockChromeHideTask?.cancel()
             OrientationHelper.lockPortrait()
-            // Leaving fullscreen keeps lock state so inline player stays locked if user wants.
         }
+        .onChange(of: vm.isControlsLocked) { _, locked in
+            if locked {
+                showChrome = false
+                showLockChrome = false
+            } else {
+                showLockChrome = false
+                showChrome = true
+            }
+        }
+    }
+
+    private var fullscreenChrome: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                Button { dismiss() } label: {
+                    Image(systemName: "chevron.down")
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 40, height: 40)
+                        .background(Color.white.opacity(0.15), in: Circle())
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        LiveUI.liveBadge(isLive: vm.detail?.isLive == true)
+                        Text(vm.detail?.userName ?? "直播")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                    }
+                    Text(vm.detail?.title ?? "")
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.8))
+                        .lineLimit(1)
+                }
+                Spacer()
+                Button {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        vm.isControlsLocked = true
+                        showChrome = false
+                        showLockChrome = false
+                    }
+                } label: {
+                    Image(systemName: "lock.open")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 40, height: 40)
+                        .background(Color.white.opacity(0.15), in: Circle())
+                }
+                .accessibilityLabel("锁定控件")
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+
+            Spacer()
+
+            if vm.playMode == .native, !vm.qualities.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(vm.qualities) { q in
+                            let on = vm.selectedId == q.id
+                            Button { vm.selectQuality(q) } label: {
+                                Text(q.name)
+                                    .font(.caption.weight(.semibold))
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .foregroundStyle(on ? Color.black : Color.white)
+                                    .background(on ? Color.white : Color.white.opacity(0.2), in: Capsule())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                }
+                .padding(.bottom, 10)
+            }
+
+            HStack {
+                Text(vm.statusText)
+                    .font(.caption2)
+                    .foregroundStyle(.white.opacity(0.85))
+                Spacer()
+                Button {
+                    if vm.playMode == .native { vm.switchToWeb() }
+                    else { vm.retryNative() }
+                } label: {
+                    Text(vm.playMode == .native ? "切网页" : "切应用内")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(brand.opacity(0.9), in: Capsule())
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 24)
+        }
+        .background(
+            LinearGradient(
+                colors: [Color.black.opacity(0.6), .clear, Color.black.opacity(0.55)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
+        )
     }
 
     private var unlockSideButton: some View {
@@ -1312,6 +1496,7 @@ struct LiveRoomFullscreenView: View {
             withAnimation(.easeInOut(duration: 0.15)) {
                 vm.unlockControls()
                 showChrome = true
+                showLockChrome = false
             }
         } label: {
             VStack(spacing: 6) {
@@ -1326,6 +1511,77 @@ struct LiveRoomFullscreenView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("解锁控件")
+    }
+
+    // MARK: - Gestures (SimpleLive: left brightness / right volume)
+
+    private func handleSurfaceTap() {
+        if vm.isControlsLocked {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                showLockChrome.toggle()
+            }
+            if showLockChrome {
+                scheduleHideLockChrome()
+            } else {
+                lockChromeHideTask?.cancel()
+            }
+        } else {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                showChrome.toggle()
+            }
+        }
+    }
+
+    private func scheduleHideLockChrome() {
+        lockChromeHideTask?.cancel()
+        lockChromeHideTask = Task {
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    showLockChrome = false
+                }
+            }
+        }
+    }
+
+    private func fullscreenDragGesture(size: CGSize) -> some Gesture {
+        DragGesture(minimumDistance: 12)
+            .onChanged { value in
+                // Locked: no brightness/volume (SimpleLive).
+                guard !vm.isControlsLocked else { return }
+                let w = max(size.width, 1)
+                let h = max(size.height, 1)
+                if !gestureActive {
+                    // Start only from middle vertical band (SimpleLive 25%–75%).
+                    let y = value.startLocation.y
+                    guard y > h * 0.2, y < h * 0.8 else { return }
+                    gestureActive = true
+                    gestureIsLeft = value.startLocation.x < w / 2
+                    gestureBaseBrightness = LiveSystemBrightness.current
+                    gestureBaseVolume = LiveSystemVolume.current
+                }
+                guard gestureActive else { return }
+                // Drag up → increase; drag down → decrease.
+                let delta = (value.startLocation.y - value.location.y) / max(h * 0.55, 1)
+                if gestureIsLeft {
+                    let next = max(0, min(1, gestureBaseBrightness + CGFloat(delta)))
+                    LiveSystemBrightness.set(next)
+                    gestureTip = String(format: "亮度 %d%%", Int((next * 100).rounded()))
+                } else {
+                    let next = max(0, min(1, gestureBaseVolume + Float(delta)))
+                    LiveSystemVolume.set(next)
+                    // Snap tip to 5% steps like SimpleLive.
+                    let pct = Int((next * 100 / 5).rounded()) * 5
+                    gestureTip = "音量 \(pct)%"
+                }
+            }
+            .onEnded { _ in
+                gestureActive = false
+                withAnimation(.easeOut(duration: 0.25)) {
+                    gestureTip = nil
+                }
+            }
     }
 }
 

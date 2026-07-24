@@ -1,103 +1,36 @@
-# Archive failed on `0022b76`
+# Archive failed on `b0dab12`
 
-Run: https://github.com/zhangx16/apple-person-tool/actions/runs/30100848604
-Commit: `0022b76970a004a9e400164919025132ead88222`
+Run: https://github.com/zhangx16/apple-person-tool/actions/runs/30101425829
+Commit: `b0dab121383d2beec6e4f159e18e2eb41cfdc1d7`
 
 ## Grep errors
 ```
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Library/LibraryView.swift:212:19: error: main actor-isolated property 'activeSongs' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Library/LibraryView.swift:218:23: error: main actor-isolated property 'activeDownloads' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Library/LibraryView.swift:219:33: error: main actor-isolated property 'activeDownloads' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Library/LibraryView.swift:221:26: error: main actor-isolated property 'totalByteCount' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Library/LibraryView.swift:251:37: error: call to main actor-isolated instance method 'toggle(song:)' in a synchronous nonisolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Library/LibraryView.swift:285:22: error: main actor-isolated property 'favoritePlaylists' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Library/LibraryView.swift:291:28: error: call to main actor-isolated instance method 'canUnsubscribe' in a synchronous nonisolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Library/LibraryView.swift:293:33: error: call to main actor-isolated instance method 'toggle(playlist:)' in a synchronous nonisolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Library/LibraryView.swift:305:24: error: main actor-isolated property 'favoritePlaylists' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Messages/NeteaseConversationView.swift:228:32: error: expression is 'async' but is not marked with 'await'
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Messages/NeteaseMessageContactsView.swift:86:32: error: expression is 'async' but is not marked with 'await'
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Messages/NeteasePrivateMessagesView.swift:158:32: error: expression is 'async' but is not marked with 'await'
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Onboarding/OnboardingView.swift:91:24: error: call to main actor-isolated initializer 'init(defaults:)' in a synchronous nonisolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Onboarding/OnboardingView.swift:95:19: error: call to main actor-isolated initializer 'init(api:settings:)' in a synchronous nonisolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Onboarding/OnboardingView.swift:96:18: error: call to main actor-isolated initializer 'init(settings:session:)' in a synchronous nonisolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Player/NowPlayingControls.swift:19:14: error: value of type 'Slider<EmptyView, EmptyView>' has no member 'sliderThumbVisibility'
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Player/NowPlayingControls.swift:19:37: error: cannot infer contextual base in reference to member 'hidden'
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Player/NowPlayingControls.swift:20:20: error: cannot infer contextual base in reference to member 'white'
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Player/NowPlayingControls.swift:41:20: error: main actor-isolated property 'duration' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Player/NowPlayingControls.swift:53:31: error: main actor-isolated property 'quality' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Player/NowPlayingControls.swift:60:38: error: main actor-isolated property 'quality' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Player/NowPlayingControls.swift:66:29: error: main actor-isolated property 'quality' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Player/NowPlayingControls.swift:68:32: error: main actor-isolated property 'quality' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Player/NowPlayingControls.swift:69:26: error: main actor-isolated property 'quality' can not be mutated from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Player/NowPlayingControls.swift:183:25: error: main actor-isolated property 'playerVolumeControlMode' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Player/NowPlayingControls.swift:189:35: error: main actor-isolated property 'volume' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Player/NowPlayingControls.swift:190:35: error: call to main actor-isolated instance method 'setVolume' in a synchronous nonisolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Player/NowPlayingControls.swift:266:17: error: cannot find 'TextPVStyleMenu' in scope
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Player/NowPlayingControls.swift:294:29: error: main actor-isolated property 'lyricsStyle' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Player/NowPlayingControls.swift:296:26: error: main actor-isolated property 'lyricsStyle' can not be mutated from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Player/NowPlayingView.swift:132:25: error: main actor-isolated property 'playerScreenAwakeMode' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Player/NowPlayingView.swift:145:37: error: main actor-isolated property 'lyricsStyle' can not be referenced from a non-isolated autoclosure
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Player/NowPlayingView.swift:149:37: error: main actor-isolated property 'lyricsStyle' can not be referenced from a non-isolated autoclosure
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Player/NowPlayingView.swift:153:37: error: main actor-isolated property 'lyricsStyle' can not be referenced from a non-isolated autoclosure
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Player/NowPlayingView.swift:247:28: error: main actor-isolated property 'currentSong' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Player/NowPlayingView.swift:248:30: error: main actor-isolated property 'progress' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Player/NowPlayingView.swift:249:31: error: main actor-isolated property 'isPlaying' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Player/NowPlayingView.swift:250:35: error: main actor-isolated property 'lyricsAdvanceTime' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Player/NowPlayingView.swift:259:27: error: expression is 'async' but is not marked with 'await'
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Player/NowPlayingView.swift:262:36: error: expression is 'async' but is not marked with 'await'
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Player/NowPlayingView.swift:271:19: error: expression is 'async' but is not marked with 'await'
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Player/NowPlayingView.swift:276:33: error: expression is 'async' but is not marked with 'await'
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Player/NowPlayingView.swift:294:26: error: expression is 'async' but is not marked with 'await'
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Player/NowPlayingView.swift:300:19: error: expression is 'async' but is not marked with 'await'
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Player/NowPlayingView.swift:306:19: error: expression is 'async' but is not marked with 'await'
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Playlist/AddToPlaylistSheet.swift:47:21: error: main actor-isolated property 'isLoggedIn' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Playlist/AddToPlaylistSheet.swift:53:27: error: main actor-isolated property 'phase' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Playlist/AddToPlaylistSheet.swift:53:54: error: main actor-isolated property 'ownedPlaylists' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Playlist/AddToPlaylistSheet.swift:56:27: error: main actor-isolated property 'ownedPlaylists' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Playlist/AddToPlaylistSheet.swift:60:30: error: main actor-isolated property 'errorMessage' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Playlist/AddToPlaylistSheet.swift:69:26: error: main actor-isolated property 'ownedPlaylists' can not be referenced from a non-isolated context
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Core/Downloads/DownloadStore.swift:51:49: error: call to main actor-isolated initializer 'init(configuration:)' in a synchronous nonisolated context
+    optional func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: (any Error)?)
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Core/Networking/NeteaseAPI.swift:58:18: error: call to main actor-isolated initializer 'init(settings:session:)' in a synchronous nonisolated context
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Core/Playback/AudioPlaybackEngine.swift:185:28: error: call to main actor-isolated instance method 'update(configuration:)' in a synchronous nonisolated context
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Core/Playback/NowPlayingSession.swift:110:34: error: reference to captured var 'self' in concurrently-executing code
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Core/Playback/NowPlayingSession.swift:114:34: error: reference to captured var 'self' in concurrently-executing code
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Core/Playback/NowPlayingSession.swift:118:34: error: reference to captured var 'self' in concurrently-executing code
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Core/Playback/NowPlayingSession.swift:122:34: error: reference to captured var 'self' in concurrently-executing code
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Core/Playback/NowPlayingSession.swift:130:34: error: reference to captured var 'self' in concurrently-executing code
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Core/Playback/PlayerStore.swift:431:23: error: reference to captured var 'self' in concurrently-executing code
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Core/Playback/PlayerStore.swift:436:23: error: reference to captured var 'self' in concurrently-executing code
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Core/Playback/PlayerStore.swift:469:40: error: reference to captured var 'self' in concurrently-executing code
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Core/Playback/PlayerStore.swift:472:40: error: reference to captured var 'self' in concurrently-executing code
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Account/AccountHomeView.swift:101:10: error: value of type 'ToolbarItemGroup<TupleView<(ModifiedContent<ShareLink<CollectionOfOne<URL>, Never, Never, Image>, AccessibilityAttachmentModifier>, ModifiedContent<Menu<Image, Button<Label<Text, Image>>>, AccessibilityAttachmentModifier>)>>' has no member 'sharedBackgroundVisibility'
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Account/AccountHomeView.swift:101:38: error: cannot infer contextual base in reference to member 'visible'
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Album/AlbumDetailView.swift:167:10: error: value of type 'ToolbarItemGroup<TupleView<(ModifiedContent<Menu<Image, NeteaseShareMenuContent>, AccessibilityAttachmentModifier>, ModifiedContent<Menu<Image, TupleView<(NavigationLink<Label<Text, Image>, Never>?, Button<Label<Text, Image>>)>>, AccessibilityAttachmentModifier>)>>' has no member 'sharedBackgroundVisibility'
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Album/AlbumDetailView.swift:167:38: error: cannot infer contextual base in reference to member 'visible'
 /Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Playlist/PlaylistDetailView.swift:202:10: error: value of type 'ToolbarItemGroup<TupleView<(ModifiedContent<Menu<Image, NeteaseShareMenuContent>, AccessibilityAttachmentModifier>, ModifiedContent<Menu<Image, TupleView<(Button<Label<Text, Image>>, Button<Label<Text, Image>>)>>, AccessibilityAttachmentModifier>)>>' has no member 'sharedBackgroundVisibility'
 /Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Playlist/PlaylistDetailView.swift:202:38: error: cannot infer contextual base in reference to member 'visible'
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Playlist/PlaylistTrackList.swift:51:16: error: main actor-isolated property 'currentSong' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Playlist/PlaylistTrackList.swift:182:27: error: main actor-isolated property 'isLoading' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Playlist/PlaylistTrackList.swift:186:46: error: main actor-isolated property 'isPlaying' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Playlist/PlaylistTrackList.swift:202:20: error: call to main actor-isolated instance method 'togglePlayback()' in a synchronous nonisolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Search/SearchView.swift:88:37: error: call to main actor-isolated instance method 'toggle(song:)' in a synchronous nonisolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Search/SearchView.swift:91:41: error: call to main actor-isolated instance method 'contains(song:)' in a synchronous nonisolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Search/SearchView.swift:92:54: error: call to main actor-isolated instance method 'contains(song:)' in a synchronous nonisolated context
 /Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Settings/NeteaseLoginView.swift:9:30: error: cannot find type 'WebPage' in scope
 /Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Settings/NeteaseLoginView.swift:61:31: error: cannot find type 'WebPage' in scope
 /Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Settings/NeteaseLoginView.swift:16:9: error: cannot find 'WebView' in scope
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Settings/NeteaseLoginView.swift:42:26: error: main actor-isolated property 'cookie' can not be mutated from a non-isolated context
 /Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Settings/NeteaseLoginView.swift:62:29: error: cannot find 'WebPage' in scope
 /Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Settings/NeteaseLoginView.swift:64:76: error: cannot infer contextual base in reference to member 'desktop'
 /Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Settings/PlayerSettingsView.swift:79:21: error: cannot find 'SkylineLyricsSettingsView' in scope
 /Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Settings/PlayerSettingsView.swift:99:25: error: cannot find 'TextPVSettingsView' in scope
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Settings/SettingsAccountSection.swift:62:34: error: main actor-isolated property 'profile' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Settings/SettingsAccountSection.swift:120:33: error: main actor-isolated property 'accountDetail' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Settings/SettingsAccountSection.swift:127:18: error: call to main actor-isolated instance method 'clearAccount()' in a synchronous nonisolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Settings/SettingsAccountSection.swift:128:17: error: call to main actor-isolated instance method 'clearAccountData()' in a synchronous nonisolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Sharing/NeteasePrivateMessageView.swift:195:32: error: expression is 'async' but is not marked with 'await'
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Sharing/NeteasePrivateMessageView.swift:198:23: error: expression is 'async' but is not marked with 'await'
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Song/SongDetailView.swift:129:33: error: call to main actor-isolated instance method 'toggle(song:)' in a synchronous nonisolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Song/SongDetailView.swift:132:37: error: call to main actor-isolated instance method 'contains(song:)' in a synchronous nonisolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Song/SongDetailView.swift:133:50: error: call to main actor-isolated instance method 'contains(song:)' in a synchronous nonisolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/MeloXContentView.swift:49:23: error: main actor-isolated property 'currentSong' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/MeloXContentView.swift:58:59: error: main actor-isolated property 'currentSong' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/MeloXContentView.swift:98:28: error: main actor-isolated property 'cookie' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/MeloXContentView.swift:102:22: error: main actor-isolated property 'lastSelectedTab' can not be mutated from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/MeloXContentView.swift:107:31: error: main actor-isolated property 'playbackIssue' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/MeloXContentView.swift:110:32: error: call to main actor-isolated instance method 'dismissPlaybackIssue()' in a synchronous nonisolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/MeloXContentView.swift:115:23: error: main actor-isolated property 'canPlayNext' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/MeloXContentView.swift:117:28: error: call to main actor-isolated instance method 'dismissPlaybackIssue()' in a synchronous nonisolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/MeloXContentView.swift:122:24: error: call to main actor-isolated instance method 'dismissPlaybackIssue()' in a synchronous nonisolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/MeloXContentView.swift:125:25: error: main actor-isolated property 'playbackIssue' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/MeloXContentView.swift:130:34: error: main actor-isolated property 'errorMessage' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/MeloXContentView.swift:133:35: error: call to main actor-isolated instance method 'clearError()' in a synchronous nonisolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/MeloXContentView.swift:139:27: error: call to main actor-isolated instance method 'clearError()' in a synchronous nonisolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/MeloXContentView.swift:142:28: error: main actor-isolated property 'errorMessage' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/MeloXContentView.swift:211:24: error: main actor-isolated property 'rememberNowPlayingPage' can not be referenced from a non-isolated context
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/MeloXContentView.swift:212:50: error: main actor-isolated property 'rememberedNowPlayingPage' can not be referenced from a non-isolated context
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
     optional func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: any Error)
@@ -109,32 +42,32 @@ Commit: `0022b76970a004a9e400164919025132ead88222`
 
 ## Tail
 ```
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Core/Downloads/DownloadStore.swift:198:10: note: calls to instance method 'clearError()' from outside of its actor context are implicitly asynchronous
-    func clearError() {
-         ^
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/MeloXContentView.swift:139:27: error: call to main actor-isolated instance method 'clearError()' in a synchronous nonisolated context
-                downloads.clearError()
-                          ^
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Core/Downloads/DownloadStore.swift:198:10: note: calls to instance method 'clearError()' from outside of its actor context are implicitly asynchronous
-    func clearError() {
-         ^
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/MeloXContentView.swift:142:28: error: main actor-isolated property 'errorMessage' can not be referenced from a non-isolated context
-            Text(downloads.errorMessage ?? "无法完成下载操作。")
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Core/Downloads/DownloadStore.swift:9:22: note: property declared here
-    private(set) var errorMessage: String?
-                     ^
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/MeloXContentView.swift:211:24: error: main actor-isolated property 'rememberNowPlayingPage' can not be referenced from a non-isolated context
-        guard settings.rememberNowPlayingPage else { return .artwork }
-                       ^
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Core/Settings/MeloXSettings.swift:358:9: note: property declared here
-    var rememberNowPlayingPage: Bool {
-        ^
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/MeloXContentView.swift:212:50: error: main actor-isolated property 'rememberedNowPlayingPage' can not be referenced from a non-isolated context
-        return NowPlayingPage(rawValue: settings.rememberedNowPlayingPage) ?? .artwork
-                                                 ^
-/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Core/Settings/MeloXSettings.swift:367:9: note: property declared here
-    var rememberedNowPlayingPage: String {
-        ^
+        .sharedBackgroundVisibility(.visible)
+         ^~~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Playlist/PlaylistDetailView.swift:202:38: error: cannot infer contextual base in reference to member 'visible'
+        .sharedBackgroundVisibility(.visible)
+                                    ~^~~~~~~
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Settings/NeteaseLoginView.swift:9:30: error: cannot find type 'WebPage' in scope
+    @State private var page: WebPage
+                             ^~~~~~~
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Settings/NeteaseLoginView.swift:61:31: error: cannot find type 'WebPage' in scope
+    static func makePage() -> WebPage {
+                              ^~~~~~~
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Settings/NeteaseLoginView.swift:16:9: error: cannot find 'WebView' in scope
+        WebView(page)
+        ^~~~~~~
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Settings/NeteaseLoginView.swift:62:29: error: cannot find 'WebPage' in scope
+        var configuration = WebPage.Configuration()
+                            ^~~~~~~
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Settings/NeteaseLoginView.swift:64:76: error: cannot infer contextual base in reference to member 'desktop'
+        configuration.defaultNavigationPreferences.preferredContentMode = .desktop
+                                                                          ~^~~~~~~
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Settings/PlayerSettingsView.swift:79:21: error: cannot find 'SkylineLyricsSettingsView' in scope
+                    SkylineLyricsSettingsView()
+                    ^~~~~~~~~~~~~~~~~~~~~~~~~
+/Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/Features/Music/MeloX/Features/Settings/PlayerSettingsView.swift:99:25: error: cannot find 'TextPVSettingsView' in scope
+                        TextPVSettingsView()
+                        ^~~~~~~~~~~~~~~~~~
 /Users/runner/work/apple-person-tool/apple-person-tool/PersonalToolbox/App/AppIntentsSupport.swift:47:17: warning: initialization of immutable value 'due' was never used; consider replacing with assignment to '_' or removing it
             let due = SubscriptionStore.shared.dueSoon.count
             ~~~~^~~

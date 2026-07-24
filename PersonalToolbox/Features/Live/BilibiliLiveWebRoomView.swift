@@ -60,12 +60,13 @@ struct BilibiliLiveWebRoomView: View {
         .onAppear {
             // 等 present 动画结束后再打开 Safari，避免转场竞态。
             statusText = "即将打开直播页…"
+            let url = pageURL
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
-                Task { @MainActor in
-                    guard !didAutoOpen else { return }
-                    didAutoOpen = true
-                    openSafari()
-                }
+                // 不用 View 实例方法，避免 Xcode 15.4 isolation 误报。
+                guard !didAutoOpen else { return }
+                didAutoOpen = true
+                statusText = "打开直播页…"
+                BilibiliSafariPresenter.present(url: url)
             }
         }
         .task {
@@ -140,7 +141,8 @@ struct BilibiliLiveWebRoomView: View {
     private var actionCard: some View {
         VStack(spacing: 10) {
             Button {
-                openSafari()
+                statusText = "打开直播页…"
+                BilibiliSafariPresenter.present(url: pageURL)
             } label: {
                 Label("打开直播（安全模式）", systemImage: "play.rectangle.fill")
                     .font(.body.weight(.semibold))
@@ -201,13 +203,6 @@ struct BilibiliLiveWebRoomView: View {
     }
 
     // MARK: - Actions
-
-    @MainActor
-    private func openSafari() {
-        statusText = "打开直播页…"
-        // onFinish 不回写 @State（struct 逃逸闭包捕获无效）；关闭 Safari 后用户可再点按钮。
-        BilibiliSafariPresenter.present(url: pageURL)
-    }
 
     private func refreshMeta() async {
         let rid = room.roomId.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -1,68 +1,78 @@
 import SwiftUI
+import WebKit
 
-/// PersonalToolbox tab entry for MeloX (网易云音乐第三方客户端).
-///
-/// Assembles MeloX dependencies the same way `MeloXApp` does, then hosts
-/// `MeloXContentView` under a single outer chrome title.
+/// 音乐 Tab：MeloX 全量源码已入库，但 CI（Xcode 15.4）无法编译 iOS 26 API。
+/// 当前提供可运行的网易云 H5 壳 + 说明；完整原生 MeloX 需 Xcode 16+ 再开编译。
 struct MusicRootView: View {
-    @State private var settings: MeloXSettings
-    @State private var api: NeteaseAPI
-    @State private var library: LibraryStore
-    @State private var cloud: CloudMusicStore
-    @State private var downloads: DownloadStore
-    @State private var player: PlayerStore
-    @State private var screenAwakeCoordinator: ScreenAwakeCoordinator
-    @State private var isLowPowerModeEnabled = ProcessInfo.processInfo.isLowPowerModeEnabled
-
-    init() {
-        let settings = MeloXSettings()
-        // Skip MeloX onboarding inside toolbox — jump straight into music UI.
-        if !settings.hasCompletedOnboarding {
-            settings.hasCompletedOnboarding = true
-        }
-        let api = NeteaseAPI(settings: settings)
-        let library = LibraryStore(api: api, settings: settings)
-        let cloud = CloudMusicStore(api: api, settings: settings)
-        let downloads = DownloadStore(api: api, settings: settings)
-        _settings = State(initialValue: settings)
-        _api = State(initialValue: api)
-        _library = State(initialValue: library)
-        _cloud = State(initialValue: cloud)
-        _downloads = State(initialValue: downloads)
-        _player = State(
-            initialValue: PlayerStore(
-                api: api,
-                settings: settings,
-                downloads: downloads,
-                onPlaybackRecorded: { song in
-                    library.recordRecentlyPlayed(song)
-                }
-            )
-        )
-        _screenAwakeCoordinator = State(initialValue: ScreenAwakeCoordinator())
-    }
+    @State private var path = NavigationPath()
+    @State private var showAbout = false
 
     var body: some View {
-        MeloXContentView(initialTab: settings.launchTab)
-            .environment(settings)
-            .environment(api)
-            .environment(library)
-            .environment(cloud)
-            .environment(downloads)
-            .environment(player)
-            .environment(screenAwakeCoordinator)
-            .environment(\.effectiveLyricsRefreshRate, effectiveLyricsRefreshRate)
-            .tint(.red)
-            .onReceive(
-                NotificationCenter.default.publisher(
-                    for: .NSProcessInfoPowerStateDidChange
-                )
-            ) { _ in
-                isLowPowerModeEnabled = ProcessInfo.processInfo.isLowPowerModeEnabled
+        NavigationStack(path: $path) {
+            VStack(spacing: 0) {
+                NeteaseMusicWebView(url: URL(string: "https://music.163.com/m")!)
+                    .ignoresSafeArea(edges: .bottom)
             }
+            .navigationTitle("音乐")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showAbout = true
+                    } label: {
+                        Image(systemName: "info.circle")
+                    }
+                    .accessibilityLabel("关于音乐模块")
+                }
+                ToolbarItem(placement: .topBarLeading) {
+                    Link(destination: URL(string: "https://music.163.com")!) {
+                        Image(systemName: "safari")
+                    }
+                    .accessibilityLabel("系统浏览器打开")
+                }
+            }
+            .sheet(isPresented: $showAbout) {
+                NavigationStack {
+                    List {
+                        Section("来源") {
+                            Text("基于开源项目 MeloX（youshen2/MeloX）接入计划。")
+                            Link("MeloX 仓库", destination: URL(string: "https://github.com/youshen2/MeloX")!)
+                        }
+                        Section("当前构建") {
+                            Text("因 CI 使用 Xcode 15.4 / iOS 17 SDK，无法编译 MeloX 上游 iOS 26 专用 API。")
+                            Text("本页先用网易云官方 H5 提供可用听歌入口；完整原生 UI/播放器源码已在 Features/Music/MeloX/。")
+                        }
+                        Section("说明") {
+                            Text("非官方客户端，与网易云音乐无隶属关系。")
+                        }
+                    }
+                    .navigationTitle("关于")
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("关闭") { showAbout = false }
+                        }
+                    }
+                }
+                .presentationDetents([.medium, .large])
+            }
+        }
+    }
+}
+
+private struct NeteaseMusicWebView: UIViewRepresentable {
+    let url: URL
+
+    func makeUIView(context: Context) -> WKWebView {
+        let config = WKWebViewConfiguration()
+        config.allowsInlineMediaPlayback = true
+        config.mediaTypesRequiringUserActionForPlayback = []
+        let web = WKWebView(frame: .zero, configuration: config)
+        web.allowsBackForwardNavigationGestures = true
+        web.customUserAgent =
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+        web.load(URLRequest(url: url))
+        return web
     }
 
-    private var effectiveLyricsRefreshRate: LyricsRefreshRate {
-        isLowPowerModeEnabled ? .lowPowerValue : settings.lyricsRefreshRate
-    }
+    func updateUIView(_ webView: WKWebView, context: Context) {}
 }

@@ -1,7 +1,6 @@
 import Foundation
 import Observation
 
-@MainActor
 @Observable
 final class CloudMusicStore {
     private(set) var items: [CloudSong] = []

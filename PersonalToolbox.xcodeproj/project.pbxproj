@@ -1524,7 +1524,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 75;
+				CURRENT_PROJECT_VERSION = 76;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				CODE_SIGN_ENTITLEMENTS = PersonalToolbox/PersonalToolbox.entitlements;
@@ -1539,6 +1539,7 @@
 				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "00008150-001A088E148B401C6F01CD";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_VERSION = 5.0;
+				SWIFT_STRICT_CONCURRENCY = minimal;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -1550,7 +1551,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 75;
+				CURRENT_PROJECT_VERSION = 76;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				CODE_SIGN_ENTITLEMENTS = PersonalToolbox/PersonalToolbox.entitlements;
@@ -1565,6 +1566,7 @@
 				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "00008150-001A088E148B401C6F01CD";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_VERSION = 5.0;
+				SWIFT_STRICT_CONCURRENCY = minimal;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
@@ -1576,7 +1578,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 75;
+				CURRENT_PROJECT_VERSION = 76;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
@@ -1591,6 +1593,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
+				SWIFT_STRICT_CONCURRENCY = minimal;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -1601,7 +1604,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 75;
+				CURRENT_PROJECT_VERSION = 76;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
@@ -1616,6 +1619,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
+				SWIFT_STRICT_CONCURRENCY = minimal;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;

@@ -25,16 +25,8 @@ enum TimedLyricTextBuilder {
             }
 
             let character = entry.element
-            let fragment = Text(verbatim: character.text).customAttribute(
-                LyricTimingTextAttribute(
-                    startTime: character.startTime,
-                    endTime: character.endTime,
-                    syllableStartTime: character.syllableStartTime,
-                    syllableEndTime: character.syllableEndTime,
-                    characterIndex: character.characterIndex,
-                    characterCount: character.characterCount
-                )
-            )
+            // iOS 18+ Text.customAttribute unavailable on Xcode 15.4 — plain text fallback.
+            let fragment = Text(verbatim: character.text)
             return Text("\(text)\(fragment)")
         }
     }

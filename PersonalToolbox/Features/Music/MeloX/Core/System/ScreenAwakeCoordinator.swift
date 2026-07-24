@@ -2,7 +2,6 @@ import Observation
 import SwiftUI
 import UIKit
 
-@MainActor
 @Observable
 final class ScreenAwakeCoordinator {
     @ObservationIgnored

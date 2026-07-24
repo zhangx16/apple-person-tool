@@ -90,3 +90,10 @@ extension ButtonStyle where Self == MeloXGlassButtonStyle {
 extension ButtonStyle where Self == MeloXGlassProminentButtonStyle {
     static var glassProminent: MeloXGlassProminentButtonStyle { MeloXGlassProminentButtonStyle() }
 }
+
+extension View {
+    /// iOS 26 toolbar shared background — no-op on iOS 17.
+    func sharedBackgroundVisibility(_ visibility: Any) -> some View {
+        self
+    }
+}

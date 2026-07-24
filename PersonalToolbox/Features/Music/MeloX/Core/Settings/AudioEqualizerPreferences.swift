@@ -142,7 +142,6 @@ enum AudioEqualizerPreset: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
-@MainActor
 @Observable
 final class AudioEqualizerPreferences {
     nonisolated static let preampRange = -12.0...6.0

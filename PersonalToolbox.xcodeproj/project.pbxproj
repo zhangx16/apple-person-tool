@@ -1187,112 +1187,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				000000000000000000008061 /* TextPVPreferences.swift in Sources */,
-				00000000000000000000805F /* SkylineLyricsPreferences.swift in Sources */,
-				000000000000000000008051 /* AudioEqualizerPreferences.swift in Sources */,
 				000000000000000000008001 /* MusicRootView.swift in Sources */,
 				000000000000000000008003 /* MeloXCompatibility.swift in Sources */,
-				000000000000000000008005 /* AppLaunchExperience.swift in Sources */,
-				000000000000000000008007 /* AppNavigation.swift in Sources */,
-				000000000000000000008009 /* MusicNavigationTransitions.swift in Sources */,
-				00000000000000000000800B /* ArtworkAccentColorProvider.swift in Sources */,
-				00000000000000000000800D /* CloudMusicModels.swift in Sources */,
-				00000000000000000000800F /* CloudMusicStore.swift in Sources */,
-				000000000000000000008011 /* CloudUploadFile.swift in Sources */,
-				000000000000000000008013 /* DownloadDatabase.swift in Sources */,
-				000000000000000000008015 /* DownloadStorage.swift in Sources */,
-				000000000000000000008017 /* DownloadStore.swift in Sources */,
-				000000000000000000008019 /* DownloadTransferClient.swift in Sources */,
-				00000000000000000000801B /* DownloadedSong.swift in Sources */,
-				00000000000000000000801D /* AppRecommendationPrompt.swift in Sources */,
-				00000000000000000000801F /* LibraryStore.swift in Sources */,
-				000000000000000000008021 /* LyricModels.swift in Sources */,
-				000000000000000000008023 /* LyricParser.swift in Sources */,
-				000000000000000000008025 /* LyricPlaybackTimeline.swift in Sources */,
-				000000000000000000008027 /* APIResponses.swift in Sources */,
-				000000000000000000008029 /* AccountModels.swift in Sources */,
-				00000000000000000000802B /* MusicModels.swift in Sources */,
-				00000000000000000000802D /* PrivateMessageModels.swift in Sources */,
-				00000000000000000000802F /* SocialShareModels.swift in Sources */,
-				000000000000000000008031 /* SongCollectionPage.swift in Sources */,
-				000000000000000000008033 /* SongCommentModels.swift in Sources */,
-				000000000000000000008035 /* NeteaseAPI.swift in Sources */,
-				000000000000000000008037 /* NeteaseDirectClient.swift in Sources */,
-				000000000000000000008039 /* NeteaseSocialAPI.swift in Sources */,
-				000000000000000000008041 /* AudioPlaybackEngine.swift in Sources */,
-				000000000000000000008043 /* NowPlayingSession.swift in Sources */,
-				000000000000000000008045 /* PlaybackHistoryRecorder.swift in Sources */,
-				000000000000000000008047 /* PlaybackIssue.swift in Sources */,
-				000000000000000000008049 /* PlaybackPersistence.swift in Sources */,
-				00000000000000000000804B /* PlaybackQueue.swift in Sources */,
-				00000000000000000000804D /* PlaybackSource.swift in Sources */,
-				00000000000000000000804F /* PlayerStore.swift in Sources */,
-				000000000000000000008053 /* LyricsRefreshRate.swift in Sources */,
-				000000000000000000008055 /* LyricsStyle.swift in Sources */,
-				000000000000000000008059 /* NavigationPreferences.swift in Sources */,
-				00000000000000000000805B /* PlayerScreenAwakeMode.swift in Sources */,
-				00000000000000000000805D /* PlayerVolumeControlMode.swift in Sources */,
-				000000000000000000008063 /* ScreenAwakeCoordinator.swift in Sources */,
-				000000000000000000008065 /* AppUpdateService.swift in Sources */,
-				000000000000000000008067 /* AccountHomeContent.swift in Sources */,
-				000000000000000000008069 /* AccountHomeView.swift in Sources */,
-				00000000000000000000806B /* AlbumDetailContent.swift in Sources */,
-				00000000000000000000806D /* AlbumDetailView.swift in Sources */,
-				00000000000000000000806F /* ArtistDetailView.swift in Sources */,
-				000000000000000000008071 /* CloudMusicView.swift in Sources */,
-				000000000000000000008073 /* DownloadsView.swift in Sources */,
-				000000000000000000008075 /* ExplorePlaylistComponents.swift in Sources */,
-				000000000000000000008077 /* ExploreView.swift in Sources */,
-				000000000000000000008079 /* DailySongsView.swift in Sources */,
-				00000000000000000000807B /* HomeComponents.swift in Sources */,
-				00000000000000000000807D /* HomeView.swift in Sources */,
-				00000000000000000000807F /* NewAlbumsView.swift in Sources */,
-				000000000000000000008081 /* ProjectLicensesView.swift in Sources */,
-				000000000000000000008083 /* LibraryView.swift in Sources */,
-				000000000000000000008085 /* NeteaseConversationView.swift in Sources */,
-				000000000000000000008087 /* NeteaseMessageContactsView.swift in Sources */,
-				000000000000000000008089 /* NeteasePrivateMessagesView.swift in Sources */,
-				00000000000000000000808B /* OnboardingPages.swift in Sources */,
-				00000000000000000000808D /* OnboardingView.swift in Sources */,
-				000000000000000000008091 /* DeterministicRandom.swift in Sources */,
-				0000000000000000000080A1 /* LyricsTypography.swift in Sources */,
-				0000000000000000000080A3 /* MiniPlayerView.swift in Sources */,
-				0000000000000000000080A5 /* NowPlayingArtworkPage.swift in Sources */,
-				0000000000000000000080A7 /* NowPlayingBackground.swift in Sources */,
-				0000000000000000000080A9 /* NowPlayingControls.swift in Sources */,
-				0000000000000000000080AF /* NowPlayingQueuePage.swift in Sources */,
-				0000000000000000000080B1 /* NowPlayingSongDetailsPage.swift in Sources */,
-				0000000000000000000080B3 /* NowPlayingView.swift in Sources */,
-				0000000000000000000080B5 /* QueueView.swift in Sources */,
-				0000000000000000000080F1 /* AddToPlaylistSheet.swift in Sources */,
-				0000000000000000000080F3 /* PlaylistDetailContent.swift in Sources */,
-				0000000000000000000080F5 /* PlaylistDetailView.swift in Sources */,
-				0000000000000000000080F7 /* PlaylistTrackList.swift in Sources */,
-				0000000000000000000080F9 /* PlaylistCategoryView.swift in Sources */,
-				0000000000000000000080FB /* SearchDiscoveryView.swift in Sources */,
-				0000000000000000000080FD /* SearchView.swift in Sources */,
-				0000000000000000000080FF /* AboutView.swift in Sources */,
-				000000000000000000008101 /* ContentSettingsView.swift in Sources */,
-				000000000000000000008105 /* GeneralSettingsView.swift in Sources */,
-				000000000000000000008109 /* NeteaseLoginView.swift in Sources */,
-				00000000000000000000810B /* PlayerSettingsView.swift in Sources */,
-				00000000000000000000810D /* SettingsAccountSection.swift in Sources */,
-				000000000000000000008113 /* NeteasePrivateMessageView.swift in Sources */,
-				000000000000000000008115 /* NeteaseSharePresentation.swift in Sources */,
-				000000000000000000008117 /* NeteaseShareSheet.swift in Sources */,
-				000000000000000000008119 /* SongCommentRepliesView.swift in Sources */,
-				00000000000000000000811B /* SongCommentRow.swift in Sources */,
-				00000000000000000000811D /* SongCommentsView.swift in Sources */,
-				00000000000000000000811F /* SongDetailView.swift in Sources */,
-				000000000000000000008121 /* ToplistsView.swift in Sources */,
-				000000000000000000008125 /* ArtworkImage.swift in Sources */,
-				000000000000000000008127 /* ConnectionUnavailableView.swift in Sources */,
-				000000000000000000008129 /* MediaCardGridLayout.swift in Sources */,
-				00000000000000000000812B /* MediaCardView.swift in Sources */,
-				00000000000000000000812D /* MusicCollectionPaginationFooter.swift in Sources */,
-				00000000000000000000812F /* MusicCollectionTheme.swift in Sources */,
-				000000000000000000008131 /* SectionTitle.swift in Sources */,
-				000000000000000000008133 /* TrackRowView.swift in Sources */,
 				000000000000000000000102 /* PersonalToolboxApp.swift in Sources */,
 				000000000000000000000104 /* RootTabView.swift in Sources */,
 				0000000000000000000005E1 /* OverviewHomeView.swift in Sources */,
@@ -1479,7 +1375,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 80;
+				CURRENT_PROJECT_VERSION = 81;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				CODE_SIGN_ENTITLEMENTS = PersonalToolbox/PersonalToolbox.entitlements;
@@ -1506,7 +1402,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 80;
+				CURRENT_PROJECT_VERSION = 81;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				CODE_SIGN_ENTITLEMENTS = PersonalToolbox/PersonalToolbox.entitlements;
@@ -1533,7 +1429,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 80;
+				CURRENT_PROJECT_VERSION = 81;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
@@ -1559,7 +1455,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 80;
+				CURRENT_PROJECT_VERSION = 81;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;

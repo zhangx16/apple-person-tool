@@ -38,8 +38,8 @@ struct AppUpdateResult: Equatable, Sendable {
 }
 
 enum AppUpdateService {
-    nonisolated static let repositoryURL = URL(string: "https://github.com/youshen2/MeloX")!
-    private nonisolated static let latestReleaseURL = URL(
+    static let repositoryURL = URL(string: "https://github.com/youshen2/MeloX")!
+    private static let latestReleaseURL = URL(
         string: "https://api.github.com/repos/youshen2/MeloX/releases/latest"
     )!
 

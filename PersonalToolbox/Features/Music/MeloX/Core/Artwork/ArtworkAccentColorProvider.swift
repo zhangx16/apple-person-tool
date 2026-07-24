@@ -66,8 +66,8 @@ private final class ArtworkDetailAssetsCache: @unchecked Sendable {
 
 actor ArtworkAccentColorProvider {
     static let shared = ArtworkAccentColorProvider()
-    nonisolated static let fallback = SIMD3<Double>(repeating: 0.86)
-    private nonisolated static let assetsCache = ArtworkDetailAssetsCache()
+    static let fallback = SIMD3<Double>(repeating: 0.86)
+    private static let assetsCache = ArtworkDetailAssetsCache()
 
     private let context = CIContext(options: [.cacheIntermediates: false])
     private let colorSpace = CGColorSpace(name: CGColorSpace.sRGB)!

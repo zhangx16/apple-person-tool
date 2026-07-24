@@ -145,8 +145,8 @@ enum AudioEqualizerPreset: String, CaseIterable, Identifiable, Sendable {
 @MainActor
 @Observable
 final class AudioEqualizerPreferences {
-    nonisolated static let preampRange = -12.0...6.0
-    nonisolated static let bandGainRange = -12.0...12.0
+    static let preampRange = -12.0...6.0
+    static let bandGainRange = -12.0...12.0
 
     private enum Key {
         static let isEnabled = "melox.equalizer.isEnabled"

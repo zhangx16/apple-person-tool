@@ -52,7 +52,7 @@ final class AudioEqualizerProcessor {
     }
 }
 
-nonisolated private func audioEqualizerTapContext(
+private func audioEqualizerTapContext(
     for tap: MTAudioProcessingTap
 ) -> AudioEqualizerTapContext {
     Unmanaged<AudioEqualizerTapContext>
@@ -60,7 +60,7 @@ nonisolated private func audioEqualizerTapContext(
         .takeUnretainedValue()
 }
 
-nonisolated private func audioEqualizerTapInit(
+private func audioEqualizerTapInit(
     _ tap: MTAudioProcessingTap,
     _ clientInfo: UnsafeMutableRawPointer?,
     _ tapStorageOut: UnsafeMutablePointer<UnsafeMutableRawPointer?>
@@ -68,7 +68,7 @@ nonisolated private func audioEqualizerTapInit(
     tapStorageOut.pointee = clientInfo
 }
 
-nonisolated private func audioEqualizerTapFinalize(
+private func audioEqualizerTapFinalize(
     _ tap: MTAudioProcessingTap
 ) {
     Unmanaged<AudioEqualizerTapContext>
@@ -76,7 +76,7 @@ nonisolated private func audioEqualizerTapFinalize(
         .release()
 }
 
-nonisolated private func audioEqualizerTapPrepare(
+private func audioEqualizerTapPrepare(
     _ tap: MTAudioProcessingTap,
     _ maxFrames: CMItemCount,
     _ processingFormat: UnsafePointer<AudioStreamBasicDescription>
@@ -86,13 +86,13 @@ nonisolated private func audioEqualizerTapPrepare(
     )
 }
 
-nonisolated private func audioEqualizerTapUnprepare(
+private func audioEqualizerTapUnprepare(
     _ tap: MTAudioProcessingTap
 ) {
     audioEqualizerTapContext(for: tap).unprepare()
 }
 
-nonisolated private func audioEqualizerTapProcess(
+private func audioEqualizerTapProcess(
     _ tap: MTAudioProcessingTap,
     _ numberFrames: CMItemCount,
     _ flags: MTAudioProcessingTapFlags,

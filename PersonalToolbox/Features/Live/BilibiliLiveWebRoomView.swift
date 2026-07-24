@@ -200,10 +200,13 @@ struct BilibiliLiveWebRoomView: View {
 
     // MARK: - Actions
 
+    @MainActor
     private func openSafari() {
         statusText = "打开直播页…"
-        BilibiliSafariPresenter.present(url: pageURL) {
-            statusText = "已返回 · 可再次打开"
+        BilibiliSafariPresenter.present(url: pageURL) { [self] in
+            Task { @MainActor in
+                statusText = "已返回 · 可再次打开"
+            }
         }
     }
 
@@ -233,32 +236,38 @@ struct BilibiliLiveWebRoomView: View {
 
 /// 从当前最顶层 VC present `SFSafariViewController`（不嵌套 SwiftUI fullScreenCover）。
 enum BilibiliSafariPresenter {
-    @MainActor
+    /// UIKit present 必须在主线程；内部自行 hop，避免 Xcode 15.4 对 View 方法 isolation 过严。
     static func present(url: URL, onFinish: (() -> Void)? = nil) {
-        guard let host = topViewController() else {
-            UIApplication.shared.open(url)
-            return
-        }
-        // 已在播 Safari 时不重复堆叠。
-        if host is SFSafariViewController { return }
-        if host.presentedViewController is SFSafariViewController { return }
+        let work = {
+            guard let host = Self.topViewController() else {
+                UIApplication.shared.open(url)
+                return
+            }
+            // 已在播 Safari 时不重复堆叠。
+            if host is SFSafariViewController { return }
+            if host.presentedViewController is SFSafariViewController { return }
 
-        let safari = SFSafariViewController(url: url)
-        safari.dismissButtonStyle = .close
-        safari.preferredControlTintColor = UIColor(red: 0, green: 0.63, blue: 0.84, alpha: 1)
-        let proxy = SafariDismissProxy(onFinish: onFinish)
-        safari.delegate = proxy
-        // Retain proxy for the lifetime of the safari VC.
-        objc_setAssociatedObject(
-            safari,
-            &SafariDismissProxy.assocKey,
-            proxy,
-            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
-        )
-        host.present(safari, animated: true)
+            let safari = SFSafariViewController(url: url)
+            safari.dismissButtonStyle = .close
+            safari.preferredControlTintColor = UIColor(red: 0, green: 0.63, blue: 0.84, alpha: 1)
+            let proxy = SafariDismissProxy(onFinish: onFinish)
+            safari.delegate = proxy
+            // Retain proxy for the lifetime of the safari VC.
+            objc_setAssociatedObject(
+                safari,
+                &SafariDismissProxy.assocKey,
+                proxy,
+                .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+            )
+            host.present(safari, animated: true)
+        }
+        if Thread.isMainThread {
+            work()
+        } else {
+            DispatchQueue.main.async(execute: work)
+        }
     }
 
-    @MainActor
     private static func topViewController(base: UIViewController? = nil) -> UIViewController? {
         let root: UIViewController?
         if let base {

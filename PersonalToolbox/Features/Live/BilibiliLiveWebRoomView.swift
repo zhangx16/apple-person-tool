@@ -61,9 +61,11 @@ struct BilibiliLiveWebRoomView: View {
             // 等 present 动画结束后再打开 Safari，避免转场竞态。
             statusText = "即将打开直播页…"
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
-                guard !didAutoOpen else { return }
-                didAutoOpen = true
-                openSafari()
+                Task { @MainActor in
+                    guard !didAutoOpen else { return }
+                    didAutoOpen = true
+                    openSafari()
+                }
             }
         }
         .task {
@@ -203,11 +205,8 @@ struct BilibiliLiveWebRoomView: View {
     @MainActor
     private func openSafari() {
         statusText = "打开直播页…"
-        BilibiliSafariPresenter.present(url: pageURL) { [self] in
-            Task { @MainActor in
-                statusText = "已返回 · 可再次打开"
-            }
-        }
+        // onFinish 不回写 @State（struct 逃逸闭包捕获无效）；关闭 Safari 后用户可再点按钮。
+        BilibiliSafariPresenter.present(url: pageURL)
     }
 
     private func refreshMeta() async {

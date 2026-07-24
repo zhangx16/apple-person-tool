@@ -32,7 +32,7 @@ struct ArtworkDetailAssets: @unchecked Sendable {
     }
 }
 
-private nonisolated final class ArtworkDetailAssetsBox: NSObject, @unchecked Sendable {
+private final class ArtworkDetailAssetsBox: NSObject, @unchecked Sendable {
     let assets: ArtworkDetailAssets
 
     init(_ assets: ArtworkDetailAssets) {
@@ -40,7 +40,7 @@ private nonisolated final class ArtworkDetailAssetsBox: NSObject, @unchecked Sen
     }
 }
 
-private nonisolated final class ArtworkDetailAssetsCache: @unchecked Sendable {
+private final class ArtworkDetailAssetsCache: @unchecked Sendable {
     private let storage = NSCache<NSURL, ArtworkDetailAssetsBox>()
 
     init() {

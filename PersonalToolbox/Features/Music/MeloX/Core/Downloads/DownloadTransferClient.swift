@@ -16,7 +16,7 @@ struct DownloadTransferResult: Sendable {
 }
 
 @MainActor
-final class DownloadTransferClient: NSObject, @preconcurrency URLSessionDownloadDelegate {
+final class DownloadTransferClient: NSObject, URLSessionDownloadDelegate {
     typealias ProgressHandler = @MainActor (DownloadTransferProgress) -> Void
 
     private struct Transfer {

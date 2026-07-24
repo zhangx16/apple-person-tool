@@ -1,7 +1,7 @@
 import AVFoundation
 import MediaToolbox
 
-nonisolated final class AudioEqualizerProcessor {
+final class AudioEqualizerProcessor {
     private let sharedConfiguration: SharedAudioEqualizerConfiguration
 
     init(configuration: AudioEqualizerConfiguration) {

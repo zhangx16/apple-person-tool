@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-nonisolated enum AudioEqualizerBand: Int, CaseIterable, Identifiable, Sendable {
+enum AudioEqualizerBand: Int, CaseIterable, Identifiable, Sendable {
     case hz31
     case hz62
     case hz125
@@ -48,7 +48,7 @@ nonisolated enum AudioEqualizerBand: Int, CaseIterable, Identifiable, Sendable {
     }
 }
 
-nonisolated struct AudioEqualizerConfiguration: Equatable, Sendable {
+struct AudioEqualizerConfiguration: Equatable, Sendable {
     let isEnabled: Bool
     let preamp: Double
     let bandGains: [Double]
@@ -63,7 +63,7 @@ nonisolated struct AudioEqualizerConfiguration: Equatable, Sendable {
     )
 }
 
-nonisolated enum AudioEqualizerPreset: String, CaseIterable, Identifiable, Sendable {
+enum AudioEqualizerPreset: String, CaseIterable, Identifiable, Sendable {
     case flat
     case acoustic
     case bassBoost

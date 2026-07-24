@@ -49,7 +49,7 @@ nonisolated private struct AudioEqualizerBiquadDelay {
     var second: Float = 0
 }
 
-nonisolated final class AudioEqualizerTapContext {
+final class AudioEqualizerTapContext {
     private let centerFrequencies = AudioEqualizerBand.allCases.map(
         \.centerFrequency
     )

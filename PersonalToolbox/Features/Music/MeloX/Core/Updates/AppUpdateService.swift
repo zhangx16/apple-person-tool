@@ -98,7 +98,7 @@ enum AppUpdateError: LocalizedError {
     }
 }
 
-private nonisolated struct GitHubRelease: Decodable {
+private struct GitHubRelease: Decodable {
     let tagName: String
     let name: String?
     let htmlURL: String

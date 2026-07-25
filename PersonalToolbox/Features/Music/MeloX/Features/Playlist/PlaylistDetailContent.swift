@@ -17,6 +17,8 @@ struct PlaylistDetailContent: View {
     let onLoadMore: () async -> Void
 
     @Environment(LibraryStore.self) private var library
+    @Environment(MeloXSettings.self) private var settings
+
     private var usesToplistLayout: Bool {
         toplistSummary != nil || playlist.isOfficialToplist
     }
@@ -93,7 +95,11 @@ struct PlaylistDetailContent: View {
     }
 
     private var filteredTracks: [Song] {
-        filterMusicCollectionTracks(playlist.tracks, query: searchQuery)
+        filterMusicCollectionTracks(
+            playlist.tracks,
+            query: searchQuery,
+            hideLikelyIncomplete: settings.hideLikelyIncompleteTracks
+        )
     }
 }
 

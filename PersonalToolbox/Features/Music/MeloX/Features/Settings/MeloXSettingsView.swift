@@ -27,6 +27,12 @@ struct MeloXSettingsView: View {
                 }
 
                 NavigationLink {
+                    AppleMusicSettingsView()
+                } label: {
+                    Label("Apple Music", systemImage: "music.note.tv")
+                }
+
+                NavigationLink {
                     ContentSettingsView()
                 } label: {
                     Label("内容", systemImage: "rectangle.stack")

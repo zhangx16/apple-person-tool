@@ -58,9 +58,19 @@ private struct PlaylistTrackRow: View {
                     leadingContent
 
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(song.name)
-                            .font(.body)
-                            .lineLimit(showsArtwork ? 1 : 2)
+                        HStack(spacing: 6) {
+                            Text(song.name)
+                                .font(.body)
+                                .lineLimit(showsArtwork ? 1 : 2)
+                            if let badge = song.accessBadge {
+                                Text(badge.title)
+                                    .font(.caption2.weight(.semibold))
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 1)
+                                    .background(Color.orange.opacity(0.16), in: Capsule())
+                                    .foregroundStyle(.orange)
+                            }
+                        }
 
                         if showsArtwork {
                             Text(song.artistText)
@@ -87,6 +97,18 @@ private struct PlaylistTrackRow: View {
             }
 
             Menu {
+                Button {
+                    Task {
+                        await player.playViaAppleMusic(
+                            song: song,
+                            in: tracks,
+                            sourceID: sourceID
+                        )
+                    }
+                } label: {
+                    Label("用 Apple Music 播放", systemImage: "apple.logo")
+                }
+
                 if downloads.isDownloading(songID: song.id) {
                     Button {
                         downloads.cancel(songID: song.id)

@@ -17,8 +17,20 @@ final class PlayerStore {
     private(set) var isUsingAppleMusic = false
     /// Matched Apple Music track label for UI.
     private(set) var appleMusicMatchLabel: String?
+    /// Human-readable active source layer (失败链 / 状态条).
+    private(set) var sourceLayer: PlaybackSourceLayer = .none
+    /// Short status for UI (e.g. 网易云试听兜底 / Apple Music 完整曲).
+    private(set) var sourceStatusMessage: String?
+    /// Transient toast (切源提示).
+    private(set) var toastMessage: String?
+    /// Match picker sheet.
+    var showsAppleMusicMatchPicker = false
+    private(set) var appleMusicCandidates: [AppleMusicCandidate] = []
+    private(set) var isLoadingAppleMusicCandidates = false
+    private(set) var appleMusicCandidateError: String?
 
     private var playbackQueue = PlaybackQueue()
+    private let rescueStats = AppleMusicRescueStats.shared
 
     var queue: [Song] { playbackQueue.songs }
     var currentIndex: Int { playbackQueue.currentIndex }
@@ -199,20 +211,30 @@ final class PlayerStore {
     }
 
     /// Switch current track to Apple Music catalog playback (MusicKit).
-    func playViaAppleMusic() async {
-        guard let song = currentSong else { return }
+    /// - Parameters:
+    ///   - reason: Why we switched (for toast / stats).
+    ///   - recordRescue: Count toward weekly rescue stats.
+    @discardableResult
+    func playViaAppleMusic(
+        reason: AppleMusicSwitchReason = .manual,
+        recordRescue: Bool = true
+    ) async -> Bool {
+        guard let song = currentSong else { return false }
         isLoading = true
         playbackIssue = nil
-        // Tear down Netease AVPlayer path.
+        // Tear down Netease AVPlayer path before starting AM (避免双源叠音).
         engine.unload()
         isUsingDownloadedSource = false
         do {
             let matched = try await appleMusic.playMatching(
                 title: song.name,
-                artist: song.artistText
+                artist: song.artistText,
+                neteaseSongID: song.id
             )
             isUsingAppleMusic = true
             appleMusicMatchLabel = "\(matched.title) · \(matched.artistName)"
+            sourceLayer = .appleMusic
+            sourceStatusMessage = reason.statusLine(match: appleMusicMatchLabel)
             isLoading = false
             isPlaying = true
             duration = matched.duration ?? TimeInterval(song.durationMS) / 1_000
@@ -227,6 +249,107 @@ final class PlayerStore {
             updateNowPlayingState()
             persistSnapshot()
             recordCurrentPlaybackStartIfNeeded()
+            if recordRescue, reason.countsAsRescue {
+                rescueStats.record(neteaseSongID: song.id, reason: reason.rawValue)
+            }
+            showToast(reason.toastMessage)
+            return true
+        } catch {
+            isUsingAppleMusic = false
+            appleMusicMatchLabel = nil
+            isLoading = false
+            isPlaying = false
+            if reason == .manual {
+                playbackIssue = PlaybackIssue(song: song, error: error)
+            }
+            updateNowPlayingState()
+            persistSnapshot()
+            return false
+        }
+    }
+
+    /// Force-play a song via Apple Music (queue context optional). Long-press entry.
+    func playViaAppleMusic(
+        song: Song,
+        in songs: [Song]? = nil,
+        sourceID: Int? = nil
+    ) async {
+        await play(song, in: songs, sourceID: sourceID)
+        _ = await playViaAppleMusic(reason: .manual, recordRescue: false)
+    }
+
+    func presentAppleMusicMatchPicker() async {
+        guard let song = currentSong else { return }
+        showsAppleMusicMatchPicker = true
+        isLoadingAppleMusicCandidates = true
+        appleMusicCandidateError = nil
+        appleMusicCandidates = []
+        do {
+            appleMusicCandidates = try await appleMusic.searchCandidates(
+                title: song.name,
+                artist: song.artistText
+            )
+            if appleMusicCandidates.isEmpty {
+                appleMusicCandidateError = "未找到候选曲目。"
+            }
+        } catch {
+            appleMusicCandidateError = error.localizedDescription
+        }
+        isLoadingAppleMusicCandidates = false
+    }
+
+    /// Play a pure Apple Music catalog hit (Search tab), using a lightweight Song shell for UI.
+    func playAppleMusicCatalogCandidate(_ candidate: AppleMusicCandidate) async {
+        let shell = Song(
+            id: stableSyntheticID(for: candidate.id),
+            name: candidate.title,
+            artists: [Artist(id: 0, name: candidate.artistName)],
+            album: candidate.albumTitle.map { Album(id: 0, name: $0) },
+            durationMS: Int((candidate.duration ?? 0) * 1_000)
+        )
+        recordCurrentPlayback()
+        playbackQueue.replace(with: [shell], startingAt: 0)
+        historySourceID = nil
+        hasRecordedCurrentStart = false
+        currentSong = shell
+        duration = candidate.duration ?? 0
+        progress = 0
+        await playAppleMusicCandidate(candidate, bindNeteaseCache: false)
+    }
+
+    func playAppleMusicCandidate(
+        _ candidate: AppleMusicCandidate,
+        bindNeteaseCache: Bool = true
+    ) async {
+        guard let song = currentSong else { return }
+        isLoading = true
+        playbackIssue = nil
+        engine.unload()
+        isUsingDownloadedSource = false
+        do {
+            let matched = try await appleMusic.playMusicItemID(
+                candidate.id,
+                neteaseSongID: bindNeteaseCache ? song.id : nil
+            )
+            isUsingAppleMusic = true
+            appleMusicMatchLabel = "\(matched.title) · \(matched.artistName)"
+            sourceLayer = .appleMusic
+            sourceStatusMessage = "Apple Music · 已指定匹配"
+            isLoading = false
+            isPlaying = true
+            duration = matched.duration ?? TimeInterval(song.durationMS) / 1_000
+            progress = 0
+            lastProgressUpdateDate = Date()
+            nowPlayingSession.setSong(
+                song,
+                duration: duration,
+                queueIndex: currentIndex,
+                queueCount: queue.count
+            )
+            updateNowPlayingState()
+            persistSnapshot()
+            recordCurrentPlaybackStartIfNeeded()
+            showToast("已切换匹配：\(matched.title)")
         } catch {
             isUsingAppleMusic = false
             appleMusicMatchLabel = nil
@@ -238,8 +361,35 @@ final class PlayerStore {
         }
     }
 
+    private func stableSyntheticID(for musicItemID: String) -> Int {
+        // Positive stable id for Identifiable queues; avoid clashing with real Netease ids when possible.
+        var hash = 5381
+        for byte in musicItemID.utf8 {
+            hash = ((hash << 5) &+ hash) &+ Int(byte)
+        }
+        return abs(hash % 900_000_000) + 100_000_000
+    }
+
     func dismissPlaybackIssue() {
         playbackIssue = nil
+    }
+
+    func dismissToast() {
+        toastMessage = nil
+    }
+
+    var sourceLayerTitle: String {
+        sourceLayer.title
+    }
+
+    private func showToast(_ message: String) {
+        toastMessage = message
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 2_800_000_000)
+            if self?.toastMessage == message {
+                self?.toastMessage = nil
+            }
+        }
     }
 
     func reloadCurrentSongForQualityChange() async {
@@ -375,6 +525,19 @@ final class PlayerStore {
         updateNowPlayingState()
         persistSnapshot()
 
+        let policy = settings.audioSourcePolicy
+
+        // 优先 AM：起播前直接 MusicKit，失败再走网易云（本地下载仍优先）。
+        if policy.prefersAppleMusicFirst,
+           autoplay,
+           downloads.localPlaybackSource(songID: song.id) == nil {
+            isResolvingSource = false
+            let ok = await playViaAppleMusic(reason: .preferPolicy, recordRescue: true)
+            if ok, generation == loadGeneration { return }
+            guard generation == loadGeneration, currentSong?.id == song.id else { return }
+            // fall through to Netease chain
+        }
+
         do {
             let source: PlaybackSource
             if let downloadedSource = downloads.localPlaybackSource(songID: song.id) {
@@ -385,16 +548,28 @@ final class PlayerStore {
             }
             guard generation == loadGeneration, currentSong?.id == song.id else { return }
 
-            // 非会员试听片段：不要只播几十秒，优先切 Apple Music 完整曲。
-            if source.isTrialPreview, settings.appleMusicAutoFallback, autoplay {
+            // 起播前识别试听：不加载短流，直接切 AM（策略允许时）。
+            if source.isTrialPreview, policy.allowsAutomaticAppleMusic, autoplay {
                 isResolvingSource = false
-                await playViaAppleMusic()
-                if isUsingAppleMusic { return }
-                // AM 失败则仍播网易云试听，避免完全无声；并提示可重试 AM。
+                let ok = await playViaAppleMusic(reason: .trialPreview, recordRescue: true)
+                if ok { return }
+                // 失败链：Apple Music → 网易云试听兜底
+                sourceLayer = .neteaseTrial
+                sourceStatusMessage = "失败链：Apple Music 未成 → 网易云试听兜底"
+                showToast("Apple Music 不可用，正在播放网易云试听")
                 playbackIssue = PlaybackIssue(
                     song: song,
                     error: APIError.trialPreviewOnly
                 )
+            } else if source.isTrialPreview {
+                sourceLayer = .neteaseTrial
+                sourceStatusMessage = "网易云试听片段（策略：仅网易云）"
+            } else if isUsingDownloadedSource {
+                sourceLayer = .localDownload
+                sourceStatusMessage = "本地下载"
+            } else {
+                sourceLayer = .neteaseFull
+                sourceStatusMessage = "网易云完整音源"
             }
 
             isResolvingSource = false
@@ -408,26 +583,32 @@ final class PlayerStore {
         } catch {
             guard generation == loadGeneration, currentSong?.id == song.id else { return }
             isResolvingSource = false
-            // Auto-fallback: 无源 / 仅试听 / 解码失败。
             let shouldFallback: Bool
             if let apiError = error as? APIError {
                 switch apiError {
                 case .noPlayableSource, .trialPreviewOnly:
-                    shouldFallback = true
+                    shouldFallback = policy.allowsAutomaticAppleMusic
                 default:
-                    shouldFallback = settings.appleMusicAutoFallback
+                    shouldFallback = policy.allowsAutomaticAppleMusic
                 }
             } else if error is AudioPlaybackError {
-                shouldFallback = true
+                shouldFallback = policy.allowsAutomaticAppleMusic
             } else {
-                shouldFallback = settings.appleMusicAutoFallback
+                shouldFallback = policy.allowsAutomaticAppleMusic
             }
-            if shouldFallback, settings.appleMusicAutoFallback, autoplay {
-                await playViaAppleMusic()
-                if isUsingAppleMusic { return }
+            if shouldFallback, autoplay {
+                let reason: AppleMusicSwitchReason =
+                    (error as? APIError).map {
+                        if case .trialPreviewOnly = $0 { return .trialPreview }
+                        return .noSource
+                    } ?? .playbackFailed
+                let ok = await playViaAppleMusic(reason: reason, recordRescue: true)
+                if ok { return }
+                sourceStatusMessage = "失败链：网易云失败 → Apple Music 也失败"
             }
             isLoading = false
             isPlaying = false
+            sourceLayer = .none
             playbackIssue = PlaybackIssue(song: song, error: error)
             updateNowPlayingState()
             persistSnapshot()
@@ -440,13 +621,12 @@ final class PlayerStore {
         generation: Int
     ) {
         guard !isUsingAppleMusic, !isUsingDownloadedSource else { return }
-        guard settings.appleMusicAutoFallback else { return }
+        guard settings.audioSourcePolicy.allowsAutomaticAppleMusic else { return }
         guard generation == loadGeneration else { return }
         guard let song = currentSong, song.durationMS > 0 else { return }
         guard actualDuration > 0 else { return }
 
         let catalog = TimeInterval(song.durationMS) / 1_000
-        // 元数据至少 90 秒才有意义；实际音源明显是短试听。
         guard catalog >= 90 else { return }
         let looksLikeTrial =
             actualDuration <= 45
@@ -454,16 +634,21 @@ final class PlayerStore {
             || actualDuration < catalog * 0.25
         guard looksLikeTrial else { return }
 
+        // 起播后发现试听：立刻卸掉短流再切完整曲，避免听一半硬切错位。
         Task { @MainActor [weak self] in
             guard let self else { return }
             guard self.loadGeneration == generation, self.currentSong?.id == song.id else { return }
             guard !self.isUsingAppleMusic else { return }
-            await self.playViaAppleMusic()
-            if !self.isUsingAppleMusic {
+            self.engine.unload()
+            self.showToast("检测到试听片段，正在切换完整版…")
+            let ok = await self.playViaAppleMusic(reason: .durationProbe, recordRescue: true)
+            if !ok {
                 self.playbackIssue = PlaybackIssue(
                     song: song,
                     error: APIError.trialPreviewOnly
                 )
+                self.sourceLayer = .neteaseTrial
+                self.sourceStatusMessage = "失败链：时长探测试听 → Apple Music 失败"
             }
         }
     }
@@ -474,6 +659,10 @@ final class PlayerStore {
         }
         isUsingAppleMusic = false
         appleMusicMatchLabel = nil
+        if sourceLayer == .appleMusic {
+            sourceLayer = .none
+            sourceStatusMessage = nil
+        }
     }
 
     private func bindAppleMusic() {

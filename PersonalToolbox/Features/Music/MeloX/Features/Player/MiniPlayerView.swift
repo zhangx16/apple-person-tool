@@ -21,11 +21,7 @@ struct MiniPlayerView: View {
                                 .lineLimit(1)
 
                             if !isInline {
-                                Text(
-                                    player.isUsingAppleMusic
-                                        ? (player.appleMusicMatchLabel ?? "Apple Music")
-                                        : song.artistText
-                                )
+                                Text(miniSubtitle(for: song))
                                     .font(.caption)
                                     .foregroundStyle(player.isUsingAppleMusic ? Color.pink : .secondary)
                                     .lineLimit(1)
@@ -102,6 +98,20 @@ struct MiniPlayerView: View {
 
     private var artworkSize: CGFloat {
         isInline ? 28 : 34
+    }
+
+    private func miniSubtitle(for song: Song) -> String {
+        if player.isUsingAppleMusic {
+            if let status = player.sourceStatusMessage, !status.isEmpty {
+                return status
+            }
+            return player.appleMusicMatchLabel ?? "Apple Music"
+        }
+        if let status = player.sourceStatusMessage,
+           player.sourceLayer == .neteaseTrial {
+            return status
+        }
+        return song.artistText
     }
 
     private var trackSwipeGesture: some Gesture {

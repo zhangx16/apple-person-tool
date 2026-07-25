@@ -14,10 +14,18 @@ extension ArtworkDetailPalette {
     }
 }
 
-func filterMusicCollectionTracks(_ tracks: [Song], query: String) -> [Song] {
+func filterMusicCollectionTracks(
+    _ tracks: [Song],
+    query: String,
+    hideLikelyIncomplete: Bool = false
+) -> [Song] {
+    var result = tracks
+    if hideLikelyIncomplete {
+        result = result.filter { !$0.isLikelyIncompleteWithoutVIP }
+    }
     let keywords = query.trimmingCharacters(in: .whitespacesAndNewlines)
-    guard !keywords.isEmpty else { return tracks }
-    return tracks.filter { song in
+    guard !keywords.isEmpty else { return result }
+    return result.filter { song in
         song.name.localizedCaseInsensitiveContains(keywords)
             || song.artistText.localizedCaseInsensitiveContains(keywords)
             || (song.album?.name.localizedCaseInsensitiveContains(keywords) ?? false)

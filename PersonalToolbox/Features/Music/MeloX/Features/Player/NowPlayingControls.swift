@@ -42,23 +42,46 @@ struct NowPlayingProgressControl: View {
     }
 
     private var qualityMenu: some View {
-        Menu {
-            Picker("音质", selection: qualityBinding) {
-                ForEach(MusicQuality.allCases) { quality in
-                    Text(quality.title).tag(quality)
+        Group {
+            if player.isUsingAppleMusic {
+                Menu {
+                    Button {
+                        Task { await player.presentAppleMusicMatchPicker() }
+                    } label: {
+                        Label("更换匹配", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                    if let status = player.sourceStatusMessage {
+                        Text(status)
+                    }
+                } label: {
+                    HStack(spacing: 3) {
+                        Text("Apple Music")
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 7, weight: .semibold))
+                    }
+                    .contentShape(.rect)
                 }
+                .accessibilityLabel("Apple Music 音源")
+            } else {
+                Menu {
+                    Picker("音质", selection: qualityBinding) {
+                        ForEach(MusicQuality.allCases) { quality in
+                            Text(quality.title).tag(quality)
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 3) {
+                        Text(settings.quality.title)
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 7, weight: .semibold))
+                    }
+                    .contentShape(.rect)
+                }
+                .accessibilityLabel("播放音质")
+                .accessibilityValue(settings.quality.title)
+                .accessibilityHint("轻点调整当前歌曲音质")
             }
-        } label: {
-            HStack(spacing: 3) {
-                Text(settings.quality.title)
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.system(size: 7, weight: .semibold))
-            }
-            .contentShape(.rect)
         }
-        .accessibilityLabel("播放音质")
-        .accessibilityValue(settings.quality.title)
-        .accessibilityHint("轻点调整当前歌曲音质")
     }
 
     private var qualityBinding: Binding<MusicQuality> {

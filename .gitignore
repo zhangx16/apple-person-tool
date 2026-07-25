@@ -11,3 +11,7 @@ PersonalToolbox.ipa
 
 # CocoaPods
 Pods/
+
+# Local Telegram IPA delivery secrets
+.telegram-ipa.env
+.telegram-ipa.secret

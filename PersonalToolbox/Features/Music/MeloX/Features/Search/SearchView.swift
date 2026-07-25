@@ -4,14 +4,17 @@ struct SearchView: View {
     @Environment(NeteaseAPI.self) private var api
     @Environment(PlayerStore.self) private var player
     @Environment(LibraryStore.self) private var library
+    @Environment(MeloXSettings.self) private var settings
 
     @State private var query = ""
     @State private var scope: SearchKind = .songs
+    @State private var catalogScope: SearchCatalogScope = .netease
     @State private var phase: LoadingPhase = .loaded
     @State private var songs: [Song] = []
     @State private var albums: [Album] = []
     @State private var artists: [Artist] = []
     @State private var playlists: [Playlist] = []
+    @State private var appleMusicResults: [AppleMusicCandidate] = []
     @State private var completedRequest: SearchRequest?
 
     var body: some View {
@@ -27,12 +30,29 @@ struct SearchView: View {
         .searchable(
             text: $query,
             placement: .navigationBarDrawer(displayMode: .always),
-            prompt: "歌曲、歌手、专辑或歌单"
+            prompt: catalogScope == .appleMusic
+                ? "在 Apple Music 曲库搜索"
+                : "歌曲、歌手、专辑或歌单"
         )
+        .toolbar {
+            if !trimmedQuery.isEmpty, scope == .songs || catalogScope == .appleMusic {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Picker("曲库", selection: $catalogScope) {
+                        Text("网易云").tag(SearchCatalogScope.netease)
+                        Text("Apple Music").tag(SearchCatalogScope.appleMusic)
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 180)
+                }
+            }
+        }
         .searchScopes($scope) {
             ForEach(SearchKind.allCases) { kind in
                 Text(kind.title).tag(kind)
             }
+        }
+        .onChange(of: catalogScope) { _, _ in
+            completedRequest = nil
         }
         .onAppear {
             if let raw = AppDeepLinkStore.shared.consumeMusicURL() {
@@ -69,8 +89,8 @@ struct SearchView: View {
         } message: {
             Text(library.errorMessage ?? "未知错误")
         }
-        .task(id: SearchRequest(query: query, kind: scope)) {
-            let request = SearchRequest(query: query, kind: scope)
+        .task(id: SearchRequest(query: query, kind: scope, catalog: catalogScope)) {
+            let request = SearchRequest(query: query, kind: scope, catalog: catalogScope)
             guard completedRequest != request else { return }
             await search(request)
         }
@@ -86,13 +106,45 @@ struct SearchView: View {
                 }
             }
 
+            if catalogScope == .appleMusic {
+                Section {
+                    ForEach(appleMusicResults) { candidate in
+                        Button {
+                            Task { await playAppleMusicSearchResult(candidate) }
+                        } label: {
+                            HStack(spacing: 12) {
+                                ArtworkImage(url: candidate.artworkURL, cornerRadius: 7)
+                                    .frame(width: 54, height: 54)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(candidate.title)
+                                        .font(.body.weight(.medium))
+                                        .foregroundStyle(.primary)
+                                        .lineLimit(1)
+                                    Text(candidate.subtitle)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(2)
+                                }
+                                Spacer(minLength: 4)
+                                Image(systemName: "play.circle.fill")
+                                    .foregroundStyle(.pink)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                } header: {
+                    Text("Apple Music 曲库")
+                } footer: {
+                    Text("直接 MusicKit 真播放，不经过网易云。")
+                }
+            } else {
             switch scope {
             case .songs:
-                ForEach(songs) { song in
+                ForEach(displayedSongs) { song in
                     Button {
-                        Task { await player.play(song, in: songs) }
+                        Task { await player.play(song, in: displayedSongs) }
                     } label: {
-                        TrackRowView(song: song, showsArtwork: true)
+                        TrackRowView(song: song, showsArtwork: true, queueContext: displayedSongs)
                     }
                     .buttonStyle(.plain)
                     .swipeActions(edge: .trailing) {
@@ -103,6 +155,19 @@ struct SearchView: View {
                                 library.contains(song: song) ? "取消收藏" : "收藏",
                                 systemImage: library.contains(song: song) ? "heart.slash" : "heart"
                             )
+                        }
+                        .tint(.pink)
+                    }
+                    .swipeActions(edge: .leading) {
+                        Button {
+                            Task {
+                                await player.playViaAppleMusic(
+                                    song: song,
+                                    in: displayedSongs
+                                )
+                            }
+                        } label: {
+                            Label("Apple Music", systemImage: "apple.logo")
                         }
                         .tint(.pink)
                     }
@@ -144,6 +209,7 @@ struct SearchView: View {
                     .musicMatchedTransitionSource(for: MusicRoute.playlist(playlist))
                 }
             }
+            } // end netease catalog
         }
         .listStyle(.plain)
     }
@@ -152,9 +218,19 @@ struct SearchView: View {
         query.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    private var displayedSongs: [Song] {
+        if settings.hideLikelyIncompleteTracks {
+            return songs.filter { !$0.isLikelyIncompleteWithoutVIP }
+        }
+        return songs
+    }
+
     private var resultIsEmpty: Bool {
+        if catalogScope == .appleMusic {
+            return appleMusicResults.isEmpty
+        }
         switch scope {
-        case .songs: songs.isEmpty
+        case .songs: displayedSongs.isEmpty
         case .albums: albums.isEmpty
         case .artists: artists.isEmpty
         case .playlists: playlists.isEmpty
@@ -173,6 +249,23 @@ struct SearchView: View {
         try? await Task.sleep(for: .milliseconds(350))
         guard !Task.isCancelled else { return }
 
+        if catalogScope == .appleMusic {
+            do {
+                appleMusicResults = try await AppleMusicBridge.shared.searchCatalog(query: keywords)
+                songs = []
+                albums = []
+                artists = []
+                playlists = []
+                phase = .loaded
+                completedRequest = request
+            } catch is CancellationError {
+                return
+            } catch {
+                phase = .failed(error.localizedDescription)
+            }
+            return
+        }
+
         do {
             let result = try await api.search(keywords, kind: request.kind)
             guard !Task.isCancelled else { return }
@@ -180,6 +273,7 @@ struct SearchView: View {
             albums = result.albums ?? []
             artists = result.artists ?? []
             playlists = result.playlists ?? []
+            appleMusicResults = []
 
             if request.kind == .songs, !songs.isEmpty {
                 let details = try? await api.songDetails(ids: songs.map(\.id))
@@ -197,17 +291,28 @@ struct SearchView: View {
         }
     }
 
+    private func playAppleMusicSearchResult(_ candidate: AppleMusicCandidate) async {
+        await player.playAppleMusicCatalogCandidate(candidate)
+    }
+
     private func clearResults() {
         songs = []
         albums = []
         artists = []
         playlists = []
+        appleMusicResults = []
     }
+}
+
+private enum SearchCatalogScope: Hashable {
+    case netease
+    case appleMusic
 }
 
 private struct SearchRequest: Hashable {
     let query: String
     let kind: SearchKind
+    let catalog: SearchCatalogScope
 }
 
 private struct SearchMediaRow: View {

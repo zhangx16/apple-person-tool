@@ -3,10 +3,14 @@ import SwiftUI
 struct TrackRowView: View {
     @Environment(\.openMusicRoute) private var openMusicRoute
     @Environment(DownloadStore.self) private var downloads
+    @Environment(PlayerStore.self) private var player
 
     let song: Song
     var index: Int?
     var showsArtwork = false
+    /// Optional queue context for long-press Apple Music play.
+    var queueContext: [Song]? = nil
+    var sourceID: Int? = nil
 
     @State private var commentSong: Song?
 
@@ -23,9 +27,19 @@ struct TrackRowView: View {
             }
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(song.name)
-                    .font(.body)
-                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    Text(song.name)
+                        .font(.body)
+                        .lineLimit(1)
+                    if let badge = song.accessBadge {
+                        Text(badge.title)
+                            .font(.caption2.weight(.semibold))
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 1)
+                            .background(badgeBackground(badge), in: Capsule())
+                            .foregroundStyle(badgeForeground(badge))
+                    }
+                }
                 Text(song.artistText)
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -51,6 +65,18 @@ struct TrackRowView: View {
         .contentShape(.rect)
         .musicMatchedTransitionSource(for: .song(song))
         .contextMenu {
+            Button {
+                Task {
+                    await player.playViaAppleMusic(
+                        song: song,
+                        in: queueContext,
+                        sourceID: sourceID
+                    )
+                }
+            } label: {
+                Label("用 Apple Music 播放", systemImage: "apple.logo")
+            }
+
             if downloads.isDownloading(songID: song.id) {
                 Button {
                     downloads.cancel(songID: song.id)
@@ -97,12 +123,45 @@ struct TrackRowView: View {
             SongCommentsSheet(song: selectedSong)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(song.name)，\(song.artistText)")
+        .accessibilityLabel(accessibilityText)
         .accessibilityAction(named: "查看歌曲资料") {
             openMusicRoute(.song(song))
         }
         .accessibilityAction(named: "查看评论") {
             commentSong = song
+        }
+        .accessibilityAction(named: "用 Apple Music 播放") {
+            Task {
+                await player.playViaAppleMusic(
+                    song: song,
+                    in: queueContext,
+                    sourceID: sourceID
+                )
+            }
+        }
+    }
+
+    private var accessibilityText: String {
+        var parts = [song.name, song.artistText]
+        if let badge = song.accessBadge {
+            parts.append(badge.title)
+        }
+        return parts.joined(separator: "，")
+    }
+
+    private func badgeBackground(_ badge: SongAccessBadge) -> Color {
+        switch badge {
+        case .vip: Color.orange.opacity(0.18)
+        case .paid: Color.purple.opacity(0.18)
+        case .noCopyright: Color.secondary.opacity(0.16)
+        }
+    }
+
+    private func badgeForeground(_ badge: SongAccessBadge) -> Color {
+        switch badge {
+        case .vip: .orange
+        case .paid: .purple
+        case .noCopyright: .secondary
         }
     }
 }

@@ -70,6 +70,25 @@ struct MeloXContentView: View {
             .sheet(item: $neteaseSharePresentation) { presentation in
                 NeteaseShareSheet(presentation: presentation)
             }
+            .sheet(isPresented: Binding(
+                get: { player.showsAppleMusicMatchPicker },
+                set: { player.showsAppleMusicMatchPicker = $0 }
+            )) {
+                AppleMusicMatchPickerSheet()
+            }
+            .overlay(alignment: .top) {
+                if let toast = player.toastMessage {
+                    Text(toast)
+                        .font(.subheadline.weight(.medium))
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(.ultraThinMaterial, in: Capsule())
+                        .padding(.top, 12)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .onTapGesture { player.dismissToast() }
+                }
+            }
+            .animation(.snappy(duration: 0.28), value: player.toastMessage)
             .task { await player.restore() }
             .task(id: settings.cookie) { await library.refresh() }
             .onChange(of: selectedTab) { _, tab in
@@ -90,7 +109,11 @@ struct MeloXContentView: View {
                 }
                 Button("用 Apple Music 播放") {
                     player.dismissPlaybackIssue()
-                    Task { await player.playViaAppleMusic() }
+                    Task { await player.playViaAppleMusic(reason: .manual, recordRescue: false) }
+                }
+                Button("更换匹配…") {
+                    player.dismissPlaybackIssue()
+                    Task { await player.presentAppleMusicMatchPicker() }
                 }
                 Button("在 Apple Music 中搜索") {
                     let name = player.currentSong?.name ?? ""
@@ -101,8 +124,10 @@ struct MeloXContentView: View {
                 }
                 Button("好", role: .cancel) { player.dismissPlaybackIssue() }
             } message: {
+                let chain = player.sourceStatusMessage.map { "\n\($0)" } ?? ""
                 Text((player.playbackIssue?.message ?? "当前歌曲暂时无法播放。")
-                    + "\n可改用 Apple Music 完整播放（无版权/仅试听片段时同样适用，需本机 Apple Music 会员）。")
+                    + chain
+                    + "\n失败链：完整网易云 → Apple Music → 网易云试听兜底。需本机 Apple Music 会员。")
             }
             .alert(
                 "下载操作失败",

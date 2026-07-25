@@ -103,6 +103,8 @@ final class MeloXSettings {
         static let previousRestartsCurrentSong = "previousRestartsCurrentSong"
         static let checksUpdatesOnLaunch = "checksUpdatesOnLaunch"
         static let appleMusicAutoFallback = "appleMusicAutoFallback"
+        static let audioSourcePolicy = "audioSourcePolicy"
+        static let hideLikelyIncompleteTracks = "hideLikelyIncompleteTracks"
         static let automaticallyCachesFrequentlyPlayedSongs = "automaticallyCachesFrequentlyPlayedSongs"
         static let automaticCachePlaybackThreshold = "automaticCachePlaybackThreshold"
         static let automaticCacheQuality = "automaticCacheQuality"
@@ -376,9 +378,28 @@ final class MeloXSettings {
         didSet { defaults.set(checksUpdatesOnLaunch, forKey: Key.checksUpdatesOnLaunch) }
     }
 
-    /// When Netease has no full track (no URL / VIP trial clip only), try Apple Music (MusicKit).
+    /// Legacy bool; kept for migration. Prefer `audioSourcePolicy`.
     var appleMusicAutoFallback: Bool {
-        didSet { defaults.set(appleMusicAutoFallback, forKey: Key.appleMusicAutoFallback) }
+        get { audioSourcePolicy.allowsAutomaticAppleMusic }
+        set {
+            if newValue {
+                if audioSourcePolicy == .neteaseOnly {
+                    audioSourcePolicy = .smartFallback
+                }
+            } else {
+                audioSourcePolicy = .neteaseOnly
+            }
+        }
+    }
+
+    /// Netease vs Apple Music selection strategy.
+    var audioSourcePolicy: AudioSourcePolicy {
+        didSet { defaults.set(audioSourcePolicy.rawValue, forKey: Key.audioSourcePolicy) }
+    }
+
+    /// Filter playlist/search lists to hide fee/copyright incomplete tracks.
+    var hideLikelyIncompleteTracks: Bool {
+        didSet { defaults.set(hideLikelyIncompleteTracks, forKey: Key.hideLikelyIncompleteTracks) }
     }
 
     var automaticallyCachesFrequentlyPlayedSongs: Bool {
@@ -581,7 +602,15 @@ final class MeloXSettings {
         rememberedNowPlayingPage = defaults.string(forKey: Key.rememberedNowPlayingPage) ?? "artwork"
         previousRestartsCurrentSong = defaults.object(forKey: Key.previousRestartsCurrentSong) as? Bool ?? true
         checksUpdatesOnLaunch = defaults.object(forKey: Key.checksUpdatesOnLaunch) as? Bool ?? true
-        appleMusicAutoFallback = defaults.object(forKey: Key.appleMusicAutoFallback) as? Bool ?? true
+        if let rawPolicy = defaults.string(forKey: Key.audioSourcePolicy),
+           let policy = AudioSourcePolicy(rawValue: rawPolicy) {
+            audioSourcePolicy = policy
+        } else {
+            // Migrate legacy toggle → smart / neteaseOnly.
+            let legacyFallback = defaults.object(forKey: Key.appleMusicAutoFallback) as? Bool ?? true
+            audioSourcePolicy = legacyFallback ? .smartFallback : .neteaseOnly
+        }
+        hideLikelyIncompleteTracks = defaults.object(forKey: Key.hideLikelyIncompleteTracks) as? Bool ?? false
         automaticallyCachesFrequentlyPlayedSongs = defaults.object(
             forKey: Key.automaticallyCachesFrequentlyPlayedSongs
         ) as? Bool ?? false
@@ -643,7 +672,8 @@ final class MeloXSettings {
         rememberNowPlayingPage = false
         rememberedNowPlayingPage = "artwork"
         previousRestartsCurrentSong = true
-        appleMusicAutoFallback = true
+        audioSourcePolicy = .smartFallback
+        hideLikelyIncompleteTracks = false
         skylineLyrics.reset()
     }
 }

@@ -27,7 +27,7 @@ struct PlayerSettingsView: View {
                 }
 
                 NavigationLink {
-                    Text("均衡器暂不可用（兼容构建）").foregroundStyle(.secondary)
+                    EqualizerSettingsView()
                 } label: {
                     LabeledContent(
                         "均衡器",
@@ -76,7 +76,7 @@ struct PlayerSettingsView: View {
 
             Section {
                 NavigationLink {
-                    Text("天际歌词设置需 iOS 18+ 完整构建").foregroundStyle(.secondary)
+                    SkylineLyricsSettingsView()
                 } label: {
                     Label("全屏天际歌词", systemImage: "textformat.size")
                 }
@@ -96,7 +96,7 @@ struct PlayerSettingsView: View {
 
                 if settings.lyricsStyle == .textPV {
                     NavigationLink {
-                        Text("文字 PV 设置需 iOS 18+ 完整构建").foregroundStyle(.secondary)
+                        TextPVSettingsView()
                     } label: {
                         LabeledContent("文字PV设置", value: settings.textPV.style.title)
                     }

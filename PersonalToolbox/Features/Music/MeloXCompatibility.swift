@@ -1,57 +1,34 @@
 import SwiftUI
 
-// MARK: - Compatibility for MeloX on iOS 17 / Xcode 15–16
+// MARK: - MeloX embedding shims
+// Deployment target is iOS 18+. Prefer system APIs when present; provide
+// fallbacks for APIs that only exist on iOS 26 / Xcode 26 (Glass, WebPage).
 
-#if compiler(<6.0)
-extension View {
-    func matchedTransitionSource<ID: Hashable>(
-        id: ID,
-        in namespace: Namespace.ID
-    ) -> some View { self }
-
-    func navigationTransition(_ transition: Any) -> some View { self }
-    func tabBarMinimizeBehavior(_ behavior: Any) -> some View { self }
-    func tabViewBottomAccessory<Content: View>(@ViewBuilder content: () -> Content) -> some View { self }
-    func sharedBackgroundVisibility(_ visibility: Any) -> some View { self }
-    func sliderThumbVisibility(_ visibility: Any) -> some View { self }
-}
-
-extension Text {
-    func customAttribute(_ attribute: Any) -> Text { self }
-}
-#else
-extension View {
-    func sharedBackgroundVisibility(_ visibility: Any) -> some View { self }
-    func sliderThumbVisibility(_ visibility: Any) -> some View { self }
-}
-extension Text {
-    func customAttribute(_ attribute: Any) -> Text { self }
-}
-#endif
-
-enum MeloXTabAccessoryPlacement: Equatable {
-    case inline
-    case expanded
-}
-
-private enum MeloXTabAccessoryPlacementKey: EnvironmentKey {
-    static let defaultValue: MeloXTabAccessoryPlacement = .expanded
-}
-
-extension EnvironmentValues {
-    var tabViewBottomAccessoryPlacement: MeloXTabAccessoryPlacement {
-        get { self[MeloXTabAccessoryPlacementKey.self] }
-        set { self[MeloXTabAccessoryPlacementKey.self] = newValue }
+// Toolbar shared background (iOS 26 / newer toolbars)
+extension ToolbarContent {
+    @ToolbarContentBuilder
+    func sharedBackgroundVisibility(_ visibility: Visibility) -> some ToolbarContent {
+        self
     }
 }
 
+extension View {
+    /// Fallback overload for call sites that pass `.visible` without type context.
+    func sharedBackgroundVisibility(_ visibility: Any) -> some View { self }
+
+    func sliderThumbVisibility(_ visibility: Any) -> some View { self }
+}
+
+// Liquid Glass (iOS 26) — no-op container + button styles on older SDKs
 struct GlassEffectContainer<Content: View>: View {
     var spacing: CGFloat = 12
     @ViewBuilder var content: () -> Content
+
     init(spacing: CGFloat = 12, @ViewBuilder content: @escaping () -> Content) {
         self.spacing = spacing
         self.content = content
     }
+
     var body: some View { content() }
 }
 
@@ -79,6 +56,24 @@ struct MeloXGlassProminentButtonStyle: ButtonStyle {
 extension ButtonStyle where Self == MeloXGlassButtonStyle {
     static var glass: MeloXGlassButtonStyle { MeloXGlassButtonStyle() }
 }
+
 extension ButtonStyle where Self == MeloXGlassProminentButtonStyle {
     static var glassProminent: MeloXGlassProminentButtonStyle { MeloXGlassProminentButtonStyle() }
+}
+
+// MiniPlayer placement env (iOS 18 tab accessory)
+enum MeloXTabAccessoryPlacement: Equatable {
+    case inline
+    case expanded
+}
+
+private enum MeloXTabAccessoryPlacementKey: EnvironmentKey {
+    static let defaultValue: MeloXTabAccessoryPlacement = .expanded
+}
+
+extension EnvironmentValues {
+    var tabViewBottomAccessoryPlacement: MeloXTabAccessoryPlacement {
+        get { self[MeloXTabAccessoryPlacementKey.self] }
+        set { self[MeloXTabAccessoryPlacementKey.self] = newValue }
+    }
 }

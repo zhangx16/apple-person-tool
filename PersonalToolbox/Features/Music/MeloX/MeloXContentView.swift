@@ -1,9 +1,7 @@
 import SwiftUI
 
-/// MeloX main experience, adapted for embedding inside PersonalToolbox.
-///
-/// Uses a top segment control instead of a nested `TabView`, so it does not
-/// stack a second bottom tab bar under PersonalToolbox’s root tabs.
+/// Native MeloX experience embedded in PersonalToolbox.
+/// Top segment control avoids a second bottom tab bar under the app shell.
 struct MeloXContentView: View {
     @Environment(PlayerStore.self) private var player
     @Environment(MeloXSettings.self) private var settings
@@ -56,32 +54,17 @@ struct MeloXContentView: View {
             }
         }
         .animation(.snappy(duration: 0.28), value: player.currentSong?.id)
-        .environment(
-            \.openMusicRoute,
-            OpenMusicRouteAction(action: openMusicRoute)
-        )
-        .environment(
-            \.openNeteaseShare,
-            OpenNeteaseShareAction(action: openNeteaseShare)
-        )
-        .fullScreenCover(
-            item: $playerPresentation,
-            onDismiss: finishPendingSongNavigation
-        ) { destination in
+        .environment(\.openMusicRoute, OpenMusicRouteAction(action: openMusicRoute))
+        .environment(\.openNeteaseShare, OpenNeteaseShareAction(action: openNeteaseShare))
+        .fullScreenCover(item: $playerPresentation, onDismiss: finishPendingSongNavigation) { destination in
             switch destination {
             case .nowPlaying:
                 NowPlayingView(initialPage: initialNowPlayingPage)
-                    .environment(
-                        \.openMusicRoute,
-                        OpenMusicRouteAction(action: openMusicRoute)
-                    )
+                    .environment(\.openMusicRoute, OpenMusicRouteAction(action: openMusicRoute))
                     .environment(
                         \.openNeteaseShare,
                         OpenNeteaseShareAction { presentation in
-                            presentNeteaseShare(
-                                presentation,
-                                fromNowPlaying: true
-                            )
+                            presentNeteaseShare(presentation, fromNowPlaying: true)
                         }
                     )
                     .sheet(item: $nowPlayingSharePresentation) { presentation in
@@ -92,12 +75,8 @@ struct MeloXContentView: View {
         .sheet(item: $neteaseSharePresentation) { presentation in
             NeteaseShareSheet(presentation: presentation)
         }
-        .task {
-            await player.restore()
-        }
-        .task(id: settings.cookie) {
-            await library.refresh()
-        }
+        .task { await player.restore() }
+        .task(id: settings.cookie) { await library.refresh() }
         .onChange(of: selectedTab) { _, tab in
             settings.lastSelectedTab = tab
         }
@@ -105,11 +84,7 @@ struct MeloXContentView: View {
             "歌曲无法播放",
             isPresented: Binding(
                 get: { player.playbackIssue != nil },
-                set: { isPresented in
-                    if !isPresented {
-                        player.dismissPlaybackIssue()
-                    }
-                }
+                set: { if !$0 { player.dismissPlaybackIssue() } }
             )
         ) {
             if player.canPlayNext {
@@ -118,9 +93,7 @@ struct MeloXContentView: View {
                     Task { await player.next() }
                 }
             }
-            Button("好", role: .cancel) {
-                player.dismissPlaybackIssue()
-            }
+            Button("好", role: .cancel) { player.dismissPlaybackIssue() }
         } message: {
             Text(player.playbackIssue?.message ?? "当前歌曲暂时无法播放。")
         }
@@ -128,16 +101,10 @@ struct MeloXContentView: View {
             "下载操作失败",
             isPresented: Binding(
                 get: { downloads.errorMessage != nil },
-                set: { isPresented in
-                    if !isPresented {
-                        downloads.clearError()
-                    }
-                }
+                set: { if !$0 { downloads.clearError() } }
             )
         ) {
-            Button("好", role: .cancel) {
-                downloads.clearError()
-            }
+            Button("好", role: .cancel) { downloads.clearError() }
         } message: {
             Text(downloads.errorMessage ?? "无法完成下载操作。")
         }
@@ -150,9 +117,7 @@ struct MeloXContentView: View {
                 ForEach(MeloXTab.allCases) { tab in
                     let on = selectedTab == tab
                     Button {
-                        withAnimation(.snappy(duration: 0.22)) {
-                            selectedTab = tab
-                        }
+                        withAnimation(.snappy(duration: 0.22)) { selectedTab = tab }
                     } label: {
                         Label(tab.title, systemImage: tab.systemImage)
                             .font(.subheadline.weight(on ? .semibold : .regular))
@@ -181,28 +146,23 @@ struct MeloXContentView: View {
         switch selectedTab {
         case .home:
             NavigationStack(path: $homePath) {
-                HomeView()
-                    .musicDestinations(in: musicNavigationNamespace)
+                HomeView().musicDestinations(in: musicNavigationNamespace)
             }
         case .explore:
             NavigationStack(path: $explorePath) {
-                ExploreView()
-                    .musicDestinations(in: musicNavigationNamespace)
+                ExploreView().musicDestinations(in: musicNavigationNamespace)
             }
         case .library:
             NavigationStack(path: $libraryPath) {
-                LibraryView()
-                    .musicDestinations(in: musicNavigationNamespace)
+                LibraryView().musicDestinations(in: musicNavigationNamespace)
             }
         case .search:
             NavigationStack(path: $searchPath) {
-                SearchView()
-                    .musicDestinations(in: musicNavigationNamespace)
+                SearchView().musicDestinations(in: musicNavigationNamespace)
             }
         case .settings:
             NavigationStack(path: $settingsPath) {
-                MeloXSettingsView()
-                    .musicDestinations(in: musicNavigationNamespace)
+                MeloXSettingsView().musicDestinations(in: musicNavigationNamespace)
             }
         }
     }
@@ -221,9 +181,7 @@ struct MeloXContentView: View {
         navigate(to: route)
     }
 
-    private func openNeteaseShare(
-        _ presentation: NeteaseSharePresentation
-    ) {
+    private func openNeteaseShare(_ presentation: NeteaseSharePresentation) {
         presentNeteaseShare(presentation, fromNowPlaying: false)
     }
 
@@ -249,16 +207,11 @@ struct MeloXContentView: View {
 
     private func navigate(to route: MusicRoute) {
         switch selectedTab {
-        case .home:
-            homePath.append(route)
-        case .explore:
-            explorePath.append(route)
-        case .library:
-            libraryPath.append(route)
-        case .search:
-            searchPath.append(route)
-        case .settings:
-            settingsPath.append(route)
+        case .home: homePath.append(route)
+        case .explore: explorePath.append(route)
+        case .library: libraryPath.append(route)
+        case .search: searchPath.append(route)
+        case .settings: settingsPath.append(route)
         }
     }
 }

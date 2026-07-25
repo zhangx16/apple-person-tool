@@ -40,8 +40,12 @@ private struct MusicMatchedTransitionSourceModifier: ViewModifier {
 
     @ViewBuilder
     func body(content: Content) -> some View {
-        if route.usesCardExpansionTransition {
-            content.modifier(
+        if route.usesCardExpansionTransition, let namespace {
+            content.matchedTransitionSource(
+                id: route.transitionID,
+                in: namespace
+            )
+            .modifier(
                 ArtworkDetailAssetsPrefetchModifier(
                     artworkURL: route.transitionArtworkURL
                 )
@@ -75,7 +79,12 @@ private struct MusicNavigationTransitionModifier: ViewModifier {
 
     @ViewBuilder
     func body(content: Content) -> some View {
-        // Zoom navigation transitions require iOS 18+; use default push on iOS 17.
-        content
+        if route.usesCardExpansionTransition {
+            content.navigationTransition(
+                .zoom(sourceID: route.transitionID, in: namespace)
+            )
+        } else {
+            content
+        }
     }
 }

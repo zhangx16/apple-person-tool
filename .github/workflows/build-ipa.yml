@@ -16,19 +16,28 @@ permissions:
 jobs:
   build:
     name: Archive & export IPA
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 75
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Select Xcode
+      - name: Select newest Xcode
         run: |
           set -euo pipefail
-          # Prefer newest available Xcode for MeloX (needs modern SwiftUI / Observation).
-          # Fall back through 16.x then 15.4 so the job still runs on older images.
+          echo "Available Xcode apps:"
+          ls /Applications | grep -i xcode || true
+          SELECTED=""
           for app in \
+            /Applications/Xcode_26.6.app \
+            /Applications/Xcode_26.5.app \
+            /Applications/Xcode_26.4.app \
+            /Applications/Xcode_26.3.app \
+            /Applications/Xcode_26.2.app \
+            /Applications/Xcode_26.1.app \
+            /Applications/Xcode_26.0.app \
+            /Applications/Xcode_26.app \
             /Applications/Xcode_16.4.app \
             /Applications/Xcode_16.3.app \
             /Applications/Xcode_16.2.app \
@@ -39,13 +48,18 @@ jobs:
             /Applications/Xcode.app
           do
             if [ -d "$app/Contents/Developer" ]; then
-              sudo xcode-select -s "$app/Contents/Developer"
-              echo "Selected $app"
+              SELECTED="$app"
               break
             fi
           done
+          if [ -z "$SELECTED" ]; then
+            echo "::error::No Xcode.app found"
+            exit 1
+          fi
+          sudo xcode-select -s "$SELECTED/Contents/Developer"
+          echo "Selected $SELECTED"
           xcodebuild -version
-          ls /Applications | grep -i xcode || true
+          xcrun --show-sdk-version --sdk iphoneos || true
           openssl version
 
       - name: Build signing keychain from PEM secrets

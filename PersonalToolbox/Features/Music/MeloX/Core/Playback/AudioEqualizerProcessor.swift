@@ -1,7 +1,7 @@
 import AVFoundation
 import MediaToolbox
 
-final class AudioEqualizerProcessor {
+nonisolated final class AudioEqualizerProcessor {
     private let sharedConfiguration: SharedAudioEqualizerConfiguration
 
     init(configuration: AudioEqualizerConfiguration) {
@@ -52,7 +52,7 @@ final class AudioEqualizerProcessor {
     }
 }
 
-private func audioEqualizerTapContext(
+nonisolated private func audioEqualizerTapContext(
     for tap: MTAudioProcessingTap
 ) -> AudioEqualizerTapContext {
     Unmanaged<AudioEqualizerTapContext>
@@ -60,7 +60,7 @@ private func audioEqualizerTapContext(
         .takeUnretainedValue()
 }
 
-private func audioEqualizerTapInit(
+nonisolated private func audioEqualizerTapInit(
     _ tap: MTAudioProcessingTap,
     _ clientInfo: UnsafeMutableRawPointer?,
     _ tapStorageOut: UnsafeMutablePointer<UnsafeMutableRawPointer?>
@@ -68,7 +68,7 @@ private func audioEqualizerTapInit(
     tapStorageOut.pointee = clientInfo
 }
 
-private func audioEqualizerTapFinalize(
+nonisolated private func audioEqualizerTapFinalize(
     _ tap: MTAudioProcessingTap
 ) {
     Unmanaged<AudioEqualizerTapContext>
@@ -76,7 +76,7 @@ private func audioEqualizerTapFinalize(
         .release()
 }
 
-private func audioEqualizerTapPrepare(
+nonisolated private func audioEqualizerTapPrepare(
     _ tap: MTAudioProcessingTap,
     _ maxFrames: CMItemCount,
     _ processingFormat: UnsafePointer<AudioStreamBasicDescription>
@@ -86,13 +86,13 @@ private func audioEqualizerTapPrepare(
     )
 }
 
-private func audioEqualizerTapUnprepare(
+nonisolated private func audioEqualizerTapUnprepare(
     _ tap: MTAudioProcessingTap
 ) {
     audioEqualizerTapContext(for: tap).unprepare()
 }
 
-private func audioEqualizerTapProcess(
+nonisolated private func audioEqualizerTapProcess(
     _ tap: MTAudioProcessingTap,
     _ numberFrames: CMItemCount,
     _ flags: MTAudioProcessingTapFlags,

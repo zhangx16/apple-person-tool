@@ -1,6 +1,7 @@
 import SwiftUI
 import WebKit
 
+/// Netease login via WKWebView cookie capture (works without iOS 26 WebPage API).
 struct NeteaseLoginView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(MeloXSettings.self) private var settings

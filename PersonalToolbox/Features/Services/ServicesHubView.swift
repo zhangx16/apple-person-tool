@@ -366,13 +366,13 @@ struct ServicesHubView: View {
                 },
                 item("ip", "IP 检测", "IPSuper 风格聚合 · 风险画像 · 流媒体", .ipCheck) {
                     AnyView(IPCheckHomeView())
-                }
+                },
                 item("proxyPack", "节点探测包", "换节点后测出口 / 流媒体 / 延迟", .health) {
                     AnyView(ProxyNodePackView())
-                }
+                },
                 item("watchLater", "稍后再看", "媒体链接收藏 · 剪贴板一键加入", .youtube) {
                     AnyView(WatchLaterHomeView())
-                }
+                },
                 item("controlCenter", "控制中心", "通知 · 开播提醒 · 剪贴板智能条", .settings) {
                     AnyView(ControlCenterView())
                 },

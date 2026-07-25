@@ -297,7 +297,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		000000000000000000000812 /* KomariBillImportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KomariBillImportSheet.swift; sourceTree = "<group>"; };
+		000000000000000000000812 /* KomariBillImportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Life/KomariBillImportSheet.swift; sourceTree = "<group>"; };
 		000000000000000000000810 /* AppDeepLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDeepLink.swift; sourceTree = "<group>"; };
 		000000000000000000000800 /* ClipboardSmartRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardSmartRouter.swift; sourceTree = "<group>"; };
 		000000000000000000000802 /* LiveOpenNotifyService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveOpenNotifyService.swift; sourceTree = "<group>"; };

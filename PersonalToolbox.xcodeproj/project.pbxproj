@@ -1176,7 +1176,7 @@
 				00000000000000000000823A /* NovelShelfView.swift */,
 				00000000000000000000823C /* NovelSourceListView.swift */,
 			);
-			path = Features/Novel;
+			path = Novel;
 			name = Novel;
 			sourceTree = "<group>";
 		};

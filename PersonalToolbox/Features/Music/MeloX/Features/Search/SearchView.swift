@@ -230,10 +230,10 @@ struct SearchView: View {
             return appleMusicResults.isEmpty
         }
         switch scope {
-        case .songs: displayedSongs.isEmpty
-        case .albums: albums.isEmpty
-        case .artists: artists.isEmpty
-        case .playlists: playlists.isEmpty
+        case .songs: return displayedSongs.isEmpty
+        case .albums: return albums.isEmpty
+        case .artists: return artists.isEmpty
+        case .playlists: return playlists.isEmpty
         }
     }
 

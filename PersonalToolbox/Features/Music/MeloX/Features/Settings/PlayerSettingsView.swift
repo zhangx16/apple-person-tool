@@ -76,7 +76,7 @@ struct PlayerSettingsView: View {
 
             Section {
                 NavigationLink {
-                    SkylineLyricsSettingsView()
+                    Text("天际歌词设置需 iOS 18+ 完整构建").foregroundStyle(.secondary)
                 } label: {
                     Label("全屏天际歌词", systemImage: "textformat.size")
                 }
@@ -96,7 +96,7 @@ struct PlayerSettingsView: View {
 
                 if settings.lyricsStyle == .textPV {
                     NavigationLink {
-                        TextPVSettingsView()
+                        Text("文字 PV 设置需 iOS 18+ 完整构建").foregroundStyle(.secondary)
                     } label: {
                         LabeledContent("文字PV设置", value: settings.textPV.style.title)
                     }

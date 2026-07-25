@@ -703,7 +703,7 @@ actor BilibiliLiveService {
             let enc = val.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? val
             return "\(key)=\(enc)"
         }.joined(separator: "&")
-        let signedPayload: String = query + mixin
+        let signedPayload = String(query) + String(mixin)
         let digest = Insecure.MD5.hash(data: Data(signedPayload.utf8))
         let rid = digest.map { String(format: "%02x", $0) }.joined()
         var out = p

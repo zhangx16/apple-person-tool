@@ -31,7 +31,7 @@ struct SettingsAccountSection: View {
             Text("网易云账号")
         } footer: {
             if !library.isLoggedIn {
-                Text("登录 Cookie 仅保存在本机，用于同步音乐库和账号相关内容。")
+                Text("推荐手动粘贴 Cookie（含 MUSIC_U）。仅保存在本机，用于同步音乐库。网页自动抓取经常失败。")
             }
         }
         .task(id: settings.cookie) {

@@ -63,29 +63,80 @@ final class NeteaseAPI {
     }
 
     func recommendedPlaylists(limit: Int = 10) async throws -> [Playlist] {
-        let response: PersonalizedResponse = try await client.eapi(
-            "/api/personalized/playlist",
-            data: ["limit": limit, "total": true, "n": 1_000]
-        )
-        return response.result
+        // 1) eapi (preferred when network allows)
+        do {
+            let response: PersonalizedResponse = try await client.eapi(
+                "/api/personalized/playlist",
+                data: ["limit": limit, "total": true, "n": 1_000]
+            )
+            if !response.result.isEmpty { return response.result }
+        } catch {
+            // fall through — empty body / blocked eapi is common
+        }
+
+        // 2) Public web GET (no eapi encrypt); works when POST eapi returns empty 200
+        do {
+            let response: PersonalizedResponse = try await client.publicJSON(
+                "/api/personalized/playlist",
+                query: ["limit": "\(limit)"]
+            )
+            if !response.result.isEmpty { return response.result }
+        } catch {
+            // fall through
+        }
+
+        // 3) Hot playlists as last resort so Home is never empty for this section alone
+        return try await playlists(category: "全部", offset: 0, limit: limit)
     }
 
     func newAlbums(limit: Int = 10, area: String? = nil) async throws -> [Album] {
-        let response: NewAlbumsResponse = try await client.eapi(
+        let areaValue = area ?? settings.musicArea
+        do {
+            let response: NewAlbumsResponse = try await client.eapi(
+                "/api/album/new",
+                data: ["limit": limit, "offset": 0, "total": true, "area": areaValue]
+            )
+            if !response.albums.isEmpty { return response.albums }
+        } catch { /* public fallback */ }
+
+        let response: NewAlbumsResponse = try await client.publicJSON(
             "/api/album/new",
-            data: ["limit": limit, "offset": 0, "total": true, "area": area ?? settings.musicArea]
+            query: [
+                "area": areaValue,
+                "limit": "\(limit)",
+                "offset": "0",
+                "total": "true",
+            ]
         )
         return response.albums
     }
 
     func toplists() async throws -> [Playlist] {
-        let response: ToplistsResponse = try await client.eapi("/api/toplist")
+        do {
+            let response: ToplistsResponse = try await client.eapi("/api/toplist")
+            if !response.list.isEmpty { return response.list }
+        } catch { /* public fallback */ }
+
+        let response: ToplistsResponse = try await client.publicJSON("/api/toplist")
         return response.list
     }
 
     func topArtists() async throws -> [Artist] {
-        let response: ArtistToplistResponse = try await client.eapi("/api/toplist/artist")
-        return response.list.artists
+        do {
+            let response: ArtistToplistResponse = try await client.eapi("/api/toplist/artist")
+            if !response.list.artists.isEmpty { return response.list.artists }
+        } catch { /* public fallback */ }
+
+        // Public artist toplist requires type=1 (华语等榜单参数).
+        do {
+            let response: ArtistToplistResponse = try await client.publicJSON(
+                "/api/toplist/artist",
+                query: ["type": "1", "limit": "50", "offset": "0"]
+            )
+            return response.list.artists
+        } catch {
+            return []
+        }
     }
 
     func playlists(category: String, offset: Int = 0, limit: Int = 50) async throws -> [Playlist] {
@@ -95,15 +146,48 @@ final class NeteaseAPI {
         case "排行榜":
             return try await toplists()
         case "精品歌单":
-            let response: TopPlaylistsResponse = try await client.eapi(
+            do {
+                let response: TopPlaylistsResponse = try await client.eapi(
+                    "/api/playlist/highquality/list",
+                    data: ["cat": "全部", "limit": limit, "lasttime": 0, "total": true]
+                )
+                if !response.playlists.isEmpty { return response.playlists }
+            } catch { /* public fallback */ }
+            let response: TopPlaylistsResponse = try await client.publicJSON(
                 "/api/playlist/highquality/list",
-                data: ["cat": "全部", "limit": limit, "lasttime": 0, "total": true]
+                query: [
+                    "cat": "全部",
+                    "limit": "\(limit)",
+                    "lasttime": "0",
+                    "total": "true",
+                ]
             )
             return response.playlists
         default:
-            let response: TopPlaylistsResponse = try await client.eapi(
+            let cat = category.isEmpty ? "全部" : category
+            do {
+                let response: TopPlaylistsResponse = try await client.eapi(
+                    "/api/playlist/list",
+                    data: [
+                        "cat": cat,
+                        "order": "hot",
+                        "offset": offset,
+                        "limit": limit,
+                        "total": true,
+                    ]
+                )
+                if !response.playlists.isEmpty { return response.playlists }
+            } catch { /* public fallback */ }
+
+            let response: TopPlaylistsResponse = try await client.publicJSON(
                 "/api/playlist/list",
-                data: ["cat": category, "order": "hot", "offset": offset, "limit": limit, "total": true]
+                query: [
+                    "cat": cat,
+                    "order": "hot",
+                    "offset": "\(offset)",
+                    "limit": "\(limit)",
+                    "total": "true",
+                ]
             )
             return response.playlists
         }

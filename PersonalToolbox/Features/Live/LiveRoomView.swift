@@ -43,8 +43,11 @@ final class LiveRoomViewModel: ObservableObject {
     private var avPlayer: AVPlayer?
 
     /// CDN candidates for current quality (SimpleLive playUrls + line switch).
-    private var playCandidates: [URL] = []
-    private var playCandidateIndex: Int = 0
+    /// Exposed for manual 线路选择 UI.
+    @Published private(set) var playCandidates: [URL] = []
+    @Published private(set) var playCandidateIndex: Int = 0
+    /// "线路1 · xxx.com" labels for chips.
+    @Published private(set) var playLineLabels: [String] = []
     private var currentQuality: LivePlayQuality?
     /// Re-open same URL up to 3 times (SimpleLive stream error retry).
     private var streamErrorRetryCount: Int = 0
@@ -165,6 +168,7 @@ final class LiveRoomViewModel: ObservableObject {
         streamIsFLV = false
         playCandidates = []
         playCandidateIndex = 0
+        playLineLabels = []
         // Session retain/release is owned by LiveVLCPlayerView / LiveRoomWebView lifecycle.
     }
 
@@ -177,7 +181,10 @@ final class LiveRoomViewModel: ObservableObject {
         isReconnecting = false
         lastStreamErrorAt = nil
         if let q = currentQuality, statusText.hasPrefix("重连") || statusText.hasPrefix("切换线路") {
-            statusText = "播放中 · \(q.name)" + (streamIsFLV ? " · FLV" : "")
+            let linePart = playCandidates.count > 1
+                ? " · 线路\(playCandidateIndex + 1)/\(playCandidates.count)"
+                : ""
+            statusText = "播放中 · \(q.name)" + linePart + (streamIsFLV ? " · FLV" : "")
         }
     }
 
@@ -221,14 +228,10 @@ final class LiveRoomViewModel: ObservableObject {
 
         // 2) Next CDN line (SimpleLive changePlayLine).
         if playCandidateIndex + 1 < playCandidates.count {
-            playCandidateIndex += 1
+            let nextIndex = playCandidateIndex + 1
             streamErrorRetryCount = 0
-            let next = playCandidates[playCandidateIndex]
-            let isFLV = next.absoluteString.lowercased().contains(".flv")
-            statusText = "切换线路 \(playCandidateIndex + 1)/\(playCandidates.count)…"
-            streamIsFLV = isFLV
-            streamEpoch += 1
-            streamURL = next
+            statusText = "切换线路 \(nextIndex + 1)/\(playCandidates.count)…"
+            selectPlayLine(nextIndex)
             isReconnecting = false
             return
         }
@@ -386,6 +389,73 @@ final class LiveRoomViewModel: ObservableObject {
         Task { await play(quality: q) }
     }
 
+    /// Manual CDN line switch (SimpleLive `changePlayLine`).
+    func selectPlayLine(_ index: Int) {
+        guard playMode == .native else { return }
+        guard playCandidates.indices.contains(index) else { return }
+        guard index != playCandidateIndex || streamURL != playCandidates[index] else { return }
+
+        playCandidateIndex = index
+        streamErrorRetryCount = 0
+        mediaErrorRetryCount = 0
+        isReconnecting = false
+        reconnectTask?.cancel()
+        playbackGeneration += 1
+
+        let next = playCandidates[index]
+        let isFLV = next.absoluteString.lowercased().contains(".flv")
+        let isHLS = next.absoluteString.lowercased().contains(".m3u8")
+        streamIsFLV = isFLV
+        streamEpoch += 1
+        streamURL = next
+        errorMessage = nil
+        let qName = currentQuality?.name ?? "清晰度"
+        statusText = "播放中 · \(qName) · 线路\(index + 1)/\(playCandidates.count)"
+            + (isFLV ? " · FLV" : (isHLS ? " · HLS" : ""))
+
+        #if !canImport(MobileVLCKit)
+        // AVPlayer path: remount item on selected URL.
+        if !isFLV {
+            Task {
+                _ = await startAVPlayer(url: next, headers: streamHeaders)
+            }
+        }
+        #endif
+    }
+
+    var currentLineInfo: String {
+        guard !playCandidates.isEmpty else { return "无线路" }
+        let i = min(max(playCandidateIndex, 0), playCandidates.count - 1)
+        if playLineLabels.indices.contains(i) {
+            return playLineLabels[i]
+        }
+        return "线路\(i + 1)/\(playCandidates.count)"
+    }
+
+    private static func lineLabels(for urls: [URL]) -> [String] {
+        urls.enumerated().map { idx, url in
+            let host = url.host ?? "线路"
+            // Shorten host for chips: cdn.example.com → example.com / last 2 labels
+            let parts = host.split(separator: ".")
+            let short: String = {
+                if parts.count >= 2 {
+                    return parts.suffix(2).joined(separator: ".")
+                }
+                return host
+            }()
+            let kind: String = {
+                let s = url.absoluteString.lowercased()
+                if s.contains(".flv") { return "FLV" }
+                if s.contains(".m3u8") { return "HLS" }
+                return ""
+            }()
+            if kind.isEmpty {
+                return "线路\(idx + 1) · \(short)"
+            }
+            return "线路\(idx + 1) · \(short) · \(kind)"
+        }
+    }
+
     @discardableResult
     private func play(quality: LivePlayQuality) async -> Bool {
         guard let detail else { return false }
@@ -431,6 +501,7 @@ final class LiveRoomViewModel: ObservableObject {
             headerLoader = nil
             playCandidates = urls
             playCandidateIndex = 0
+            playLineLabels = Self.lineLabels(for: urls)
             streamErrorRetryCount = 0
             playbackGeneration += 1
             streamHeaders = headers
@@ -439,7 +510,8 @@ final class LiveRoomViewModel: ObservableObject {
             streamURL = first
             playMode = .native
             errorMessage = nil
-            statusText = "播放中 · \(quality.name)" + (isFLV ? " · FLV" : (isHLS ? " · HLS" : ""))
+            statusText = "播放中 · \(quality.name) · 线路1/\(urls.count)"
+                + (isFLV ? " · FLV" : (isHLS ? " · HLS" : ""))
             return true
             #else
             if isFLV {
@@ -448,12 +520,13 @@ final class LiveRoomViewModel: ObservableObject {
                     if await startAVPlayer(url: url, headers: headers) {
                         playCandidates = urls
                         playCandidateIndex = urls.firstIndex(of: url) ?? 0
+                        playLineLabels = Self.lineLabels(for: urls)
                         streamIsFLV = false
                         streamURL = url
                         streamHeaders = headers
                         playMode = .native
                         errorMessage = nil
-                        statusText = "播放中 · \(quality.name)"
+                        statusText = "播放中 · \(quality.name) · \(currentLineInfo)"
                         return true
                     }
                 }
@@ -463,12 +536,13 @@ final class LiveRoomViewModel: ObservableObject {
             if await startAVPlayer(url: first, headers: headers) {
                 playCandidates = urls
                 playCandidateIndex = 0
+                playLineLabels = Self.lineLabels(for: urls)
                 streamIsFLV = false
                 streamURL = first
                 streamHeaders = headers
                 playMode = .native
                 errorMessage = nil
-                statusText = "播放中 · \(quality.name)"
+                statusText = "播放中 · \(quality.name) · 线路1/\(urls.count)"
                 return true
             }
             statusText = "线路均不可用"
@@ -620,7 +694,8 @@ struct LiveRoomView: View {
     @ObservedObject private var follows = LiveFollowStore.shared
     @State private var isPlayerFullscreen = false
     @State private var showPlayerChrome = true
-    @State private var showDanmaku = true
+    @State private var showDanmaku = LiveDanmakuPrefs.shared.enabled
+    @State private var showDanmakuSettings = false
 
     init(room: LiveRoomItem) {
         self.room = room
@@ -640,6 +715,7 @@ struct LiveRoomView: View {
                     danmakuSection
                     if vm.playMode == .native {
                         qualitySection
+                        playLineSection
                     }
                     engineSection
                     if let err = vm.errorMessage, !err.isEmpty {
@@ -679,6 +755,7 @@ struct LiveRoomView: View {
                     Button {
                         showDanmaku.toggle()
                         danmaku.isEnabled = showDanmaku
+                        LiveDanmakuPrefs.shared.enabled = showDanmaku
                         if showDanmaku {
                             restartDanmakuIfNeeded()
                         } else {
@@ -690,6 +767,13 @@ struct LiveRoomView: View {
                     .accessibilityLabel(showDanmaku ? "关闭弹幕" : "开启弹幕")
 
                     Button {
+                        showDanmakuSettings = true
+                    } label: {
+                        Image(systemName: "slider.horizontal.3")
+                    }
+                    .accessibilityLabel("弹幕设置")
+
+                    Button {
                         vm.manualRefresh()
                         restartDanmakuIfNeeded()
                     } label: {
@@ -698,6 +782,9 @@ struct LiveRoomView: View {
                     .accessibilityLabel("刷新直播")
                 }
             }
+        }
+        .sheet(isPresented: $showDanmakuSettings) {
+            LiveDanmakuSettingsSheet()
         }
         .task { vm.start() }
         .onChange(of: vm.detail?.danmakuJSON) { _, _ in
@@ -1097,6 +1184,57 @@ struct LiveRoomView: View {
         .appCardV2(corner: 20, padding: 16)
     }
 
+    /// CDN / play URL lines for current quality (SimpleLive 线路选择).
+    @ViewBuilder
+    private var playLineSection: some View {
+        if vm.playMode == .native, !vm.playCandidates.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text("线路")
+                        .font(.subheadline.weight(.semibold))
+                    Spacer()
+                    Text(vm.currentLineInfo)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(Array(vm.playCandidates.enumerated()), id: \.offset) { index, _ in
+                            let on = index == vm.playCandidateIndex
+                            let title = vm.playLineLabels.indices.contains(index)
+                                ? vm.playLineLabels[index]
+                                : "线路\(index + 1)"
+                            Button {
+                                vm.selectPlayLine(index)
+                            } label: {
+                                Text(title)
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(on ? Color.white : Color.primary)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background {
+                                        if on {
+                                            Capsule().fill(brand.brandGradient)
+                                        } else {
+                                            Capsule().fill(Color(.tertiarySystemFill))
+                                        }
+                                    }
+                            }
+                            .buttonStyle(PressableButtonStyle())
+                            .accessibilityLabel(title)
+                            .accessibilityAddTraits(on ? .isSelected : [])
+                        }
+                    }
+                }
+                Text("同一清晰度下的多 CDN 节点；卡顿可手动换线（与 Simple Live 一致）。")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .appCardV2(corner: 20, padding: 16)
+        }
+    }
+
     // MARK: Engine
 
     private var engineSection: some View {
@@ -1156,11 +1294,20 @@ struct LiveRoomView: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
+                Button {
+                    showDanmakuSettings = true
+                } label: {
+                    Image(systemName: "slider.horizontal.3")
+                        .font(.caption.weight(.semibold))
+                }
+                .accessibilityLabel("弹幕设置")
+
                 Toggle("", isOn: Binding(
                     get: { showDanmaku },
                     set: { on in
                         showDanmaku = on
                         danmaku.isEnabled = on
+                        LiveDanmakuPrefs.shared.enabled = on
                         if on {
                             restartDanmakuIfNeeded()
                         } else {
@@ -1174,10 +1321,10 @@ struct LiveRoomView: View {
             }
 
             if !showDanmaku {
-                Text("弹幕已关闭")
+                Text("弹幕已关闭 · 可点右侧滑杆打开设置")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-            } else if danmaku.messages.isEmpty {
+            } else if panelMessages.isEmpty {
                 Text(danmaku.statusText.isEmpty ? "等待弹幕…" : danmaku.statusText)
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -1185,7 +1332,7 @@ struct LiveRoomView: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: 6) {
-                            ForEach(danmaku.messages.suffix(40)) { msg in
+                            ForEach(panelMessages.suffix(40)) { msg in
                                 HStack(alignment: .top, spacing: 6) {
                                     Text(msg.userName.isEmpty ? "用户" : msg.userName)
                                         .font(.caption2.weight(.semibold))
@@ -1198,12 +1345,26 @@ struct LiveRoomView: View {
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .id(msg.id)
+                                .contextMenu {
+                                    if !msg.userName.isEmpty {
+                                        Button {
+                                            LiveDanmakuPrefs.shared.addBlockUser(msg.userName)
+                                        } label: {
+                                            Label("屏蔽用户 \(msg.userName)", systemImage: "person.crop.circle.badge.xmark")
+                                        }
+                                    }
+                                    Button {
+                                        LiveDanmakuPrefs.shared.addBlockWord(msg.text)
+                                    } label: {
+                                        Label("屏蔽此句关键词", systemImage: "text.badge.xmark")
+                                    }
+                                }
                             }
                         }
                     }
                     .frame(maxHeight: 160)
                     .onChange(of: danmaku.messages.count) { _, _ in
-                        if let last = danmaku.messages.last {
+                        if let last = panelMessages.last {
                             withAnimation(.easeOut(duration: 0.15)) {
                                 proxy.scrollTo(last.id, anchor: .bottom)
                             }
@@ -1213,6 +1374,11 @@ struct LiveRoomView: View {
             }
         }
         .appCardV2(corner: 20, padding: 16)
+    }
+
+    private var panelMessages: [LiveChatMessage] {
+        let prefs = LiveDanmakuPrefs.shared
+        return danmaku.messages.filter { prefs.allows(userName: $0.userName, text: $0.text) }
     }
 
     private func engineButton(
@@ -1403,23 +1569,27 @@ struct LiveDanmakuOverlay: View {
     @ObservedObject private var prefs = LiveDanmakuPrefs.shared
 
     private var filtered: [LiveChatMessage] {
-        messages.filter { prefs.allows($0.text) && prefs.allows($0.userName) }
+        messages.filter { prefs.allows(userName: $0.userName, text: $0.text) }
     }
 
     private var visible: [LiveChatMessage] {
         switch placement {
         case .bottomStack: return Array(filtered.suffix(6))
-        case .flying: return Array(filtered.suffix(36))
+        case .flying: return Array(filtered.suffix(40))
         }
     }
 
     var body: some View {
-        switch placement {
-        case .bottomStack:
-            bottomStackBody
-        case .flying:
-            flyingBody
+        Group {
+            switch placement {
+            case .bottomStack:
+                bottomStackBody
+            case .flying:
+                flyingBody
+            }
         }
+        .opacity(prefs.enabled ? 1 : 0)
+        .allowsHitTesting(false)
     }
 
     private var bottomStackBody: some View {
@@ -1433,15 +1603,25 @@ struct LiveDanmakuOverlay: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 10)
             .padding(.bottom, 10)
+            .opacity(prefs.opacity)
             .animation(.easeOut(duration: 0.2), value: messages.count)
         }
     }
 
-    /// 主流：弹幕从右侧进入、向左飞出；范围/字号/透明度可调。
+    /// 主流：弹幕从右侧进入、向左飞出；范围/位置/字号/透明度/速度可调。
     private var flyingBody: some View {
         GeometryReader { geo in
-            let trackCount = max(3, min(10, Int(geo.size.height * prefs.areaRatio / 28)))
             let areaH = geo.size.height * prefs.areaRatio
+            let trackCount = prefs.resolvedTrackCount(containerHeight: geo.size.height)
+            let trackH = areaH / CGFloat(max(trackCount, 1))
+            let bandAlign: Alignment = {
+                switch prefs.verticalAlign {
+                case .top: return .top
+                case .center: return .center
+                case .bottom: return .bottom
+                }
+            }()
+
             ZStack(alignment: .top) {
                 ForEach(Array(visible.enumerated()), id: \.element.id) { idx, msg in
                     FlyingDanmakuLine(
@@ -1449,33 +1629,36 @@ struct LiveDanmakuOverlay: View {
                         color: Color(hexColor: msg.colorHex),
                         fontSize: prefs.fontSize,
                         opacity: prefs.opacity,
-                        track: idx % trackCount,
-                        trackHeight: areaH / CGFloat(trackCount),
+                        strokeEnabled: prefs.strokeEnabled,
+                        track: idx % max(trackCount, 1),
+                        trackHeight: trackH,
                         containerWidth: geo.size.width,
-                        duration: 7.5 + Double(idx % 5) * 0.35
+                        duration: prefs.speedDuration + Double(idx % 4) * 0.25
                     )
                 }
             }
             .frame(height: areaH, alignment: .top)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: bandAlign)
             .clipped()
         }
-        .allowsHitTesting(false)
-        .opacity(prefs.enabled ? 1 : 0)
     }
 
     private func displayText(_ msg: LiveChatMessage) -> String {
-        let u = msg.userName.isEmpty ? "" : "\(msg.userName): "
-        return u + msg.text
+        if prefs.showUsername, !msg.userName.isEmpty {
+            return "\(msg.userName)：\(msg.text)"
+        }
+        return msg.text
     }
 
     private func danmakuChip(_ msg: LiveChatMessage, compact: Bool) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 4) {
-            Text(msg.userName.isEmpty ? "用户" : msg.userName)
-                .font(compact ? .caption2.weight(.bold) : .caption.weight(.bold))
-                .foregroundStyle(Color(hexColor: msg.colorHex))
+            if prefs.showUsername {
+                Text(msg.userName.isEmpty ? "用户" : msg.userName)
+                    .font(.system(size: max(10, prefs.fontSize - 3), weight: .bold))
+                    .foregroundStyle(Color(hexColor: msg.colorHex))
+            }
             Text(msg.text)
-                .font(compact ? .caption2 : .caption)
+                .font(.system(size: max(11, prefs.fontSize - 2), weight: .medium))
                 .foregroundStyle(.white)
                 .lineLimit(compact ? 1 : 2)
         }
@@ -1491,6 +1674,7 @@ private struct FlyingDanmakuLine: View {
     let color: Color
     let fontSize: Double
     let opacity: Double
+    let strokeEnabled: Bool
     let track: Int
     let trackHeight: CGFloat
     let containerWidth: CGFloat
@@ -1503,7 +1687,11 @@ private struct FlyingDanmakuLine: View {
         Text(text)
             .font(.system(size: fontSize, weight: .semibold))
             .foregroundStyle(color.opacity(opacity))
-            .shadow(color: .black.opacity(0.55), radius: 1, y: 1)
+            .shadow(
+                color: strokeEnabled ? .black.opacity(0.65) : .clear,
+                radius: strokeEnabled ? 1.2 : 0,
+                y: strokeEnabled ? 1 : 0
+            )
             .lineLimit(1)
             .fixedSize()
             .offset(x: x, y: CGFloat(track) * trackHeight + 4)
@@ -1511,45 +1699,155 @@ private struct FlyingDanmakuLine: View {
                 guard !started else { return }
                 started = true
                 x = containerWidth + 20
-                withAnimation(.linear(duration: duration)) {
-                    x = -containerWidth - 200
+                withAnimation(.linear(duration: max(3.5, duration))) {
+                    x = -containerWidth - 240
                 }
             }
     }
 }
 
-/// Settings panel for fullscreen danmaku.
+/// Settings panel for live danmaku (参考 simple_live 弹幕设置结构).
 struct LiveDanmakuSettingsSheet: View {
     @ObservedObject private var prefs = LiveDanmakuPrefs.shared
     @Environment(\.dismiss) private var dismiss
+    @State private var newBlockWord = ""
+    @State private var newBlockUser = ""
 
     var body: some View {
         NavigationStack {
             Form {
-                Toggle("显示弹幕", isOn: $prefs.enabled)
+                Section {
+                    Toggle("显示弹幕", isOn: $prefs.enabled)
+                    Toggle("启用屏蔽", isOn: $prefs.shieldEnabled)
+                } header: {
+                    Text("总开关")
+                } footer: {
+                    Text("关闭「启用屏蔽」后，关键词与用户屏蔽均暂时失效。")
+                }
+
+                Section("显示位置与区域") {
+                    Picker("弹幕位置", selection: $prefs.verticalAlign) {
+                        ForEach(LiveDanmakuVerticalAlign.allCases) { align in
+                            Label(align.title, systemImage: align.systemImage).tag(align)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+
+                    HStack {
+                        Text("显示区域")
+                        Slider(value: $prefs.areaRatio, in: 0.15...1.0, step: 0.05)
+                        Text("\(Int(prefs.areaRatio * 100))%")
+                            .monospacedDigit()
+                            .frame(width: 40)
+                    }
+                    Text("区域 = 画面高度占比；位置决定该区域贴顶/居中/贴底（全屏飞幕）。")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+
+                    HStack {
+                        Text("轨道行数")
+                        Slider(
+                            value: Binding(
+                                get: { Double(prefs.maxTracks) },
+                                set: { prefs.maxTracks = Int($0) }
+                            ),
+                            in: 0...14,
+                            step: 1
+                        )
+                        Text(prefs.maxTracks == 0 ? "自动" : "\(prefs.maxTracks)")
+                            .monospacedDigit()
+                            .frame(width: 36)
+                    }
+                }
+
                 Section("外观") {
                     HStack {
                         Text("字号")
-                        Slider(value: $prefs.fontSize, in: 11...24, step: 1)
-                        Text("\(Int(prefs.fontSize))").monospacedDigit().frame(width: 28)
+                        Slider(value: $prefs.fontSize, in: 10...28, step: 1)
+                        Text("\(Int(prefs.fontSize))")
+                            .monospacedDigit()
+                            .frame(width: 28)
                     }
                     HStack {
                         Text("透明度")
-                        Slider(value: $prefs.opacity, in: 0.3...1.0)
-                        Text("\(Int(prefs.opacity * 100))%").monospacedDigit().frame(width: 40)
+                        Slider(value: $prefs.opacity, in: 0.15...1.0, step: 0.05)
+                        Text("\(Int(prefs.opacity * 100))%")
+                            .monospacedDigit()
+                            .frame(width: 40)
                     }
                     HStack {
-                        Text("显示范围")
-                        Slider(value: $prefs.areaRatio, in: 0.2...0.85)
-                        Text("\(Int(prefs.areaRatio * 100))%").monospacedDigit().frame(width: 40)
+                        Text("滚动速度")
+                        Slider(value: $prefs.speedDuration, in: 4...16, step: 0.5)
+                        Text("\(String(format: "%.0f", prefs.speedDuration))s")
+                            .monospacedDigit()
+                            .frame(width: 36)
                     }
-                    Text("弹幕从右侧飞入、向左滚出（B站/斗鱼主流样式）。")
+                    Text("数值为飞过屏幕大致秒数，越小越快（同 simple_live）。")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
+
+                    Toggle("显示用户名", isOn: $prefs.showUsername)
+                    Toggle("描边阴影", isOn: $prefs.strokeEnabled)
                 }
-                Section("屏蔽词") {
-                    TextField("逗号分隔，如：广告,加微信", text: $prefs.blockWordsRaw, axis: .vertical)
-                        .lineLimit(3...6)
+
+                Section {
+                    HStack {
+                        TextField("添加屏蔽词", text: $newBlockWord)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                        Button("添加") {
+                            prefs.addBlockWord(newBlockWord)
+                            newBlockWord = ""
+                        }
+                        .disabled(newBlockWord.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+                    if prefs.blockWords.isEmpty {
+                        Text("暂无屏蔽词。命中则整条弹幕不显示。")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        FlowChipList(items: prefs.blockWords) { word in
+                            prefs.removeBlockWord(word)
+                        }
+                    }
+                    TextField("批量编辑（逗号/换行分隔）", text: $prefs.blockWordsRaw, axis: .vertical)
+                        .lineLimit(2...5)
+                        .font(.caption)
+                } header: {
+                    Text("关键词屏蔽")
+                }
+
+                Section {
+                    HStack {
+                        TextField("添加屏蔽用户", text: $newBlockUser)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                        Button("添加") {
+                            prefs.addBlockUser(newBlockUser)
+                            newBlockUser = ""
+                        }
+                        .disabled(newBlockUser.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
+                    if prefs.blockUsers.isEmpty {
+                        Text("暂无屏蔽用户。用户名包含关键词即过滤。")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        FlowChipList(items: prefs.blockUsers) { name in
+                            prefs.removeBlockUser(name)
+                        }
+                    }
+                    TextField("批量编辑（逗号/换行分隔）", text: $prefs.blockUsersRaw, axis: .vertical)
+                        .lineLimit(2...4)
+                        .font(.caption)
+                } header: {
+                    Text("用户屏蔽")
+                }
+
+                Section {
+                    Text("全屏为横向飞幕；竖屏播放器为底部堆叠，同样应用透明度/字号/屏蔽规则。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
             .navigationTitle("弹幕设置")
@@ -1560,6 +1858,63 @@ struct LiveDanmakuSettingsSheet: View {
                 }
             }
         }
+        .presentationDetents([.medium, .large])
+    }
+}
+
+/// Simple wrap chips for shield lists.
+private struct FlowChipList: View {
+    let items: [String]
+    let onRemove: (String) -> Void
+
+    var body: some View {
+        FlexibleChipWrap(items: items, onRemove: onRemove)
+    }
+}
+
+private struct FlexibleChipWrap: View {
+    let items: [String]
+    let onRemove: (String) -> Void
+
+    var body: some View {
+        // Simple multi-line HStack rows without extra layout deps.
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(chunked(items, size: 3), id: \.self) { row in
+                HStack(spacing: 8) {
+                    ForEach(row, id: \.self) { item in
+                        Button {
+                            onRemove(item)
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text(item)
+                                    .font(.caption)
+                                    .lineLimit(1)
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background(Color.secondary.opacity(0.14), in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    Spacer(minLength: 0)
+                }
+            }
+        }
+    }
+
+    private func chunked(_ list: [String], size: Int) -> [[String]] {
+        guard size > 0 else { return [list] }
+        var result: [[String]] = []
+        var i = 0
+        while i < list.count {
+            let end = min(i + size, list.count)
+            result.append(Array(list[i..<end]))
+            i = end
+        }
+        return result
     }
 }
 
@@ -1847,6 +2202,32 @@ struct LiveRoomFullscreenView: View {
                     }
                     .padding(.horizontal, 16)
                 }
+                .padding(.bottom, 8)
+            }
+
+            // SimpleLive: 线路选择 (CDN candidates for current quality)
+            if vm.playMode == .native, vm.playCandidates.count > 1 {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(Array(vm.playCandidates.enumerated()), id: \.offset) { index, _ in
+                            let on = index == vm.playCandidateIndex
+                            let title = vm.playLineLabels.indices.contains(index)
+                                ? "线\(index + 1)"
+                                : "线\(index + 1)"
+                            Button { vm.selectPlayLine(index) } label: {
+                                Text(title)
+                                    .font(.caption.weight(.semibold))
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 7)
+                                    .foregroundStyle(on ? Color.black : Color.white)
+                                    .background(on ? Color.white : Color.white.opacity(0.2), in: Capsule())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(vm.playLineLabels.indices.contains(index) ? vm.playLineLabels[index] : title)
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                }
                 .padding(.bottom, 10)
             }
 
@@ -1854,7 +2235,14 @@ struct LiveRoomFullscreenView: View {
                 Text(vm.statusText)
                     .font(.caption2)
                     .foregroundStyle(.white.opacity(0.85))
+                    .lineLimit(1)
                 Spacer()
+                if vm.playCandidates.count > 1 {
+                    Text(vm.currentLineInfo)
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.7))
+                        .lineLimit(1)
+                }
                 Button {
                     if vm.playMode == .native { vm.switchToWeb() }
                     else { vm.retryNative() }

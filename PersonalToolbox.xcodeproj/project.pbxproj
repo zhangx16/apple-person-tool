@@ -6,6 +6,20 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		000000000000000000008251 /* default_book_sources.json in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008250 /* default_book_sources.json */; };
+		000000000000000000008225 /* BookSourceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008224 /* BookSourceModels.swift */; };
+		000000000000000000008227 /* BookSourceStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008226 /* BookSourceStore.swift */; };
+		000000000000000000008229 /* LegadoRuleEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008228 /* LegadoRuleEngine.swift */; };
+		00000000000000000000822B /* NovelBookService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000822A /* NovelBookService.swift */; };
+		00000000000000000000822D /* NovelNetworkClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000822C /* NovelNetworkClient.swift */; };
+		00000000000000000000822F /* NovelShelfStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000822E /* NovelShelfStore.swift */; };
+		000000000000000000008231 /* NovelDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008230 /* NovelDetailView.swift */; };
+		000000000000000000008233 /* NovelLocalImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008232 /* NovelLocalImportView.swift */; };
+		000000000000000000008235 /* NovelReaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008234 /* NovelReaderView.swift */; };
+		000000000000000000008237 /* NovelRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008236 /* NovelRootView.swift */; };
+		000000000000000000008239 /* NovelSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008238 /* NovelSearchView.swift */; };
+		00000000000000000000823B /* NovelShelfView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000823A /* NovelShelfView.swift */; };
+		00000000000000000000823D /* NovelSourceListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000823C /* NovelSourceListView.swift */; };
 		000000000000000000008223 /* NavidromeSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008222 /* NavidromeSettingsView.swift */; };
 		000000000000000000008221 /* NavidromeClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008220 /* NavidromeClient.swift */; };
 		000000000000000000008209 /* SongAccessBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008208 /* SongAccessBadge.swift */; };
@@ -303,6 +317,20 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		000000000000000000008250 /* default_book_sources.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = Resources/Novel/default_book_sources.json; sourceTree = "<group>"; };
+		000000000000000000008224 /* BookSourceModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/BookSourceModels.swift; sourceTree = "<group>"; };
+		000000000000000000008226 /* BookSourceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/BookSourceStore.swift; sourceTree = "<group>"; };
+		000000000000000000008228 /* LegadoRuleEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/LegadoRuleEngine.swift; sourceTree = "<group>"; };
+		00000000000000000000822A /* NovelBookService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/NovelBookService.swift; sourceTree = "<group>"; };
+		00000000000000000000822C /* NovelNetworkClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/NovelNetworkClient.swift; sourceTree = "<group>"; };
+		00000000000000000000822E /* NovelShelfStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/NovelShelfStore.swift; sourceTree = "<group>"; };
+		000000000000000000008230 /* NovelDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovelDetailView.swift; sourceTree = "<group>"; };
+		000000000000000000008232 /* NovelLocalImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovelLocalImportView.swift; sourceTree = "<group>"; };
+		000000000000000000008234 /* NovelReaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovelReaderView.swift; sourceTree = "<group>"; };
+		000000000000000000008236 /* NovelRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovelRootView.swift; sourceTree = "<group>"; };
+		000000000000000000008238 /* NovelSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovelSearchView.swift; sourceTree = "<group>"; };
+		00000000000000000000823A /* NovelShelfView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovelShelfView.swift; sourceTree = "<group>"; };
+		00000000000000000000823C /* NovelSourceListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovelSourceListView.swift; sourceTree = "<group>"; };
 		000000000000000000008222 /* NavidromeSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Settings/NavidromeSettingsView.swift; sourceTree = "<group>"; };
 		000000000000000000008220 /* NavidromeClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Networking/NavidromeClient.swift; sourceTree = "<group>"; };
 		000000000000000000008208 /* SongAccessBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Models/SongAccessBadge.swift; sourceTree = "<group>"; };
@@ -1030,6 +1058,7 @@
 		000000000000000000000306 /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				00000000000000000000823E /* Novel */,
 				000000000000000000008134 /* Music */,
 				000000000000000000000534 /* Live */,
 				000000000000000000000518 /* Tools */,
@@ -1058,10 +1087,12 @@
 		00000000000000000000030E /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				000000000000000000008250 /* default_book_sources.json */,
 				000000000000000000000550 /* LiveJS */,
 				000000000000000000000200 /* Assets.xcassets */,
 				000000000000000000000201 /* Info.plist */,
 			);
+			/* children patched below */
 			path = Resources;
 			sourceTree = "<group>";
 		};
@@ -1126,6 +1157,27 @@
 				000000000000000000000580 /* LiveVLCPlayerView.swift */,
 			);
 			path = Live;
+			sourceTree = "<group>";
+		};
+		00000000000000000000823E /* Novel */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000008224 /* BookSourceModels.swift */,
+				000000000000000000008226 /* BookSourceStore.swift */,
+				000000000000000000008228 /* LegadoRuleEngine.swift */,
+				00000000000000000000822A /* NovelBookService.swift */,
+				00000000000000000000822C /* NovelNetworkClient.swift */,
+				00000000000000000000822E /* NovelShelfStore.swift */,
+				000000000000000000008230 /* NovelDetailView.swift */,
+				000000000000000000008232 /* NovelLocalImportView.swift */,
+				000000000000000000008234 /* NovelReaderView.swift */,
+				000000000000000000008236 /* NovelRootView.swift */,
+				000000000000000000008238 /* NovelSearchView.swift */,
+				00000000000000000000823A /* NovelShelfView.swift */,
+				00000000000000000000823C /* NovelSourceListView.swift */,
+			);
+			path = Features/Novel;
+			name = Novel;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -1213,7 +1265,7 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		000000000000000000000206 /* Resources */ = { isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = ( 000000000000000000000208 /* Assets.xcassets in Resources */,  00000000000000000000054D /* cryptojs.js in Resources */, 00000000000000000000054F /* abogus.js in Resources */,); runOnlyForDeploymentPostprocessing = 0; };
+		000000000000000000000206 /* Resources */ = { isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = ( 000000000000000000000208 /* Assets.xcassets in Resources */, 000000000000000000008251 /* default_book_sources.json in Resources */,  00000000000000000000054D /* cryptojs.js in Resources */, 00000000000000000000054F /* abogus.js in Resources */,); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -1232,6 +1284,20 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				000000000000000000008225 /* BookSourceModels.swift in Sources */,
+				000000000000000000008227 /* BookSourceStore.swift in Sources */,
+				000000000000000000008229 /* LegadoRuleEngine.swift in Sources */,
+				00000000000000000000822B /* NovelBookService.swift in Sources */,
+				00000000000000000000822D /* NovelNetworkClient.swift in Sources */,
+				00000000000000000000822F /* NovelShelfStore.swift in Sources */,
+				000000000000000000008231 /* NovelDetailView.swift in Sources */,
+				000000000000000000008233 /* NovelLocalImportView.swift in Sources */,
+				000000000000000000008235 /* NovelReaderView.swift in Sources */,
+				000000000000000000008237 /* NovelRootView.swift in Sources */,
+				000000000000000000008239 /* NovelSearchView.swift in Sources */,
+				00000000000000000000823B /* NovelShelfView.swift in Sources */,
+				00000000000000000000823D /* NovelSourceListView.swift in Sources */,
+
 				000000000000000000000551 /* LiveDanmakuService.swift in Sources */,
 				000000000000000000000563 /* LiveProtoWire.swift in Sources */,
 				000000000000000000000561 /* LiveTarsCodec.swift in Sources */,
@@ -1591,7 +1657,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 101;
+				CURRENT_PROJECT_VERSION = 102;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				CODE_SIGN_ENTITLEMENTS = PersonalToolbox/PersonalToolbox.entitlements;
@@ -1618,7 +1684,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 101;
+				CURRENT_PROJECT_VERSION = 102;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				CODE_SIGN_ENTITLEMENTS = PersonalToolbox/PersonalToolbox.entitlements;
@@ -1645,7 +1711,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 101;
+				CURRENT_PROJECT_VERSION = 102;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
@@ -1671,7 +1737,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 101;
+				CURRENT_PROJECT_VERSION = 102;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;

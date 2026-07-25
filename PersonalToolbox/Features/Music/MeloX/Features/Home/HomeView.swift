@@ -16,7 +16,9 @@ struct HomeView: View {
 
     var body: some View {
         Group {
-            if hasLoadedContent {
+            // Show shell as soon as load finished (even if some sections empty),
+            // so static cards (每日推荐 / 新碟) remain usable when one API fails.
+            if phase == .loaded || hasLoadedContent {
                 content
             } else {
                 initialState
@@ -26,7 +28,7 @@ struct HomeView: View {
         // Inline title frees vertical space inside the toolbox tab.
         .navigationBarTitleDisplayMode(.inline)
         .task(id: reloadToken) {
-            guard phase != .loaded else { return }
+            // Always reload on token change (includes first appear & 重试).
             await load()
         }
     }
@@ -165,28 +167,40 @@ struct HomeView: View {
         }
 
         do {
-            async let loadedRecommended = api.recommendedPlaylists(limit: 12)
+            // Soft-fail each section: eapi empty-body must not blank the whole home.
+            async let loadedRecommended = try? api.recommendedPlaylists(limit: 12)
             async let loadedAlbums = try? api.newAlbums(limit: 10)
             async let loadedCharts = try? api.toplists()
             async let loadedArtists = try? api.topArtists()
 
-            let recommendations = try await loadedRecommended
-            let (albumsResult, chartsResult, artistsResult) = await (
+            let (recommendations, albumsResult, chartsResult, artistsResult) = await (
+                loadedRecommended,
                 loadedAlbums,
                 loadedCharts,
                 loadedArtists
             )
             try Task.checkCancellation()
 
-            recommended = recommendations
+            recommended = recommendations ?? []
             albums = albumsResult ?? []
             charts = Array((chartsResult ?? []).prefix(10))
             artists = Array((artistsResult ?? []).prefix(10))
-            phase = .loaded
+
+            if hasLoadedContent {
+                phase = .loaded
+            } else {
+                // Absolute miss — surface retry, but keep message actionable.
+                phase = .failed("网易云推荐接口暂时无响应（可能是网络或地区限制）。可点重试，或先用搜索 / Navidrome。")
+            }
         } catch is CancellationError {
             return
         } catch {
-            phase = .failed(error.localizedDescription)
+            if hasLoadedContent {
+                // Keep previous content on pull-to-refresh failure.
+                phase = .loaded
+            } else {
+                phase = .failed(error.localizedDescription)
+            }
         }
     }
 }

@@ -322,6 +322,9 @@ struct ServicesHubView: View {
                 }
             ]),
             SectionModel(title: "资讯", symbol: "newspaper.fill", items: [
+                item("novel", "小说阅读", "Legado 书源 · 搜索 · 本地 TXT · 阅读器", .novel) {
+                    AnyView(NovelRootView())
+                },
                 item("rss", "RSS 阅读器", "多源订阅 · 下拉刷新", .rss) {
                     AnyView(RSSHomeView())
                 },

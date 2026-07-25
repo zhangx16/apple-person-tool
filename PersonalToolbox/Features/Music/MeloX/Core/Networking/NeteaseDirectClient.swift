@@ -16,6 +16,58 @@ final class NeteaseDirectClient {
         syntheticWNMCID = "\(Self.randomString(length: 6, characters: "abcdefghijklmnopqrstuvwxyz")).\(Self.timestampMilliseconds).01.0"
     }
 
+    /// Unencrypted public JSON GET used when eapi/weapi returns empty body (common
+    /// on some networks/IPs). Paths are the same `/api/...` used by music.163.com web.
+    func publicJSON<Response: Decodable>(
+        _ path: String,
+        query: [String: String] = [:],
+        domain: String = "https://music.163.com"
+    ) async throws -> Response {
+        var components = URLComponents(string: "\(domain)\(path)")
+        if !query.isEmpty {
+            components?.queryItems = query.map { URLQueryItem(name: $0.key, value: $0.value) }
+        }
+        guard let url = components?.url else {
+            throw APIError.requestEncoding
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.httpShouldHandleCookies = false
+        request.timeoutInterval = 15
+        request.setValue(
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148",
+            forHTTPHeaderField: "User-Agent"
+        )
+        request.setValue("https://music.163.com", forHTTPHeaderField: "Referer")
+        let cookie = cookieHeader(os: "ios", appVersion: "9.0.90")
+        if !cookie.isEmpty {
+            request.setValue(cookie, forHTTPHeaderField: "Cookie")
+        }
+
+        let (data, response) = try await session.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+        guard (200..<300).contains(httpResponse.statusCode) else {
+            throw APIError.server(
+                statusCode: httpResponse.statusCode,
+                message: HTTPURLResponse.localizedString(forStatusCode: httpResponse.statusCode)
+            )
+        }
+        guard !data.isEmpty else {
+            throw APIError.emptyResponse(statusCode: httpResponse.statusCode)
+        }
+        do {
+            return try JSONDecoder().decode(Response.self, from: data)
+        } catch {
+            throw APIError.server(
+                statusCode: httpResponse.statusCode,
+                message: responseDescription(data, decodingError: error)
+            )
+        }
+    }
+
     func eapi<Response: Decodable>(
         _ uri: String,
         data: [String: Any] = [:],

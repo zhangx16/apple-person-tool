@@ -1188,8 +1188,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				000000000000000000008201 /* AudioEqualizerStubs.swift in Sources */,
-				000000000000000000008061 /* TextPVPreferences.swift in Sources */,
-				00000000000000000000805F /* SkylineLyricsPreferences.swift in Sources */,
 				000000000000000000000102 /* PersonalToolboxApp.swift in Sources */,
 				000000000000000000000104 /* RootTabView.swift in Sources */,
 				0000000000000000000005E1 /* OverviewHomeView.swift in Sources */,
@@ -1344,6 +1342,8 @@
 				000000000000000000008059 /* NavigationPreferences.swift in Sources */,
 				00000000000000000000805B /* PlayerScreenAwakeMode.swift in Sources */,
 				00000000000000000000805D /* PlayerVolumeControlMode.swift in Sources */,
+				00000000000000000000805F /* SkylineLyricsPreferences.swift in Sources */,
+				000000000000000000008061 /* TextPVPreferences.swift in Sources */,
 				000000000000000000008063 /* ScreenAwakeCoordinator.swift in Sources */,
 				000000000000000000008065 /* AppUpdateService.swift in Sources */,
 				000000000000000000008067 /* AccountHomeContent.swift in Sources */,

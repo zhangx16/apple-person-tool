@@ -15,9 +15,8 @@ struct DownloadTransferResult: Sendable {
     let response: URLResponse
 }
 
-@MainActor
 final class DownloadTransferClient: NSObject, URLSessionDownloadDelegate {
-    typealias ProgressHandler = @MainActor (DownloadTransferProgress) -> Void
+    typealias ProgressHandler = (DownloadTransferProgress) -> Void
 
     private struct Transfer {
         let continuation: CheckedContinuation<DownloadTransferResult, Error>

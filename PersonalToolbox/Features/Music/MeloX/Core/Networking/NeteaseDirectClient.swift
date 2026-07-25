@@ -3,7 +3,6 @@ import CryptoKit
 import Foundation
 import Security
 
-@MainActor
 final class NeteaseDirectClient {
     private let settings: MeloXSettings
     private let session: URLSession

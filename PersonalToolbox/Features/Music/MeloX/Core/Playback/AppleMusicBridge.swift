@@ -1,3 +1,4 @@
+import AVFoundation
 import Foundation
 import MusicKit
 
@@ -13,22 +14,25 @@ final class AppleMusicBridge {
         case noMatch(title: String, artist: String)
         case playFailed(String)
         case subscriptionRequired
+        case audioSession(String)
 
         var errorDescription: String? {
             switch self {
             case .notAuthorized:
-                return "尚未获得 Apple Music 权限，请允许访问媒体与 Apple Music。"
+                return "尚未获得 Apple Music 权限。请到音乐设置 → Apple Music 点「连接」。"
             case .denied:
-                return "Apple Music 权限被拒绝。请到 设置 → 本 App 中开启媒体与 Apple Music。"
+                return "Apple Music 权限被拒绝。请到 系统设置 → 本 App → 开启「媒体与 Apple Music」。"
             case .restricted:
                 return "设备策略限制了 Apple Music 访问。"
             case .noMatch(let title, let artist):
                 let q = [title, artist].filter { !$0.isEmpty }.joined(separator: " - ")
-                return "在 Apple Music 曲库中未找到「\(q)」。"
+                return "在 Apple Music 曲库中未找到「\(q)」（可换匹配或检查商店地区）。"
             case .playFailed(let msg):
                 return "Apple Music 播放失败：\(msg)"
             case .subscriptionRequired:
-                return "需要有效的 Apple Music 会员才能播放曲库。"
+                return "需要有效的 Apple Music 会员，并在系统「音乐」App 登录同一 Apple ID。"
+            case .audioSession(let msg):
+                return "无法激活播放音频会话：\(msg)"
             }
         }
     }
@@ -40,6 +44,9 @@ final class AppleMusicBridge {
     private(set) var matchedArtist: String?
     private(set) var matchedMusicItemID: String?
     private var activeDuration: TimeInterval = 0
+
+    /// Last failure detail for UI / diagnostics.
+    private(set) var lastErrorDescription: String?
 
     private var pollTask: Task<Void, Never>?
     /// (isPlaying, position, duration)
@@ -54,7 +61,6 @@ final class AppleMusicBridge {
         MusicAuthorization.currentStatus
     }
 
-    /// Last known subscription capability (refresh via `refreshSubscriptionStatus`).
     private(set) var canPlayCatalogContent = false
     private(set) var subscriptionChecked = false
 
@@ -77,7 +83,6 @@ final class AppleMusicBridge {
         }
     }
 
-    /// Request system permission (for settings "连接" button).
     @discardableResult
     func requestAuthorization() async -> MusicAuthorization.Status {
         if MusicAuthorization.currentStatus == .notDetermined {
@@ -98,19 +103,12 @@ final class AppleMusicBridge {
         }
     }
 
-    /// Search catalog for match picker (up to 8 candidates).
     func searchCandidates(title: String, artist: String, limit: Int = 8) async throws -> [AppleMusicCandidate] {
         try await ensureAuthorized()
-        let term = searchTerm(title: title, artist: artist)
-        guard !term.isEmpty else { return [] }
-
-        var request = MusicCatalogSearchRequest(term: term, types: [MusicKit.Song.self])
-        request.limit = limit
-        let response = try await request.response()
-        return response.songs.map { AppleMusicCandidate(song: $0) }
+        let songs = try await searchSongs(title: title, artist: artist, limit: limit)
+        return songs.map { AppleMusicCandidate(song: $0) }
     }
 
-    /// Free-text catalog search (Search tab dual-source).
     func searchCatalog(query: String, limit: Int = 20) async throws -> [AppleMusicCandidate] {
         try await ensureAuthorized()
         let term = query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -121,32 +119,35 @@ final class AppleMusicBridge {
         return response.songs.map { AppleMusicCandidate(song: $0) }
     }
 
-    /// Search Apple Music catalog and play via ApplicationMusicPlayer.
     @discardableResult
     func playMatching(
         title: String,
         artist: String,
         neteaseSongID: Int? = nil
     ) async throws -> MusicKit.Song {
+        lastErrorDescription = nil
         try await ensureAuthorized()
+        try activatePlaybackSession()
 
+        // Cached id first; drop cache if play fails.
         if let neteaseSongID,
-           let cached = matchCache.musicItemID(forNeteaseSongID: neteaseSongID),
-           let song = try await fetchSong(idRaw: cached) {
-            try await play(song: song)
-            return song
+           let cached = matchCache.musicItemID(forNeteaseSongID: neteaseSongID) {
+            do {
+                if let song = try await fetchSong(idRaw: cached) {
+                    try await play(song: song)
+                    return song
+                }
+            } catch {
+                matchCache.remove(neteaseSongID: neteaseSongID)
+                // fall through to search
+            }
         }
 
-        let term = searchTerm(title: title, artist: artist)
-        guard !term.isEmpty else {
-            throw BridgeError.noMatch(title: title, artist: artist)
-        }
-
-        var request = MusicCatalogSearchRequest(term: term, types: [MusicKit.Song.self])
-        request.limit = 12
-        let response = try await request.response()
-        guard let song = bestMatch(in: response.songs, title: title, artist: artist) else {
-            throw BridgeError.noMatch(title: title, artist: artist)
+        let candidates = try await searchSongs(title: title, artist: artist, limit: 12)
+        guard let song = bestMatch(in: candidates, title: title, artist: artist) else {
+            let err = BridgeError.noMatch(title: title, artist: artist)
+            lastErrorDescription = err.localizedDescription
+            throw err
         }
 
         try await play(song: song)
@@ -156,12 +157,15 @@ final class AppleMusicBridge {
         return song
     }
 
-    /// Play a specific catalog id (match picker / cached choice).
     @discardableResult
     func playMusicItemID(_ idRaw: String, neteaseSongID: Int? = nil) async throws -> MusicKit.Song {
+        lastErrorDescription = nil
         try await ensureAuthorized()
+        try activatePlaybackSession()
         guard let song = try await fetchSong(idRaw: idRaw) else {
-            throw BridgeError.playFailed("无法加载所选曲目。")
+            let err = BridgeError.playFailed("无法加载所选曲目（id=\(idRaw)）。")
+            lastErrorDescription = err.localizedDescription
+            throw err
         }
         try await play(song: song)
         if let neteaseSongID {
@@ -178,11 +182,12 @@ final class AppleMusicBridge {
 
     func resume() async throws {
         guard isActive else { return }
+        try activatePlaybackSession()
         do {
             try await player.play()
             onPlaybackState?(true, player.playbackTime, activeDuration)
         } catch {
-            throw BridgeError.playFailed(error.localizedDescription)
+            throw mapPlayError(error)
         }
     }
 
@@ -207,20 +212,121 @@ final class AppleMusicBridge {
         onPlaybackState?(playing, player.playbackTime, activeDuration)
     }
 
-    // MARK: - Private play helpers
+    // MARK: - Search
+
+    /// Multi-pass catalog search so Chinese VIP titles still match.
+    private func searchSongs(title: String, artist: String, limit: Int) async throws -> [MusicKit.Song] {
+        let cleanedTitle = scrubSearchToken(title)
+        let cleanedArtist = scrubSearchToken(artist)
+        var seen = Set<String>()
+        var collected: [MusicKit.Song] = []
+
+        let terms: [String] = {
+            var list: [String] = []
+            let both = [cleanedTitle, cleanedArtist].filter { !$0.isEmpty }.joined(separator: " ")
+            if !both.isEmpty { list.append(both) }
+            if !cleanedTitle.isEmpty { list.append(cleanedTitle) }
+            // First artist only (网易云 "A / B / C")
+            let primaryArtist = cleanedArtist
+                .split(whereSeparator: { $0 == "/" || $0 == "," || $0 == "、" || $0 == "&" })
+                .map { scrubSearchToken(String($0)) }
+                .first { !$0.isEmpty }
+            if let primaryArtist, !cleanedTitle.isEmpty {
+                list.append("\(cleanedTitle) \(primaryArtist)")
+            }
+            return list
+        }()
+
+        for term in terms {
+            guard !term.isEmpty else { continue }
+            var request = MusicCatalogSearchRequest(term: term, types: [MusicKit.Song.self])
+            request.limit = limit
+            do {
+                let response = try await request.response()
+                for song in response.songs {
+                    let key = song.id.rawValue
+                    if seen.insert(key).inserted {
+                        collected.append(song)
+                    }
+                }
+            } catch {
+                // try next term
+                lastErrorDescription = error.localizedDescription
+                continue
+            }
+            if collected.count >= 3 { break }
+        }
+
+        if collected.isEmpty, let lastErrorDescription {
+            throw BridgeError.playFailed("曲库搜索失败：\(lastErrorDescription)")
+        }
+        return collected
+    }
+
+    private func scrubSearchToken(_ raw: String) -> String {
+        var s = raw
+        // Drop common clutter from Netease titles.
+        let patterns = [
+            #"\(.*?\)"#, #"（.*?）"#, #"\[.*?\]"#, #"【.*?】"#,
+        ]
+        for p in patterns {
+            s = s.replacingOccurrences(of: p, with: " ", options: .regularExpression)
+        }
+        for token in ["官方", "动态歌词", "伴奏", "完整版", "Live", "live", "现场"] {
+            s = s.replacingOccurrences(of: token, with: " ")
+        }
+        return s
+            .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    // MARK: - Play
 
     private func play(song: MusicKit.Song) async throws {
+        // Songs without playParameters cannot stream for this account/region.
+        if song.playParameters == nil {
+            let err = BridgeError.playFailed(
+                "该曲目当前账号/地区不可流媒体播放（无 playParameters）。请确认 Apple Music 会员与商店地区。"
+            )
+            lastErrorDescription = err.localizedDescription
+            throw err
+        }
+
+        try activatePlaybackSession()
+
+        // Reset any prior queue state cleanly.
         player.stop()
-        player.queue = [song]
+        player.queue = ApplicationMusicPlayer.Queue(for: [song])
+
+        do {
+            try await player.prepareToPlay()
+        } catch {
+            // prepareToPlay is best-effort; still try play().
+            lastErrorDescription = "prepareToPlay: \(error.localizedDescription)"
+        }
+
         do {
             try await player.play()
         } catch {
-            let msg = error.localizedDescription
-            if msg.localizedCaseInsensitiveContains("subscription")
-                || msg.localizedCaseInsensitiveContains("会员") {
-                throw BridgeError.subscriptionRequired
+            // One retry after re-activating session (common after AVPlayer teardown).
+            try? activatePlaybackSession()
+            try? await Task.sleep(nanoseconds: 200_000_000)
+            do {
+                player.queue = ApplicationMusicPlayer.Queue(for: [song])
+                try await player.play()
+            } catch {
+                let mapped = mapPlayError(error)
+                lastErrorDescription = mapped.localizedDescription
+                throw mapped
             }
-            throw BridgeError.playFailed(msg)
+        }
+
+        // Confirm player actually entered a playable state.
+        try? await Task.sleep(nanoseconds: 150_000_000)
+        let status = player.state.playbackStatus
+        if status == .paused || status == .stopped {
+            // Some devices need a second play kick.
+            try? await player.play()
         }
 
         isActive = true
@@ -229,7 +335,37 @@ final class AppleMusicBridge {
         matchedMusicItemID = song.id.rawValue
         activeDuration = song.duration ?? 0
         startPolling()
-        onPlaybackState?(true, 0, activeDuration)
+        onPlaybackState?(true, player.playbackTime, activeDuration > 0 ? activeDuration : (song.duration ?? 0))
+        lastErrorDescription = nil
+    }
+
+    private func mapPlayError(_ error: Error) -> BridgeError {
+        let msg = error.localizedDescription
+        let lower = msg.lowercased()
+        if lower.contains("subscription")
+            || lower.contains("not subscribed")
+            || msg.contains("会员")
+            || lower.contains("permission") {
+            return .subscriptionRequired
+        }
+        if lower.contains("auth") || lower.contains("denied") {
+            return .notAuthorized
+        }
+        return .playFailed(msg)
+    }
+
+    private func activatePlaybackSession() throws {
+        let session = AVAudioSession.sharedInstance()
+        do {
+            try session.setCategory(
+                .playback,
+                mode: .default,
+                options: [.allowAirPlay, .allowBluetoothA2DP]
+            )
+            try session.setActive(true, options: [])
+        } catch {
+            throw BridgeError.audioSession(error.localizedDescription)
+        }
     }
 
     private func fetchSong(idRaw: String) async throws -> MusicKit.Song? {
@@ -239,17 +375,10 @@ final class AppleMusicBridge {
         return response.items.first
     }
 
-    private func searchTerm(title: String, artist: String) -> String {
-        [title, artist]
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-            .joined(separator: " ")
-    }
-
     // MARK: - Matching
 
     private func bestMatch(
-        in songs: MusicItemCollection<MusicKit.Song>,
+        in songs: [MusicKit.Song],
         title: String,
         artist: String
     ) -> MusicKit.Song? {
@@ -264,28 +393,38 @@ final class AppleMusicBridge {
             let sa = normalize(song.artistName)
             if st == t { score += 50 }
             else if st.contains(t) || t.contains(st) { score += 30 }
+            else if !t.isEmpty {
+                // partial token overlap
+                let tParts = t.split(separator: " ")
+                if tParts.contains(where: { st.contains($0) }) { score += 15 }
+            }
             if !a.isEmpty {
                 if sa == a { score += 40 }
                 else if sa.contains(a) || a.contains(sa) { score += 20 }
-                for part in a.split(whereSeparator: { $0 == "/" || $0 == "," || $0 == "&" }) {
+                for part in a.split(whereSeparator: { $0 == "/" || $0 == "," || $0 == "&" || $0 == "、" }) {
                     let p = normalize(String(part))
                     if !p.isEmpty, sa.contains(p) { score += 10 }
                 }
             }
+            if song.playParameters != nil { score += 5 }
             scored.append((song, score))
         }
         scored.sort { $0.1 > $1.1 }
-        if let best = scored.first, best.1 >= 20 {
+        // Prefer playable matches; fall back to top score.
+        if let bestPlayable = scored.first(where: { $0.0.playParameters != nil && $0.1 >= 15 }) {
+            return bestPlayable.0
+        }
+        if let best = scored.first, best.1 >= 15 {
             return best.0
         }
-        return songs.first
+        return songs.first(where: { $0.playParameters != nil }) ?? songs.first
     }
 
     private func normalize(_ s: String) -> String {
-        s.lowercased()
+        scrubSearchToken(s)
+            .lowercased()
             .replacingOccurrences(of: "（", with: "(")
             .replacingOccurrences(of: "）", with: ")")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     // MARK: - Polling
@@ -294,6 +433,7 @@ final class AppleMusicBridge {
         pollTask?.cancel()
         pollTask = Task { [weak self] in
             var lastPlaying = true
+            var stuckZeroTicks = 0
             while !Task.isCancelled {
                 guard let self, self.isActive else { break }
                 let status = self.player.state.playbackStatus
@@ -301,6 +441,16 @@ final class AppleMusicBridge {
                 let position = self.player.playbackTime
                 let duration = self.activeDuration
                 self.onPlaybackState?(playing, position, duration)
+
+                // If "playing" but position stuck at 0 for long, kick play again once.
+                if playing, position < 0.05 {
+                    stuckZeroTicks += 1
+                    if stuckZeroTicks == 8 {
+                        try? await self.player.play()
+                    }
+                } else {
+                    stuckZeroTicks = 0
+                }
 
                 if lastPlaying,
                    !playing,

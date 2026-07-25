@@ -51,7 +51,7 @@ struct AppleMusicSettingsView: View {
             } header: {
                 Text("状态")
             } footer: {
-                Text("账号登录在系统「音乐」App / 设置中完成。此处只请求本 App 的媒体权限并检查会员是否可播曲库。")
+                Text("账号登录在系统「音乐」App / 设置中完成。此处只请求本 App 的媒体权限并检查会员是否可播曲库。若 VIP 歌换源失败：① 点连接并授权 ② 确认有 Apple Music 会员 ③ 打开一次系统「音乐」App ④ 商店地区与曲库一致。")
             }
 
             Section {

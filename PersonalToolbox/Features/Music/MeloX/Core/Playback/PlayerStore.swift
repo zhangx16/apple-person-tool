@@ -214,14 +214,20 @@ final class PlayerStore {
     /// - Parameters:
     ///   - reason: Why we switched (for toast / stats).
     ///   - recordRescue: Count toward weekly rescue stats.
+    /// Last Apple Music failure (surfaced when auto-fallback fails).
+    private(set) var lastAppleMusicError: Error?
+
     @discardableResult
     func playViaAppleMusic(
         reason: AppleMusicSwitchReason = .manual,
-        recordRescue: Bool = true
+        recordRescue: Bool = true,
+        surfaceError: Bool = true
     ) async -> Bool {
         guard let song = currentSong else { return false }
         isLoading = true
-        playbackIssue = nil
+        if reason == .manual {
+            playbackIssue = nil
+        }
         // Tear down Netease AVPlayer path before starting AM (避免双源叠音).
         engine.unload()
         isUsingDownloadedSource = false
@@ -232,6 +238,7 @@ final class PlayerStore {
                 neteaseSongID: song.id
             )
             isUsingAppleMusic = true
+            lastAppleMusicError = nil
             appleMusicMatchLabel = "\(matched.title) · \(matched.artistName)"
             sourceLayer = .appleMusic
             sourceStatusMessage = reason.statusLine(match: appleMusicMatchLabel)
@@ -257,9 +264,12 @@ final class PlayerStore {
         } catch {
             isUsingAppleMusic = false
             appleMusicMatchLabel = nil
+            lastAppleMusicError = error
             isLoading = false
             isPlaying = false
-            if reason == .manual {
+            sourceStatusMessage = "Apple Music 失败：\(error.localizedDescription)"
+            // Always surface real AM error (manual or auto) so VIP 换源不会「没反应」。
+            if surfaceError {
                 playbackIssue = PlaybackIssue(song: song, error: error)
             }
             updateNowPlayingState()
@@ -268,14 +278,36 @@ final class PlayerStore {
         }
     }
 
-    /// Force-play a song via Apple Music (queue context optional). Long-press entry.
+    /// Force-play a song via Apple Music without first loading Netease (avoids trial race).
     func playViaAppleMusic(
         song: Song,
         in songs: [Song]? = nil,
         sourceID: Int? = nil
     ) async {
-        await play(song, in: songs, sourceID: sourceID)
-        _ = await playViaAppleMusic(reason: .manual, recordRescue: false)
+        recordCurrentPlayback()
+        if let songs, !songs.isEmpty {
+            let index = songs.firstIndex(where: { $0.id == song.id }) ?? 0
+            playbackQueue.replace(with: songs, startingAt: index)
+            historySourceID = sourceID
+        } else if let existingIndex = queue.firstIndex(where: { $0.id == song.id }) {
+            _ = playbackQueue.select(index: existingIndex)
+        } else {
+            playbackQueue.replace(with: [song], startingAt: 0)
+            historySourceID = sourceID
+        }
+        hasRecordedCurrentStart = false
+        currentSong = song
+        duration = TimeInterval(song.durationMS) / 1_000
+        progress = 0
+        stopAppleMusicIfNeeded()
+        engine.unload()
+        nowPlayingSession.setSong(
+            song,
+            duration: duration,
+            queueIndex: currentIndex,
+            queueCount: queue.count
+        )
+        _ = await playViaAppleMusic(reason: .manual, recordRescue: false, surfaceError: true)
     }
 
     func presentAppleMusicMatchPicker() async {
@@ -551,15 +583,20 @@ final class PlayerStore {
             // 起播前识别试听：不加载短流，直接切 AM（策略允许时）。
             if source.isTrialPreview, policy.allowsAutomaticAppleMusic, autoplay {
                 isResolvingSource = false
-                let ok = await playViaAppleMusic(reason: .trialPreview, recordRescue: true)
+                let ok = await playViaAppleMusic(
+                    reason: .trialPreview,
+                    recordRescue: true,
+                    surfaceError: false
+                )
                 if ok { return }
-                // 失败链：Apple Music → 网易云试听兜底
+                // 失败链：Apple Music → 网易云试听兜底（同时把 AM 失败原因写进弹窗）
                 sourceLayer = .neteaseTrial
                 sourceStatusMessage = "失败链：Apple Music 未成 → 网易云试听兜底"
-                showToast("Apple Music 不可用，正在播放网易云试听")
+                showToast("Apple Music 失败，正在播放网易云试听")
                 playbackIssue = PlaybackIssue(
                     song: song,
-                    error: APIError.trialPreviewOnly
+                    error: APIError.trialPreviewOnly,
+                    appleMusicError: lastAppleMusicError
                 )
             } else if source.isTrialPreview {
                 sourceLayer = .neteaseTrial
@@ -602,14 +639,33 @@ final class PlayerStore {
                         if case .trialPreviewOnly = $0 { return .trialPreview }
                         return .noSource
                     } ?? .playbackFailed
-                let ok = await playViaAppleMusic(reason: reason, recordRescue: true)
+                let ok = await playViaAppleMusic(
+                    reason: reason,
+                    recordRescue: true,
+                    surfaceError: false
+                )
                 if ok { return }
                 sourceStatusMessage = "失败链：网易云失败 → Apple Music 也失败"
+                playbackIssue = PlaybackIssue(
+                    song: song,
+                    error: error,
+                    appleMusicError: lastAppleMusicError
+                )
+                isLoading = false
+                isPlaying = false
+                sourceLayer = .none
+                updateNowPlayingState()
+                persistSnapshot()
+                return
             }
             isLoading = false
             isPlaying = false
             sourceLayer = .none
-            playbackIssue = PlaybackIssue(song: song, error: error)
+            playbackIssue = PlaybackIssue(
+                song: song,
+                error: error,
+                appleMusicError: lastAppleMusicError
+            )
             updateNowPlayingState()
             persistSnapshot()
         }
@@ -641,11 +697,16 @@ final class PlayerStore {
             guard !self.isUsingAppleMusic else { return }
             self.engine.unload()
             self.showToast("检测到试听片段，正在切换完整版…")
-            let ok = await self.playViaAppleMusic(reason: .durationProbe, recordRescue: true)
+            let ok = await self.playViaAppleMusic(
+                reason: .durationProbe,
+                recordRescue: true,
+                surfaceError: false
+            )
             if !ok {
                 self.playbackIssue = PlaybackIssue(
                     song: song,
-                    error: APIError.trialPreviewOnly
+                    error: APIError.trialPreviewOnly,
+                    appleMusicError: self.lastAppleMusicError
                 )
                 self.sourceLayer = .neteaseTrial
                 self.sourceStatusMessage = "失败链：时长探测试听 → Apple Music 失败"

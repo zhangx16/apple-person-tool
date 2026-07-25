@@ -151,6 +151,7 @@ final class AppDeepLinkStore: ObservableObject {
 
 enum NotifyGate {
     /// Returns false if we should suppress non-critical local notifications.
+    @MainActor
     static func allowsSmartNotify(settings: AppSettings) -> Bool {
         guard settings.notifySmartAlerts else { return false }
         guard settings.notifyQuietHoursEnabled else { return true }

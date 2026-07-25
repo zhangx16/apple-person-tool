@@ -15,6 +15,8 @@ final class AppleMusicBridge {
         case playFailed(String)
         case subscriptionRequired
         case audioSession(String)
+        /// Automatic MusicKit JWT cannot be issued for this App ID / profile.
+        case developerTokenUnavailable(String)
 
         var errorDescription: String? {
             switch self {
@@ -33,8 +35,25 @@ final class AppleMusicBridge {
                 return "需要有效的 Apple Music 会员，并在系统「音乐」App 登录同一 Apple ID。"
             case .audioSession(let msg):
                 return "无法激活播放音频会话：\(msg)"
+            case .developerTokenUnavailable(let detail):
+                return "无法获取 MusicKit 开发者令牌（\(detail)）。应用内真播放需要在苹果开发者后台为 App ID 开启 MusicKit 并重签描述文件；将尝试跳转系统 Apple Music。"
             }
         }
+
+        var isDeveloperTokenIssue: Bool {
+            if case .developerTokenUnavailable = self { return true }
+            return false
+        }
+    }
+
+    static func isDeveloperTokenFailure(_ error: Error) -> Bool {
+        if let bridge = error as? BridgeError, bridge.isDeveloperTokenIssue {
+            return true
+        }
+        let msg = error.localizedDescription.lowercased()
+        return msg.contains("developer token")
+            || msg.contains("failed to request developer token")
+            || msg.contains("developertoken")
     }
 
     private let player = ApplicationMusicPlayer.shared
@@ -238,6 +257,7 @@ final class AppleMusicBridge {
             return list
         }()
 
+        var lastSearchError: Error?
         for term in terms {
             guard !term.isEmpty else { continue }
             var request = MusicCatalogSearchRequest(term: term, types: [MusicKit.Song.self])
@@ -251,15 +271,24 @@ final class AppleMusicBridge {
                     }
                 }
             } catch {
-                // try next term
+                lastSearchError = error
                 lastErrorDescription = error.localizedDescription
+                // Developer token failure will hit every term — fail fast.
+                if Self.isDeveloperTokenFailure(error) {
+                    throw BridgeError.developerTokenUnavailable(error.localizedDescription)
+                }
                 continue
             }
             if collected.count >= 3 { break }
         }
 
-        if collected.isEmpty, let lastErrorDescription {
-            throw BridgeError.playFailed("曲库搜索失败：\(lastErrorDescription)")
+        if collected.isEmpty {
+            if let lastSearchError, Self.isDeveloperTokenFailure(lastSearchError) {
+                throw BridgeError.developerTokenUnavailable(lastSearchError.localizedDescription)
+            }
+            if let lastErrorDescription {
+                throw BridgeError.playFailed("曲库搜索失败：\(lastErrorDescription)")
+            }
         }
         return collected
     }

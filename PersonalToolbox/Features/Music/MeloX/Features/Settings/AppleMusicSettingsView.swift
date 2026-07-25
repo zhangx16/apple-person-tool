@@ -51,7 +51,7 @@ struct AppleMusicSettingsView: View {
             } header: {
                 Text("状态")
             } footer: {
-                Text("账号登录在系统「音乐」App / 设置中完成。此处只请求本 App 的媒体权限并检查会员是否可播曲库。若 VIP 歌换源失败：① 点连接并授权 ② 确认有 Apple Music 会员 ③ 打开一次系统「音乐」App ④ 商店地区与曲库一致。")
+                Text("应用内 MusicKit 真播放需要：① 苹果开发者后台为 App ID 开启 MusicKit ② 用含该能力的描述文件重签 ③ 本机登录 Apple Music 会员。若出现 developer token 失败，App 会用 iTunes 搜索并跳转系统「音乐」播放完整版。")
             }
 
             Section {

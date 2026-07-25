@@ -127,7 +127,7 @@ struct MeloXContentView: View {
                 let chain = player.sourceStatusMessage.map { "\n\($0)" } ?? ""
                 Text((player.playbackIssue?.message ?? "当前歌曲暂时无法播放。")
                     + chain
-                    + "\n失败链：完整网易云 → Apple Music → 网易云试听兜底。需本机 Apple Music 会员。")
+                    + "\n失败链：完整网易云 → Apple Music 应用内 → 系统 Apple Music 跳转 → 网易云试听。若提示 developer token，说明描述文件未开通 MusicKit，只能跳转系统音乐 App。")
             }
             .alert(
                 "下载操作失败",

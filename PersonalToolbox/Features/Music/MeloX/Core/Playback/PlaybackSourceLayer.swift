@@ -7,6 +7,8 @@ enum PlaybackSourceLayer: String, Sendable {
     case neteaseFull
     case neteaseTrial
     case appleMusic
+    /// Opened system Music app (MusicKit developer token unavailable).
+    case appleMusicExternal
 
     var title: String {
         switch self {
@@ -15,6 +17,7 @@ enum PlaybackSourceLayer: String, Sendable {
         case .neteaseFull: "网易云"
         case .neteaseTrial: "网易云试听"
         case .appleMusic: "Apple Music"
+        case .appleMusicExternal: "Apple Music（系统 App）"
         }
     }
 }

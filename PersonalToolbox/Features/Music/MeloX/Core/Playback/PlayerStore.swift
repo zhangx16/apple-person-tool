@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import UIKit
 
 @MainActor
 @Observable
@@ -262,6 +263,13 @@ final class PlayerStore {
             showToast(reason.toastMessage)
             return true
         } catch {
+            // MusicKit 无 developer token 时无法应用内真播放：用 iTunes 搜索并打开系统 Apple Music。
+            if AppleMusicBridge.isDeveloperTokenFailure(error)
+                || (error as? AppleMusicBridge.BridgeError)?.isDeveloperTokenIssue == true {
+                if await openSystemAppleMusic(for: song, reason: reason, recordRescue: recordRescue) {
+                    return true
+                }
+            }
             isUsingAppleMusic = false
             appleMusicMatchLabel = nil
             lastAppleMusicError = error
@@ -274,6 +282,63 @@ final class PlayerStore {
             }
             updateNowPlayingState()
             persistSnapshot()
+            return false
+        }
+    }
+
+    /// When MusicKit developer token is unavailable, open the matched track in the system Music app.
+    @discardableResult
+    private func openSystemAppleMusic(
+        for song: Song,
+        reason: AppleMusicSwitchReason,
+        recordRescue: Bool
+    ) async -> Bool {
+        do {
+            guard let hit = try await ITunesMusicLookup.bestMatch(
+                title: song.name,
+                artist: song.artistText
+            ) else {
+                lastAppleMusicError = AppleMusicBridge.BridgeError.noMatch(
+                    title: song.name,
+                    artist: song.artistText
+                )
+                return false
+            }
+
+            // Prefer music:// deep link; fall back to https track view URL.
+            let candidates = [hit.appleMusicOpenURL, hit.trackViewURL].compactMap { $0 }
+            var opened = false
+            for url in candidates {
+                opened = await UIApplication.shared.open(url)
+                if opened { break }
+            }
+            guard opened else {
+                lastAppleMusicError = AppleMusicBridge.BridgeError.playFailed(
+                    "已找到曲目但无法打开系统 Apple Music（\(hit.trackName)）。"
+                )
+                return false
+            }
+
+            isUsingAppleMusic = false
+            lastAppleMusicError = nil
+            appleMusicMatchLabel = "\(hit.trackName) · \(hit.artistName)"
+            sourceLayer = .appleMusicExternal
+            sourceStatusMessage = "已在系统 Apple Music 打开（无 MusicKit 令牌，无法应用内真播放）"
+            isLoading = false
+            isPlaying = false
+            if let ms = hit.trackTimeMillis, ms > 0 {
+                duration = TimeInterval(ms) / 1_000
+            }
+            updateNowPlayingState()
+            persistSnapshot()
+            if recordRescue, reason.countsAsRescue {
+                rescueStats.record(neteaseSongID: song.id, reason: "external-\(reason.rawValue)")
+            }
+            showToast("已跳转 Apple Music：《\(hit.trackName)》")
+            playbackIssue = nil
+            return true
+        } catch {
+            lastAppleMusicError = error
             return false
         }
     }

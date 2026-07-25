@@ -68,8 +68,8 @@ struct PlayerSettingsView: View {
                 Toggle("记住所处页面", isOn: $settings.rememberNowPlayingPage)
 
                 Toggle("上一首优先回到歌曲开头", isOn: $settings.previousRestartsCurrentSong)
-                Toggle("网易云无源时自动用 Apple Music", isOn: $settings.appleMusicAutoFallback)
-                Text("需本机登录 Apple Music 会员。MusicKit 曲库匹配后真播放（非跳转）。")
+                Toggle("网易云试听/无源时自动用 Apple Music", isOn: $settings.appleMusicAutoFallback)
+                Text("无版权、无地址，或非会员仅几十秒试听时，自动改用 MusicKit 完整播放（需本机 Apple Music 会员）。")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             } header: {

@@ -376,7 +376,7 @@ final class MeloXSettings {
         didSet { defaults.set(checksUpdatesOnLaunch, forKey: Key.checksUpdatesOnLaunch) }
     }
 
-    /// When Netease has no playable URL, automatically try Apple Music (MusicKit).
+    /// When Netease has no full track (no URL / VIP trial clip only), try Apple Music (MusicKit).
     var appleMusicAutoFallback: Bool {
         didSet { defaults.set(appleMusicAutoFallback, forKey: Key.appleMusicAutoFallback) }
     }

@@ -25,6 +25,8 @@ enum APIError: LocalizedError {
     case emptyResponse(statusCode: Int)
     case server(statusCode: Int, message: String)
     case noPlayableSource
+    /// Non-VIP / privilege-limited clip (freeTrialInfo), typically tens of seconds.
+    case trialPreviewOnly
     case notLoggedIn
 
     var errorDescription: String? {
@@ -39,6 +41,8 @@ enum APIError: LocalizedError {
             "请求失败（\(statusCode)）：\(message)"
         case .noPlayableSource:
             "当前歌曲可能因版权或地区限制，没有可用的播放地址。"
+        case .trialPreviewOnly:
+            "当前账号仅能试听片段（非完整曲目），可改用 Apple Music 完整播放。"
         case .notLoggedIn:
             "请先登录网易云音乐。"
         }
@@ -301,16 +305,35 @@ final class NeteaseAPI {
                   let url = securePlaybackURL(from: string) else {
                 throw APIError.noPlayableSource
             }
-            return PlaybackSource(url: url, bitrate: source.bitrate, format: source.format)
+            // VIP / 非会员试听：API 带 freeTrialInfo（常见 0~30 秒），不是完整曲。
+            let isTrial = Self.isTrialPreviewURL(source)
+            return PlaybackSource(
+                url: url,
+                bitrate: source.bitrate,
+                format: source.format,
+                isTrialPreview: isTrial
+            )
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch APIError.noPlayableSource {
+            throw APIError.noPlayableSource
         } catch {
             // YesPlayMusic 在未登录时使用网易云官方外链。iOS 先尝试上面的
             // HTTPS 化原始音源，仅在失败时保留这个官方兜底，避免静默卡在 00:00。
+            // 外链对未登录用户也常是试听片段，标记为可能试听，由播放层时长再校验。
             guard settings.cookie.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                   let url = URL(string: "https://music.163.com/song/media/outer/url?id=\(id)") else {
                 throw error
             }
-            return PlaybackSource(url: url, bitrate: nil, format: "mp3")
+            return PlaybackSource(url: url, bitrate: nil, format: "mp3", isTrialPreview: false)
         }
+    }
+
+    /// Detect Netease free-trial / VIP preview clips from player URL payload.
+    /// Presence of `freeTrialInfo` means the stream is a privilege-limited clip
+    /// (typically ~30s for non-members), not a full-length playable track.
+    static func isTrialPreviewURL(_ source: SongURL) -> Bool {
+        source.freeTrialInfo != nil
     }
 
     func downloadSource(id: Int, quality: MusicQuality) async throws -> PlaybackSource {

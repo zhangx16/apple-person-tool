@@ -102,7 +102,7 @@ struct MeloXContentView: View {
                 Button("好", role: .cancel) { player.dismissPlaybackIssue() }
             } message: {
                 Text((player.playbackIssue?.message ?? "当前歌曲暂时无法播放。")
-                    + "\n可改用 Apple Music 真播放（需本机登录 Apple Music 会员）。")
+                    + "\n可改用 Apple Music 完整播放（无版权/仅试听片段时同样适用，需本机 Apple Music 会员）。")
             }
             .alert(
                 "下载操作失败",

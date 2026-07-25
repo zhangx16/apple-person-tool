@@ -384,6 +384,19 @@ final class PlayerStore {
                 source = try await api.playbackSource(id: song.id)
             }
             guard generation == loadGeneration, currentSong?.id == song.id else { return }
+
+            // 非会员试听片段：不要只播几十秒，优先切 Apple Music 完整曲。
+            if source.isTrialPreview, settings.appleMusicAutoFallback, autoplay {
+                isResolvingSource = false
+                await playViaAppleMusic()
+                if isUsingAppleMusic { return }
+                // AM 失败则仍播网易云试听，避免完全无声；并提示可重试 AM。
+                playbackIssue = PlaybackIssue(
+                    song: song,
+                    error: APIError.trialPreviewOnly
+                )
+            }
+
             isResolvingSource = false
             await engine.load(
                 source,
@@ -395,10 +408,15 @@ final class PlayerStore {
         } catch {
             guard generation == loadGeneration, currentSong?.id == song.id else { return }
             isResolvingSource = false
-            // Auto-fallback to Apple Music when Netease has no playable URL / failed.
+            // Auto-fallback: 无源 / 仅试听 / 解码失败。
             let shouldFallback: Bool
-            if let apiError = error as? APIError, case .noPlayableSource = apiError {
-                shouldFallback = true
+            if let apiError = error as? APIError {
+                switch apiError {
+                case .noPlayableSource, .trialPreviewOnly:
+                    shouldFallback = true
+                default:
+                    shouldFallback = settings.appleMusicAutoFallback
+                }
             } else if error is AudioPlaybackError {
                 shouldFallback = true
             } else {
@@ -413,6 +431,40 @@ final class PlayerStore {
             playbackIssue = PlaybackIssue(song: song, error: error)
             updateNowPlayingState()
             persistSnapshot()
+        }
+    }
+
+    /// 音源加载后若实际时长远短于曲目元数据（外链/漏标试听），再切 Apple Music。
+    private func maybeFallbackIfNeteasePreviewClip(
+        actualDuration: TimeInterval,
+        generation: Int
+    ) {
+        guard !isUsingAppleMusic, !isUsingDownloadedSource else { return }
+        guard settings.appleMusicAutoFallback else { return }
+        guard generation == loadGeneration else { return }
+        guard let song = currentSong, song.durationMS > 0 else { return }
+        guard actualDuration > 0 else { return }
+
+        let catalog = TimeInterval(song.durationMS) / 1_000
+        // 元数据至少 90 秒才有意义；实际音源明显是短试听。
+        guard catalog >= 90 else { return }
+        let looksLikeTrial =
+            actualDuration <= 45
+            || (actualDuration <= 90 && actualDuration < catalog * 0.4)
+            || actualDuration < catalog * 0.25
+        guard looksLikeTrial else { return }
+
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            guard self.loadGeneration == generation, self.currentSong?.id == song.id else { return }
+            guard !self.isUsingAppleMusic else { return }
+            await self.playViaAppleMusic()
+            if !self.isUsingAppleMusic {
+                self.playbackIssue = PlaybackIssue(
+                    song: song,
+                    error: APIError.trialPreviewOnly
+                )
+            }
         }
     }
 
@@ -543,6 +595,11 @@ final class PlayerStore {
             guard let self else { return }
             self.duration = value
             self.updateNowPlayingState()
+            // 网易云偶发不带 freeTrialInfo 的外链试听：用实际时长二次判定。
+            self.maybeFallbackIfNeteasePreviewClip(
+                actualDuration: value,
+                generation: self.loadGeneration
+            )
         }
         engine.onPlaybackEnded = { [weak self] in
             Task { @MainActor in

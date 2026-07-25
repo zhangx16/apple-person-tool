@@ -105,6 +105,12 @@ final class MeloXSettings {
         static let appleMusicAutoFallback = "appleMusicAutoFallback"
         static let audioSourcePolicy = "audioSourcePolicy"
         static let hideLikelyIncompleteTracks = "hideLikelyIncompleteTracks"
+        static let navidromeEnabled = "navidromeEnabled"
+        static let navidromeBaseURL = "navidromeBaseURL"
+        static let navidromeUsername = "navidromeUsername"
+        static let navidromePasswordKeychain = "navidromePassword"
+        static let navidromeBeforeAppleMusic = "navidromeBeforeAppleMusic"
+        static let navidromeDidSeedDefaults = "navidromeDidSeedDefaults"
         static let automaticallyCachesFrequentlyPlayedSongs = "automaticallyCachesFrequentlyPlayedSongs"
         static let automaticCachePlaybackThreshold = "automaticCachePlaybackThreshold"
         static let automaticCacheQuality = "automaticCacheQuality"
@@ -402,6 +408,35 @@ final class MeloXSettings {
         didSet { defaults.set(hideLikelyIncompleteTracks, forKey: Key.hideLikelyIncompleteTracks) }
     }
 
+    /// Self-hosted Navidrome / OpenSubsonic library.
+    var navidromeEnabled: Bool {
+        didSet { defaults.set(navidromeEnabled, forKey: Key.navidromeEnabled) }
+    }
+
+    var navidromeBaseURL: String {
+        didSet { defaults.set(navidromeBaseURL, forKey: Key.navidromeBaseURL) }
+    }
+
+    var navidromeUsername: String {
+        didSet { defaults.set(navidromeUsername, forKey: Key.navidromeUsername) }
+    }
+
+    /// Stored in Keychain (not UserDefaults).
+    var navidromePassword: String {
+        didSet { KeychainStore.set(navidromePassword, for: Key.navidromePasswordKeychain) }
+    }
+
+    /// When true, Navidrome is tried before Apple Music on trial/no-source.
+    var navidromeBeforeAppleMusic: Bool {
+        didSet { defaults.set(navidromeBeforeAppleMusic, forKey: Key.navidromeBeforeAppleMusic) }
+    }
+
+    var navidromeIsConfigured: Bool {
+        let base = navidromeBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        let user = navidromeUsername.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !base.isEmpty && !user.isEmpty && !navidromePassword.isEmpty
+    }
+
     var automaticallyCachesFrequentlyPlayedSongs: Bool {
         didSet {
             defaults.set(
@@ -611,6 +646,32 @@ final class MeloXSettings {
             audioSourcePolicy = legacyFallback ? .smartFallback : .neteaseOnly
         }
         hideLikelyIncompleteTracks = defaults.object(forKey: Key.hideLikelyIncompleteTracks) as? Bool ?? false
+
+        // Seed personal Navidrome once (password → Keychain).
+        if defaults.object(forKey: Key.navidromeDidSeedDefaults) as? Bool != true {
+            defaults.set(true, forKey: Key.navidromeDidSeedDefaults)
+            if defaults.string(forKey: Key.navidromeBaseURL)?.isEmpty != false {
+                defaults.set("https://music.mefun.org", forKey: Key.navidromeBaseURL)
+            }
+            if defaults.string(forKey: Key.navidromeUsername)?.isEmpty != false {
+                defaults.set("zxin", forKey: Key.navidromeUsername)
+            }
+            if KeychainStore.get(Key.navidromePasswordKeychain)?.isEmpty != false {
+                KeychainStore.set("3QeqSozHQ6", for: Key.navidromePasswordKeychain)
+            }
+            if defaults.object(forKey: Key.navidromeEnabled) == nil {
+                defaults.set(true, forKey: Key.navidromeEnabled)
+            }
+            if defaults.object(forKey: Key.navidromeBeforeAppleMusic) == nil {
+                defaults.set(true, forKey: Key.navidromeBeforeAppleMusic)
+            }
+        }
+        navidromeEnabled = defaults.object(forKey: Key.navidromeEnabled) as? Bool ?? true
+        navidromeBaseURL = defaults.string(forKey: Key.navidromeBaseURL) ?? "https://music.mefun.org"
+        navidromeUsername = defaults.string(forKey: Key.navidromeUsername) ?? "zxin"
+        navidromePassword = KeychainStore.get(Key.navidromePasswordKeychain) ?? ""
+        navidromeBeforeAppleMusic = defaults.object(forKey: Key.navidromeBeforeAppleMusic) as? Bool ?? true
+
         automaticallyCachesFrequentlyPlayedSongs = defaults.object(
             forKey: Key.automaticallyCachesFrequentlyPlayedSongs
         ) as? Bool ?? false

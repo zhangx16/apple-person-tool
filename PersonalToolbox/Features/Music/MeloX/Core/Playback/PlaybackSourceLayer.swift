@@ -6,6 +6,7 @@ enum PlaybackSourceLayer: String, Sendable {
     case localDownload
     case neteaseFull
     case neteaseTrial
+    case navidrome
     case appleMusic
     /// Opened system Music app (MusicKit developer token unavailable).
     case appleMusicExternal
@@ -16,6 +17,7 @@ enum PlaybackSourceLayer: String, Sendable {
         case .localDownload: "本地下载"
         case .neteaseFull: "网易云"
         case .neteaseTrial: "网易云试听"
+        case .navidrome: "Navidrome"
         case .appleMusic: "Apple Music"
         case .appleMusicExternal: "Apple Music（系统 App）"
         }

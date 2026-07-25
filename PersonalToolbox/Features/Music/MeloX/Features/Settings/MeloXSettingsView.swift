@@ -27,6 +27,12 @@ struct MeloXSettingsView: View {
                 }
 
                 NavigationLink {
+                    NavidromeSettingsView()
+                } label: {
+                    Label("Navidrome", systemImage: "externaldrive.connected.to.line.below")
+                }
+
+                NavigationLink {
                     AppleMusicSettingsView()
                 } label: {
                     Label("Apple Music", systemImage: "music.note.tv")

@@ -67,6 +67,18 @@ struct TrackRowView: View {
         .contextMenu {
             Button {
                 Task {
+                    await player.playViaNavidrome(
+                        song: song,
+                        in: queueContext,
+                        sourceID: sourceID
+                    )
+                }
+            } label: {
+                Label("用 Navidrome 播放", systemImage: "externaldrive.connected.to.line.below")
+            }
+
+            Button {
+                Task {
                     await player.playViaAppleMusic(
                         song: song,
                         in: queueContext,

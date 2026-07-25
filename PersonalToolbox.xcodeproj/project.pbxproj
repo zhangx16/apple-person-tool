@@ -7,6 +7,8 @@
 
 /* Begin PBXBuildFile section */
 		000000000000000000000831 /* AppleMusicBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000830 /* AppleMusicBridge.swift */; };
+		000000000000000000008223 /* NavidromeSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008222 /* NavidromeSettingsView.swift */; };
+		000000000000000000008221 /* NavidromeClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008220 /* NavidromeClient.swift */; };
 		000000000000000000008213 /* ITunesMusicLookup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008212 /* ITunesMusicLookup.swift */; };
 		000000000000000000008203 /* AudioSourcePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008202 /* AudioSourcePolicy.swift */; };
 		000000000000000000008205 /* AppleMusicMatchCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008204 /* AppleMusicMatchCache.swift */; };
@@ -310,6 +312,8 @@
 
 /* Begin PBXFileReference section */
 		000000000000000000000830 /* AppleMusicBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Playback/AppleMusicBridge.swift; sourceTree = "<group>"; };
+		000000000000000000008222 /* NavidromeSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Settings/NavidromeSettingsView.swift; sourceTree = "<group>"; };
+		000000000000000000008220 /* NavidromeClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Networking/NavidromeClient.swift; sourceTree = "<group>"; };
 		000000000000000000008212 /* ITunesMusicLookup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Playback/ITunesMusicLookup.swift; sourceTree = "<group>"; };
 		000000000000000000008202 /* AudioSourcePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Settings/AudioSourcePolicy.swift; sourceTree = "<group>"; };
 		000000000000000000008204 /* AppleMusicMatchCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Playback/AppleMusicMatchCache.swift; sourceTree = "<group>"; };
@@ -646,6 +650,7 @@
 				000000000000000000008030 /* SongCollectionPage.swift */,
 				000000000000000000008032 /* SongCommentModels.swift */,
 				000000000000000000008034 /* NeteaseAPI.swift */,
+				000000000000000000008220 /* NavidromeClient.swift */,
 				000000000000000000008036 /* NeteaseDirectClient.swift */,
 				000000000000000000008038 /* NeteaseSocialAPI.swift */,
 				00000000000000000000803A /* AudioEqualizerDSP.swift */,
@@ -762,6 +767,7 @@
 				000000000000000000008108 /* NeteaseLoginView.swift */,
 				00000000000000000000810A /* PlayerSettingsView.swift */,
 				00000000000000000000820E /* AppleMusicSettingsView.swift */,
+				000000000000000000008222 /* NavidromeSettingsView.swift */,
 				00000000000000000000810C /* SettingsAccountSection.swift */,
 				00000000000000000000810E /* SkylineLyricsSettingsView.swift */,
 				000000000000000000008110 /* TextPVSettingsView.swift */,
@@ -1284,6 +1290,8 @@
 				000000000000000000000509 /* PasswordGenerator.swift in Sources */,
 				00000000000000000000050B /* ClipboardStore.swift in Sources */,
 				000000000000000000000831 /* AppleMusicBridge.swift in Sources */,
+				000000000000000000008223 /* NavidromeSettingsView.swift in Sources */,
+				000000000000000000008221 /* NavidromeClient.swift in Sources */,
 				000000000000000000008213 /* ITunesMusicLookup.swift in Sources */,
 				000000000000000000008203 /* AudioSourcePolicy.swift in Sources */,
 				000000000000000000008205 /* AppleMusicMatchCache.swift in Sources */,
@@ -1615,7 +1623,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 99;
+				CURRENT_PROJECT_VERSION = 100;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				CODE_SIGN_ENTITLEMENTS = PersonalToolbox/PersonalToolbox.entitlements;
@@ -1642,7 +1650,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 99;
+				CURRENT_PROJECT_VERSION = 100;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				CODE_SIGN_ENTITLEMENTS = PersonalToolbox/PersonalToolbox.entitlements;
@@ -1669,7 +1677,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 99;
+				CURRENT_PROJECT_VERSION = 100;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
@@ -1695,7 +1703,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 99;
+				CURRENT_PROJECT_VERSION = 100;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;

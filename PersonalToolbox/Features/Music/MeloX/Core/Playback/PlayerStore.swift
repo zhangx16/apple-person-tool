@@ -217,6 +217,12 @@ final class PlayerStore {
     ///   - recordRescue: Count toward weekly rescue stats.
     /// Last Apple Music failure (surfaced when auto-fallback fails).
     private(set) var lastAppleMusicError: Error?
+    private(set) var lastNavidromeError: Error?
+    /// Label when streaming from Navidrome match.
+    private(set) var navidromeMatchLabel: String?
+
+    @ObservationIgnored
+    private let navidrome = NavidromeClient.shared
 
     @discardableResult
     func playViaAppleMusic(
@@ -349,6 +355,97 @@ final class PlayerStore {
         in songs: [Song]? = nil,
         sourceID: Int? = nil
     ) async {
+        await prepareQueue(song: song, in: songs, sourceID: sourceID)
+        _ = await playViaAppleMusic(reason: .manual, recordRescue: false, surfaceError: true)
+    }
+
+    /// Match current (or given) track in Navidrome and stream full file via AVPlayer.
+    @discardableResult
+    func playViaNavidrome(
+        song overrideSong: Song? = nil,
+        surfaceError: Bool = true
+    ) async -> Bool {
+        let song = overrideSong ?? currentSong
+        guard let song else { return false }
+        if overrideSong != nil, currentSong?.id != song.id {
+            await prepareQueue(song: song, in: nil, sourceID: nil)
+        }
+        guard settings.navidromeIsConfigured else {
+            let err = NavidromeClient.ClientError.notConfigured
+            lastNavidromeError = err
+            if surfaceError {
+                playbackIssue = PlaybackIssue(song: song, error: err)
+            }
+            return false
+        }
+
+        isLoading = true
+        if surfaceError { playbackIssue = nil }
+        stopAppleMusicIfNeeded()
+        engine.unload()
+        isUsingDownloadedSource = false
+        isUsingAppleMusic = false
+
+        do {
+            let (source, hit) = try await navidrome.playbackSource(
+                title: song.name,
+                artist: song.artistText,
+                settings: settings
+            )
+            guard currentSong?.id == song.id else { return false }
+            navidromeMatchLabel = "\(hit.title) · \(hit.artist)"
+            lastNavidromeError = nil
+            sourceLayer = .navidrome
+            sourceStatusMessage = "Navidrome · \(hit.title) · \(hit.artist)"
+            if hit.duration > 0 {
+                duration = TimeInterval(hit.duration)
+            }
+            progress = 0
+            lastProgressUpdateDate = Date()
+            isResolvingSource = false
+            await engine.load(source, startAt: 0, autoplay: true)
+            isLoading = false
+            isPlaying = true
+            nowPlayingSession.setSong(
+                song,
+                duration: duration,
+                queueIndex: currentIndex,
+                queueCount: queue.count
+            )
+            updateNowPlayingState()
+            persistSnapshot()
+            recordCurrentPlaybackStartIfNeeded()
+            showToast("Navidrome 完整播放：\(hit.title)")
+            return true
+        } catch {
+            lastNavidromeError = error
+            navidromeMatchLabel = nil
+            isLoading = false
+            isPlaying = false
+            sourceStatusMessage = "Navidrome 失败：\(error.localizedDescription)"
+            if surfaceError {
+                playbackIssue = PlaybackIssue(song: song, error: error)
+            }
+            updateNowPlayingState()
+            persistSnapshot()
+            return false
+        }
+    }
+
+    func playViaNavidrome(
+        song: Song,
+        in songs: [Song]? = nil,
+        sourceID: Int? = nil
+    ) async {
+        await prepareQueue(song: song, in: songs, sourceID: sourceID)
+        _ = await playViaNavidrome(song: song, surfaceError: true)
+    }
+
+    private func prepareQueue(
+        song: Song,
+        in songs: [Song]?,
+        sourceID: Int?
+    ) async {
         recordCurrentPlayback()
         if let songs, !songs.isEmpty {
             let index = songs.firstIndex(where: { $0.id == song.id }) ?? 0
@@ -372,7 +469,47 @@ final class PlayerStore {
             queueIndex: currentIndex,
             queueCount: queue.count
         )
-        _ = await playViaAppleMusic(reason: .manual, recordRescue: false, surfaceError: true)
+    }
+
+    /// Shared fallback: Navidrome (if enabled) then Apple Music.
+    private func tryAlternateFullSources(
+        for song: Song,
+        generation: Int,
+        preferNavidrome: Bool
+    ) async -> Bool {
+        guard generation == loadGeneration, currentSong?.id == song.id else { return false }
+
+        let tryNav = settings.navidromeEnabled && settings.navidromeIsConfigured
+        let tryAM = settings.audioSourcePolicy.allowsAutomaticAppleMusic
+
+        if preferNavidrome {
+            if tryNav {
+                let ok = await playViaNavidrome(surfaceError: false)
+                if ok { return true }
+            }
+            if tryAM {
+                let ok = await playViaAppleMusic(
+                    reason: .trialPreview,
+                    recordRescue: true,
+                    surfaceError: false
+                )
+                if ok { return true }
+            }
+        } else {
+            if tryAM {
+                let ok = await playViaAppleMusic(
+                    reason: .noSource,
+                    recordRescue: true,
+                    surfaceError: false
+                )
+                if ok { return true }
+            }
+            if tryNav {
+                let ok = await playViaNavidrome(surfaceError: false)
+                if ok { return true }
+            }
+        }
+        return false
     }
 
     func presentAppleMusicMatchPicker() async {
@@ -645,24 +782,27 @@ final class PlayerStore {
             }
             guard generation == loadGeneration, currentSong?.id == song.id else { return }
 
-            // 起播前识别试听：不加载短流，直接切 AM（策略允许时）。
-            if source.isTrialPreview, policy.allowsAutomaticAppleMusic, autoplay {
-                isResolvingSource = false
-                let ok = await playViaAppleMusic(
-                    reason: .trialPreview,
-                    recordRescue: true,
-                    surfaceError: false
-                )
-                if ok { return }
-                // 失败链：Apple Music → 网易云试听兜底（同时把 AM 失败原因写进弹窗）
-                sourceLayer = .neteaseTrial
-                sourceStatusMessage = "失败链：Apple Music 未成 → 网易云试听兜底"
-                showToast("Apple Music 失败，正在播放网易云试听")
-                playbackIssue = PlaybackIssue(
-                    song: song,
-                    error: APIError.trialPreviewOnly,
-                    appleMusicError: lastAppleMusicError
-                )
+            // 起播前识别试听：不加载短流；Navidrome → Apple Music → 试听兜底。
+            if source.isTrialPreview, autoplay {
+                let wantAlt = (settings.navidromeEnabled && settings.navidromeIsConfigured)
+                    || policy.allowsAutomaticAppleMusic
+                if wantAlt {
+                    isResolvingSource = false
+                    let ok = await tryAlternateFullSources(
+                        for: song,
+                        generation: generation,
+                        preferNavidrome: settings.navidromeBeforeAppleMusic
+                    )
+                    if ok { return }
+                    sourceLayer = .neteaseTrial
+                    sourceStatusMessage = "失败链：完整源均失败 → 网易云试听兜底"
+                    showToast("完整音源不可用，正在播放网易云试听")
+                    playbackIssue = PlaybackIssue(
+                        song: song,
+                        error: APIError.trialPreviewOnly,
+                        appleMusicError: lastAppleMusicError ?? lastNavidromeError
+                    )
+                }
             } else if source.isTrialPreview {
                 sourceLayer = .neteaseTrial
                 sourceStatusMessage = "网易云试听片段（策略：仅网易云）"
@@ -685,36 +825,21 @@ final class PlayerStore {
         } catch {
             guard generation == loadGeneration, currentSong?.id == song.id else { return }
             isResolvingSource = false
-            let shouldFallback: Bool
-            if let apiError = error as? APIError {
-                switch apiError {
-                case .noPlayableSource, .trialPreviewOnly:
-                    shouldFallback = policy.allowsAutomaticAppleMusic
-                default:
-                    shouldFallback = policy.allowsAutomaticAppleMusic
-                }
-            } else if error is AudioPlaybackError {
-                shouldFallback = policy.allowsAutomaticAppleMusic
-            } else {
-                shouldFallback = policy.allowsAutomaticAppleMusic
-            }
-            if shouldFallback, autoplay {
-                let reason: AppleMusicSwitchReason =
-                    (error as? APIError).map {
-                        if case .trialPreviewOnly = $0 { return .trialPreview }
-                        return .noSource
-                    } ?? .playbackFailed
-                let ok = await playViaAppleMusic(
-                    reason: reason,
-                    recordRescue: true,
-                    surfaceError: false
+            let wantAlternate =
+                (settings.navidromeEnabled && settings.navidromeIsConfigured)
+                || policy.allowsAutomaticAppleMusic
+            if wantAlternate, autoplay {
+                let ok = await tryAlternateFullSources(
+                    for: song,
+                    generation: generation,
+                    preferNavidrome: settings.navidromeBeforeAppleMusic
                 )
                 if ok { return }
-                sourceStatusMessage = "失败链：网易云失败 → Apple Music 也失败"
+                sourceStatusMessage = "失败链：网易云失败 → Navidrome/Apple Music 也失败"
                 playbackIssue = PlaybackIssue(
                     song: song,
                     error: error,
-                    appleMusicError: lastAppleMusicError
+                    appleMusicError: lastAppleMusicError ?? lastNavidromeError
                 )
                 isLoading = false
                 isPlaying = false
@@ -762,19 +887,19 @@ final class PlayerStore {
             guard !self.isUsingAppleMusic else { return }
             self.engine.unload()
             self.showToast("检测到试听片段，正在切换完整版…")
-            let ok = await self.playViaAppleMusic(
-                reason: .durationProbe,
-                recordRescue: true,
-                surfaceError: false
+            let ok = await self.tryAlternateFullSources(
+                for: song,
+                generation: generation,
+                preferNavidrome: self.settings.navidromeBeforeAppleMusic
             )
             if !ok {
                 self.playbackIssue = PlaybackIssue(
                     song: song,
                     error: APIError.trialPreviewOnly,
-                    appleMusicError: self.lastAppleMusicError
+                    appleMusicError: self.lastAppleMusicError ?? self.lastNavidromeError
                 )
                 self.sourceLayer = .neteaseTrial
-                self.sourceStatusMessage = "失败链：时长探测试听 → Apple Music 失败"
+                self.sourceStatusMessage = "失败链：时长探测试听 → 完整源失败"
             }
         }
     }
@@ -785,7 +910,8 @@ final class PlayerStore {
         }
         isUsingAppleMusic = false
         appleMusicMatchLabel = nil
-        if sourceLayer == .appleMusic {
+        navidromeMatchLabel = nil
+        if sourceLayer == .appleMusic || sourceLayer == .navidrome {
             sourceLayer = .none
             sourceStatusMessage = nil
         }

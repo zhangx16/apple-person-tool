@@ -107,8 +107,13 @@ struct MiniPlayerView: View {
             }
             return player.appleMusicMatchLabel ?? "Apple Music"
         }
+        if player.sourceLayer == .navidrome {
+            return player.navidromeMatchLabel
+                ?? player.sourceStatusMessage
+                ?? "Navidrome"
+        }
         if let status = player.sourceStatusMessage,
-           player.sourceLayer == .neteaseTrial {
+           player.sourceLayer == .neteaseTrial || player.sourceLayer == .appleMusicExternal {
             return status
         }
         return song.artistText

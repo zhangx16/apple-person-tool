@@ -107,6 +107,10 @@ struct MeloXContentView: View {
                         Task { await player.next() }
                     }
                 }
+                Button("用 Navidrome 播放") {
+                    player.dismissPlaybackIssue()
+                    Task { _ = await player.playViaNavidrome(surfaceError: true) }
+                }
                 Button("用 Apple Music 播放") {
                     player.dismissPlaybackIssue()
                     Task { await player.playViaAppleMusic(reason: .manual, recordRescue: false) }
@@ -127,7 +131,7 @@ struct MeloXContentView: View {
                 let chain = player.sourceStatusMessage.map { "\n\($0)" } ?? ""
                 Text((player.playbackIssue?.message ?? "当前歌曲暂时无法播放。")
                     + chain
-                    + "\n失败链：完整网易云 → Apple Music 应用内 → 系统 Apple Music 跳转 → 网易云试听。若提示 developer token，说明描述文件未开通 MusicKit，只能跳转系统音乐 App。")
+                    + "\n失败链：完整网易云 → Navidrome → Apple Music → 网易云试听。")
             }
             .alert(
                 "下载操作失败",

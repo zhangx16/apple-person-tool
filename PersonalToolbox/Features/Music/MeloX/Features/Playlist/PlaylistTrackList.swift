@@ -109,18 +109,6 @@ private struct PlaylistTrackRow: View {
                     Label("用 Navidrome 播放", systemImage: "externaldrive.connected.to.line.below")
                 }
 
-                Button {
-                    Task {
-                        await player.playViaAppleMusic(
-                            song: song,
-                            in: tracks,
-                            sourceID: sourceID
-                        )
-                    }
-                } label: {
-                    Label("用 Apple Music 播放", systemImage: "apple.logo")
-                }
-
                 if downloads.isDownloading(songID: song.id) {
                     Button {
                         downloads.cancel(songID: song.id)

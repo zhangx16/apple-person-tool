@@ -19,7 +19,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>4.2</string>
 	<key>CFBundleVersion</key>
-	<string>100</string>
+	<string>101</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -68,8 +68,6 @@
 	<array>
 		<string>audio</string>
 	</array>
-	<key>NSAppleMusicUsageDescription</key>
-	<string>用于在网易云无版权时通过 Apple Music 搜索并真播放高音质曲目（需 Apple Music 会员）。</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>weixin</string>

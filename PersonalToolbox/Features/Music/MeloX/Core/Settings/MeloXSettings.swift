@@ -102,14 +102,11 @@ final class MeloXSettings {
         static let rememberedNowPlayingPage = "rememberedNowPlayingPage"
         static let previousRestartsCurrentSong = "previousRestartsCurrentSong"
         static let checksUpdatesOnLaunch = "checksUpdatesOnLaunch"
-        static let appleMusicAutoFallback = "appleMusicAutoFallback"
-        static let audioSourcePolicy = "audioSourcePolicy"
         static let hideLikelyIncompleteTracks = "hideLikelyIncompleteTracks"
         static let navidromeEnabled = "navidromeEnabled"
         static let navidromeBaseURL = "navidromeBaseURL"
         static let navidromeUsername = "navidromeUsername"
         static let navidromePasswordKeychain = "navidromePassword"
-        static let navidromeBeforeAppleMusic = "navidromeBeforeAppleMusic"
         static let navidromeDidSeedDefaults = "navidromeDidSeedDefaults"
         static let automaticallyCachesFrequentlyPlayedSongs = "automaticallyCachesFrequentlyPlayedSongs"
         static let automaticCachePlaybackThreshold = "automaticCachePlaybackThreshold"
@@ -384,24 +381,6 @@ final class MeloXSettings {
         didSet { defaults.set(checksUpdatesOnLaunch, forKey: Key.checksUpdatesOnLaunch) }
     }
 
-    /// Legacy bool; kept for migration. Prefer `audioSourcePolicy`.
-    var appleMusicAutoFallback: Bool {
-        get { audioSourcePolicy.allowsAutomaticAppleMusic }
-        set {
-            if newValue {
-                if audioSourcePolicy == .neteaseOnly {
-                    audioSourcePolicy = .smartFallback
-                }
-            } else {
-                audioSourcePolicy = .neteaseOnly
-            }
-        }
-    }
-
-    /// Netease vs Apple Music selection strategy.
-    var audioSourcePolicy: AudioSourcePolicy {
-        didSet { defaults.set(audioSourcePolicy.rawValue, forKey: Key.audioSourcePolicy) }
-    }
 
     /// Filter playlist/search lists to hide fee/copyright incomplete tracks.
     var hideLikelyIncompleteTracks: Bool {
@@ -426,10 +405,6 @@ final class MeloXSettings {
         didSet { KeychainStore.set(navidromePassword, for: Key.navidromePasswordKeychain) }
     }
 
-    /// When true, Navidrome is tried before Apple Music on trial/no-source.
-    var navidromeBeforeAppleMusic: Bool {
-        didSet { defaults.set(navidromeBeforeAppleMusic, forKey: Key.navidromeBeforeAppleMusic) }
-    }
 
     var navidromeIsConfigured: Bool {
         let base = navidromeBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -637,14 +612,6 @@ final class MeloXSettings {
         rememberedNowPlayingPage = defaults.string(forKey: Key.rememberedNowPlayingPage) ?? "artwork"
         previousRestartsCurrentSong = defaults.object(forKey: Key.previousRestartsCurrentSong) as? Bool ?? true
         checksUpdatesOnLaunch = defaults.object(forKey: Key.checksUpdatesOnLaunch) as? Bool ?? true
-        if let rawPolicy = defaults.string(forKey: Key.audioSourcePolicy),
-           let policy = AudioSourcePolicy(rawValue: rawPolicy) {
-            audioSourcePolicy = policy
-        } else {
-            // Migrate legacy toggle → smart / neteaseOnly.
-            let legacyFallback = defaults.object(forKey: Key.appleMusicAutoFallback) as? Bool ?? true
-            audioSourcePolicy = legacyFallback ? .smartFallback : .neteaseOnly
-        }
         hideLikelyIncompleteTracks = defaults.object(forKey: Key.hideLikelyIncompleteTracks) as? Bool ?? false
 
         // Seed personal Navidrome once (password → Keychain).
@@ -662,16 +629,11 @@ final class MeloXSettings {
             if defaults.object(forKey: Key.navidromeEnabled) == nil {
                 defaults.set(true, forKey: Key.navidromeEnabled)
             }
-            if defaults.object(forKey: Key.navidromeBeforeAppleMusic) == nil {
-                defaults.set(true, forKey: Key.navidromeBeforeAppleMusic)
-            }
         }
         navidromeEnabled = defaults.object(forKey: Key.navidromeEnabled) as? Bool ?? true
         navidromeBaseURL = defaults.string(forKey: Key.navidromeBaseURL) ?? "https://music.mefun.org"
         navidromeUsername = defaults.string(forKey: Key.navidromeUsername) ?? "zxin"
         navidromePassword = KeychainStore.get(Key.navidromePasswordKeychain) ?? ""
-        navidromeBeforeAppleMusic = defaults.object(forKey: Key.navidromeBeforeAppleMusic) as? Bool ?? true
-
         automaticallyCachesFrequentlyPlayedSongs = defaults.object(
             forKey: Key.automaticallyCachesFrequentlyPlayedSongs
         ) as? Bool ?? false
@@ -733,7 +695,6 @@ final class MeloXSettings {
         rememberNowPlayingPage = false
         rememberedNowPlayingPage = "artwork"
         previousRestartsCurrentSong = true
-        audioSourcePolicy = .smartFallback
         hideLikelyIncompleteTracks = false
         skylineLyrics.reset()
     }

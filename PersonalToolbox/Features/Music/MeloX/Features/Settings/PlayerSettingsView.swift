@@ -70,17 +70,17 @@ struct PlayerSettingsView: View {
                 Toggle("上一首优先回到歌曲开头", isOn: $settings.previousRestartsCurrentSong)
 
                 NavigationLink {
-                    AppleMusicSettingsView()
+                    NavidromeSettingsView()
                 } label: {
-                    LabeledContent("Apple Music") {
-                        Text(settings.audioSourcePolicy.title)
+                    LabeledContent("Navidrome 音源") {
+                        Text(settings.navidromeEnabled ? (settings.navidromeIsConfigured ? "已启用" : "未配置") : "关闭")
                             .foregroundStyle(.secondary)
                     }
                 }
             } header: {
                 Text("播放器行为")
             } footer: {
-                Text("页面记忆会恢复上次关闭时的封面、歌词或队列。关闭上一首回到开头后，按钮会始终直接切换歌曲。音源策略与连接状态见 Apple Music。")
+                Text("页面记忆会恢复上次关闭时的封面、歌词或队列。关闭上一首回到开头后，按钮会始终直接切换歌曲。网易云无源/试听时自动用 Navidrome 完整流。")
             }
 
             Section {

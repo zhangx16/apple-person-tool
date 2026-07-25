@@ -23,7 +23,7 @@ struct MiniPlayerView: View {
                             if !isInline {
                                 Text(miniSubtitle(for: song))
                                     .font(.caption)
-                                    .foregroundStyle(player.isUsingAppleMusic ? Color.pink : .secondary)
+                                    .foregroundStyle(player.sourceLayer == .navidrome ? Color.teal : .secondary)
                                     .lineLimit(1)
                             }
                         }
@@ -101,19 +101,13 @@ struct MiniPlayerView: View {
     }
 
     private func miniSubtitle(for song: Song) -> String {
-        if player.isUsingAppleMusic {
-            if let status = player.sourceStatusMessage, !status.isEmpty {
-                return status
-            }
-            return player.appleMusicMatchLabel ?? "Apple Music"
-        }
         if player.sourceLayer == .navidrome {
             return player.navidromeMatchLabel
                 ?? player.sourceStatusMessage
                 ?? "Navidrome"
         }
         if let status = player.sourceStatusMessage,
-           player.sourceLayer == .neteaseTrial || player.sourceLayer == .appleMusicExternal {
+           player.sourceLayer == .neteaseTrial {
             return status
         }
         return song.artistText

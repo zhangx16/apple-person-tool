@@ -12,7 +12,7 @@ struct EqualizerSettingsView: View {
             Section {
                 Toggle("图形均衡器", isOn: enabledBinding)
             } footer: {
-                Text("实时作用于网易云网络播放与已下载歌曲；关闭后将绕过全部均衡处理。Apple Music 真播放走系统播放器，不受此均衡器影响。")
+                Text("实时作用于网易云 / Navidrome 网络播放与已下载歌曲；关闭后将绕过全部均衡处理。")
             }
 
             Section {

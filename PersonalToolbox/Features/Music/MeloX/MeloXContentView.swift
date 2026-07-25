@@ -70,12 +70,6 @@ struct MeloXContentView: View {
             .sheet(item: $neteaseSharePresentation) { presentation in
                 NeteaseShareSheet(presentation: presentation)
             }
-            .sheet(isPresented: Binding(
-                get: { player.showsAppleMusicMatchPicker },
-                set: { player.showsAppleMusicMatchPicker = $0 }
-            )) {
-                AppleMusicMatchPickerSheet()
-            }
             .overlay(alignment: .top) {
                 if let toast = player.toastMessage {
                     Text(toast)
@@ -111,27 +105,12 @@ struct MeloXContentView: View {
                     player.dismissPlaybackIssue()
                     Task { _ = await player.playViaNavidrome(surfaceError: true) }
                 }
-                Button("用 Apple Music 播放") {
-                    player.dismissPlaybackIssue()
-                    Task { await player.playViaAppleMusic(reason: .manual, recordRescue: false) }
-                }
-                Button("更换匹配…") {
-                    player.dismissPlaybackIssue()
-                    Task { await player.presentAppleMusicMatchPicker() }
-                }
-                Button("在 Apple Music 中搜索") {
-                    let name = player.currentSong?.name ?? ""
-                    let artist = player.currentSong?.artistText ?? ""
-                    let q = [name, artist].filter { !$0.isEmpty }.joined(separator: " ")
-                    player.dismissPlaybackIssue()
-                    openAppleMusicSearch(q)
-                }
                 Button("好", role: .cancel) { player.dismissPlaybackIssue() }
             } message: {
                 let chain = player.sourceStatusMessage.map { "\n\($0)" } ?? ""
                 Text((player.playbackIssue?.message ?? "当前歌曲暂时无法播放。")
                     + chain
-                    + "\n失败链：完整网易云 → Navidrome → Apple Music → 网易云试听。")
+                    + "\n失败链：完整网易云 → Navidrome 完整流 → 网易云试听兜底。")
             }
             .alert(
                 "下载操作失败",
@@ -344,17 +323,4 @@ struct MeloXContentView: View {
     }
 
     /// Prefer native Apple Music app; fall back to web search.
-    private func openAppleMusicSearch(_ query: String) {
-        let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !q.isEmpty else { return }
-        let encoded = q.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? q
-        if let appURL = URL(string: "music://music.apple.com/search?term=\(encoded)"),
-           UIApplication.shared.canOpenURL(appURL) {
-            UIApplication.shared.open(appURL)
-            return
-        }
-        if let web = URL(string: "https://music.apple.com/search?term=\(encoded)") {
-            UIApplication.shared.open(web)
-        }
-    }
 }

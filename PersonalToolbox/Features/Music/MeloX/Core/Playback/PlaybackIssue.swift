@@ -4,7 +4,7 @@ struct PlaybackIssue: Identifiable, Sendable {
     let id = UUID()
     let message: String
 
-    init(song: Song, error: Error, appleMusicError: Error? = nil) {
+    init(song: Song, error: Error, alternateSourceError: Error? = nil) {
         var base: String
         if let apiError = error as? APIError {
             switch apiError {
@@ -18,14 +18,14 @@ struct PlaybackIssue: Identifiable, Sendable {
         } else if let playbackError = error as? AudioPlaybackError,
                   case .itemFailed = playbackError {
             base = "《\(song.name)》的网易云音源无法载入，可能因版权、地区限制或网络问题。"
-        } else if error is AppleMusicBridge.BridgeError {
+        } else if error is NavidromeClient.ClientError {
             base = "《\(song.name)》\(error.localizedDescription)"
         } else {
             base = "《\(song.name)》播放失败：\(error.localizedDescription)"
         }
 
-        if let appleMusicError {
-            base += "\nApple Music：\(appleMusicError.localizedDescription)"
+        if let alternateSourceError {
+            base += "\nNavidrome：\(alternateSourceError.localizedDescription)"
         }
         message = base
     }

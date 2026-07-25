@@ -77,18 +77,6 @@ struct TrackRowView: View {
                 Label("用 Navidrome 播放", systemImage: "externaldrive.connected.to.line.below")
             }
 
-            Button {
-                Task {
-                    await player.playViaAppleMusic(
-                        song: song,
-                        in: queueContext,
-                        sourceID: sourceID
-                    )
-                }
-            } label: {
-                Label("用 Apple Music 播放", systemImage: "apple.logo")
-            }
-
             if downloads.isDownloading(songID: song.id) {
                 Button {
                     downloads.cancel(songID: song.id)
@@ -142,9 +130,9 @@ struct TrackRowView: View {
         .accessibilityAction(named: "查看评论") {
             commentSong = song
         }
-        .accessibilityAction(named: "用 Apple Music 播放") {
+        .accessibilityAction(named: "用 Navidrome 播放") {
             Task {
-                await player.playViaAppleMusic(
+                await player.playViaNavidrome(
                     song: song,
                     in: queueContext,
                     sourceID: sourceID

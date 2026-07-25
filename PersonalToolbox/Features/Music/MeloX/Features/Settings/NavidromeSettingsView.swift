@@ -39,14 +39,6 @@ struct NavidromeSettingsView: View {
             }
 
             Section {
-                Toggle("优先于 Apple Music 回退", isOn: $settings.navidromeBeforeAppleMusic)
-            } header: {
-                Text("回退顺序")
-            } footer: {
-                Text("开启后：完整网易云 → Navidrome → Apple Music → 试听兜底。关闭则 Navidrome 仅在手动「用 Navidrome 播放」时使用。")
-            }
-
-            Section {
                 Button {
                     Task { await testConnection() }
                 } label: {
@@ -63,6 +55,8 @@ struct NavidromeSettingsView: View {
                         .font(.caption)
                         .foregroundStyle(statusOK ? .green : .red)
                 }
+            } footer: {
+                Text("启用后回退顺序：完整网易云 → Navidrome 完整流 → 网易云试听兜底。亦可长按歌曲「用 Navidrome 播放」。")
             }
 
             Section {

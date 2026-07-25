@@ -43,25 +43,11 @@ struct NowPlayingProgressControl: View {
 
     private var qualityMenu: some View {
         Group {
-            if player.isUsingAppleMusic {
-                Menu {
-                    Button {
-                        Task { await player.presentAppleMusicMatchPicker() }
-                    } label: {
-                        Label("更换匹配", systemImage: "arrow.triangle.2.circlepath")
-                    }
-                    if let status = player.sourceStatusMessage {
-                        Text(status)
-                    }
-                } label: {
-                    HStack(spacing: 3) {
-                        Text("Apple Music")
-                        Image(systemName: "chevron.up.chevron.down")
-                            .font(.system(size: 7, weight: .semibold))
-                    }
-                    .contentShape(.rect)
+            if player.sourceLayer == .navidrome {
+                HStack(spacing: 3) {
+                    Text("Navidrome")
                 }
-                .accessibilityLabel("Apple Music 音源")
+                .accessibilityLabel("Navidrome 音源")
             } else {
                 Menu {
                     Picker("音质", selection: qualityBinding) {

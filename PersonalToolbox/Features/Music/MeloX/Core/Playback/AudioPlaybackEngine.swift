@@ -130,7 +130,7 @@ final class AudioPlaybackEngine {
         itemStatusObserver = nil
         player.pause()
         player.replaceCurrentItem(with: nil)
-        // Soft-release session so MusicKit / next source can reconfigure category
+        // Soft-release session so the next stream source can reconfigure category
         // without inheriting a half-active AVPlayer session (helps avoid OSStatus -50).
         try? AVAudioSession.sharedInstance().setActive(
             false,

@@ -749,9 +749,9 @@ struct LiveRoomView: View {
                 // Tear down decoder while fullscreen so we never run two streams at once.
                 LivePlayerSurface(vm: vm, isActive: !isPlayerFullscreen)
 
-                // Floating danmaku on the video surface
+                // Floating danmaku on the video surface (portrait: bottom stack)
                 if showDanmaku, !isPlayerFullscreen {
-                    LiveDanmakuOverlay(messages: danmaku.messages, compact: true)
+                    LiveDanmakuOverlay(messages: danmaku.messages, placement: .bottomStack)
                         .allowsHitTesting(false)
                 }
 
@@ -1391,38 +1391,112 @@ struct LivePlatformMark: View {
 // MARK: - Danmaku floating overlay (on video)
 
 struct LiveDanmakuOverlay: View {
+    enum Placement {
+        /// 竖屏播放器底部堆叠
+        case bottomStack
+        /// 全屏顶部滚动列表
+        case topScroll
+    }
+
     let messages: [LiveChatMessage]
-    var compact: Bool = true
+    var placement: Placement = .bottomStack
 
     private var visible: [LiveChatMessage] {
-        Array(messages.suffix(compact ? 6 : 10))
+        switch placement {
+        case .bottomStack: return Array(messages.suffix(6))
+        case .topScroll: return Array(messages.suffix(24))
+        }
     }
 
     var body: some View {
+        switch placement {
+        case .bottomStack:
+            bottomStackBody
+        case .topScroll:
+            topScrollBody
+        }
+    }
+
+    private var bottomStackBody: some View {
         VStack {
             Spacer(minLength: 0)
-            VStack(alignment: .leading, spacing: compact ? 3 : 5) {
+            VStack(alignment: .leading, spacing: 3) {
                 ForEach(visible) { msg in
-                    HStack(alignment: .firstTextBaseline, spacing: 4) {
-                        Text(msg.userName.isEmpty ? "用户" : msg.userName)
-                            .font(compact ? .caption2.weight(.bold) : .caption.weight(.bold))
-                            .foregroundStyle(Color(hexColor: msg.colorHex))
-                        Text(msg.text)
-                            .font(compact ? .caption2 : .caption)
-                            .foregroundStyle(.white)
-                            .lineLimit(compact ? 1 : 2)
-                    }
-                    .padding(.horizontal, compact ? 8 : 10)
-                    .padding(.vertical, compact ? 3 : 5)
-                    .background(Color.black.opacity(0.42), in: Capsule())
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    danmakuChip(msg, compact: true)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, compact ? 10 : 16)
-            .padding(.bottom, compact ? 10 : 20)
+            .padding(.horizontal, 10)
+            .padding(.bottom, 10)
             .animation(.easeOut(duration: 0.2), value: messages.count)
         }
+    }
+
+    /// 全屏：贴顶滚动，新弹幕从下方推进（类似直播间顶栏弹幕流）
+    private var topScrollBody: some View {
+        VStack(spacing: 0) {
+            ScrollViewReader { proxy in
+                ScrollView(.vertical, showsIndicators: false) {
+                    LazyVStack(alignment: .leading, spacing: 5) {
+                        ForEach(visible) { msg in
+                            danmakuChip(msg, compact: false)
+                                .id(msg.id)
+                                .transition(.opacity.combined(with: .move(edge: .top)))
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                    .padding(.bottom, 6)
+                }
+                .frame(maxHeight: 148)
+                .mask(
+                    LinearGradient(
+                        colors: [.black, .black, .black.opacity(0.15)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .onChange(of: messages.count) { _, _ in
+                    guard let last = visible.last else { return }
+                    withAnimation(.easeOut(duration: 0.22)) {
+                        proxy.scrollTo(last.id, anchor: .bottom)
+                    }
+                }
+                .onAppear {
+                    if let last = visible.last {
+                        proxy.scrollTo(last.id, anchor: .bottom)
+                    }
+                }
+            }
+            .background(
+                LinearGradient(
+                    colors: [Color.black.opacity(0.55), Color.black.opacity(0.18), .clear],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 168)
+                .allowsHitTesting(false),
+                alignment: .top
+            )
+            Spacer(minLength: 0)
+        }
+        .padding(.top, 4)
+    }
+
+    private func danmakuChip(_ msg: LiveChatMessage, compact: Bool) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
+            Text(msg.userName.isEmpty ? "用户" : msg.userName)
+                .font(compact ? .caption2.weight(.bold) : .caption.weight(.bold))
+                .foregroundStyle(Color(hexColor: msg.colorHex))
+            Text(msg.text)
+                .font(compact ? .caption2 : .caption)
+                .foregroundStyle(.white)
+                .lineLimit(compact ? 1 : 2)
+        }
+        .padding(.horizontal, compact ? 8 : 10)
+        .padding(.vertical, compact ? 3 : 5)
+        .background(Color.black.opacity(compact ? 0.42 : 0.48), in: Capsule())
     }
 }
 
@@ -1542,10 +1616,11 @@ struct LiveRoomFullscreenView: View {
                 LivePlayerSurface(vm: vm, isActive: true)
                     .ignoresSafeArea()
 
+                // 全屏：顶部滚动弹幕（不挡中部手势区）
                 if showDanmaku {
-                    LiveDanmakuOverlay(messages: danmaku.messages, compact: false)
+                    LiveDanmakuOverlay(messages: danmaku.messages, placement: .topScroll)
                         .allowsHitTesting(false)
-                        .padding(.bottom, 56)
+                        .padding(.top, 52)
                 }
 
                 // Full-screen hit layer: tap + vertical drag (brightness/volume).

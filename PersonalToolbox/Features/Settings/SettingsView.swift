@@ -155,6 +155,14 @@ struct SettingsView: View {
 
                     settingsSection("通用", symbol: "slider.horizontal.3") {
                         plainLink(
+                            systemImage: "switch.2",
+                            title: "控制中心",
+                            subtitle: "通知 · 开播 · 剪贴板 · 节点包",
+                            tint: Color.accentColor
+                        ) {
+                            ControlCenterView()
+                        }
+                        plainLink(
                             systemImage: "bell.badge.fill",
                             title: "通知",
                             subtitle: settings.notifyDownloadCompleted ? "下载完成提醒已开" : "下载完成提醒已关",
@@ -964,10 +972,13 @@ struct NotificationSettingsPage: View {
                     .disabled(!settings.notifySmartAlerts)
                 Toggle("证书即将到期", isOn: $settings.notifyCertExpiry)
                     .disabled(!settings.notifySmartAlerts)
+                Toggle("关注主播开播", isOn: $settings.notifyLiveOpen)
+                    .disabled(!settings.notifySmartAlerts)
+                Toggle("剪贴板智能条", isOn: $settings.clipboardSmartBarEnabled)
             } header: {
                 Text("智能提醒")
             } footer: {
-                Text("在总览刷新时评估。同一天同类提醒会去重。点通知可跳到对应模块。")
+                Text("在总览刷新时评估。开播提醒对比关注列表状态变化。同一天同类提醒会去重。也可到「控制中心」统一管理。")
             }
 
             Section {

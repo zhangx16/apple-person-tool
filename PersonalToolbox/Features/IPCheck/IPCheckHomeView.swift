@@ -3,12 +3,16 @@ import UIKit
 
 /// IP 风险聚合查询 · 参考 IPSuper 一站式体验 + ipquality 多库口径。
 struct IPCheckHomeView: View {
+    /// Optional IP to query on appear (deep link / smart bar).
+    var initialIP: String? = nil
+
     @StateObject private var viewModel = IPCheckViewModel()
     @State private var toast: String?
     @State private var includeMedia = true
     @State private var maskIP = false
     @State private var queryIP = ""
     @FocusState private var queryFocused: Bool
+    @State private var didApplyInitial = false
 
     private let accent = IPCheckAccent.color
 
@@ -77,17 +81,15 @@ struct IPCheckHomeView: View {
         }
         .background(AppSurfaceBackground(accent: accent))
         .navigationTitle("IP 检测")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .principal) {
-                ServiceBrandTitle(brand: .ipCheck, title: "IP 检测")
-            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     Task { await runCheck() }
                 } label: {
                     if viewModel.isLoading {
                         ProgressView()
+                            .controlSize(.small)
                     } else {
                         Image(systemName: "arrow.clockwise")
                     }
@@ -100,7 +102,15 @@ struct IPCheckHomeView: View {
             await runCheck()
         }
         .task {
-            if viewModel.result == nil {
+            if !didApplyInitial, let ip = initialIP?.trimmingCharacters(in: .whitespacesAndNewlines), !ip.isEmpty {
+                didApplyInitial = true
+                queryIP = ip
+                includeMedia = false
+                await runCheck()
+                return
+            }
+            // 进入页只做一次自动检测；失败不重试风暴。
+            if viewModel.result == nil, !viewModel.isLoading {
                 await runCheck()
             }
         }
@@ -427,7 +437,7 @@ struct IPCheckHomeView: View {
     private func typeCard(_ rows: [IPTypeRow]) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             sectionTitle("IP 类型属性")
-            ForEach(rows) { r in
+            ForEach(Array(rows.enumerated()), id: \.offset) { idx, r in
                 HStack {
                     Text(r.name)
                         .font(.caption.weight(.semibold))
@@ -446,7 +456,7 @@ struct IPCheckHomeView: View {
                     }
                     Spacer()
                 }
-                if r.id != rows.last?.id { Divider().opacity(0.4) }
+                if idx < rows.count - 1 { Divider().opacity(0.4) }
             }
         }
         .appCard()
@@ -455,7 +465,7 @@ struct IPCheckHomeView: View {
     private func riskScoresCard(_ rows: [IPRiskRow]) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             sectionTitle("风险评分")
-            ForEach(rows) { r in
+            ForEach(Array(rows.enumerated()), id: \.offset) { idx, r in
                 HStack {
                     Text(r.name)
                         .font(.caption.weight(.semibold))
@@ -468,7 +478,7 @@ struct IPCheckHomeView: View {
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
                 }
-                if r.id != rows.last?.id { Divider().opacity(0.4) }
+                if idx < rows.count - 1 { Divider().opacity(0.4) }
             }
         }
         .appCard()
@@ -477,7 +487,7 @@ struct IPCheckHomeView: View {
     private func factorsCard(_ rows: [IPFactorRow]) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             sectionTitle("风险因素")
-            ForEach(rows) { r in
+            ForEach(Array(rows.enumerated()), id: \.offset) { idx, r in
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Text(r.name)
@@ -490,7 +500,7 @@ struct IPCheckHomeView: View {
                     }
                     FlowChecks(checks: r.checks)
                 }
-                if r.id != rows.last?.id { Divider().opacity(0.4) }
+                if idx < rows.count - 1 { Divider().opacity(0.4) }
             }
         }
         .appCard()
@@ -499,7 +509,8 @@ struct IPCheckHomeView: View {
     private func mediaCard(_ rows: [IPMediaRow]) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             sectionTitle("流媒体与 AI")
-            ForEach(rows) { r in
+            // 用 index 作稳定 id，避免重复 name 导致 ForEach 断言崩溃
+            ForEach(Array(rows.enumerated()), id: \.offset) { idx, r in
                 HStack {
                     Text(r.name)
                         .font(.subheadline.weight(.medium))
@@ -521,7 +532,7 @@ struct IPCheckHomeView: View {
                         .foregroundStyle(.tertiary)
                         .lineLimit(1)
                 }
-                if r.id != rows.last?.id { Divider().opacity(0.35) }
+                if idx < rows.count - 1 { Divider().opacity(0.35) }
             }
         }
         .appCard()
@@ -603,7 +614,7 @@ private struct FlexibleChips: View {
             alignment: .leading,
             spacing: 6
         ) {
-            ForEach(items, id: \.self) { text in
+            ForEach(Array(items.enumerated()), id: \.offset) { _, text in
                 let bad = text.hasSuffix(" 是")
                 Text(text)
                     .font(.caption2.weight(.semibold))
@@ -628,20 +639,36 @@ final class IPCheckViewModel: ObservableObject {
     @Published var errorMessage: String?
 
     private let service = IPCheckService.shared
+    private var refreshTask: Task<Void, Never>?
 
     func refresh(targetIP: String? = nil, includeMedia: Bool = true) async {
+        // 取消上一次，避免连点 / 下拉刷新叠加请求。
+        refreshTask?.cancel()
+        let task = Task { @MainActor in
+            await self.performRefresh(targetIP: targetIP, includeMedia: includeMedia)
+        }
+        refreshTask = task
+        await task.value
+    }
+
+    private func performRefresh(targetIP: String?, includeMedia: Bool) async {
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
+
         let (res, err) = await service.check(targetIP: targetIP, includeMedia: includeMedia)
+        guard !Task.isCancelled else { return }
+
         if let res {
             result = res
+            errorMessage = nil
             Haptics.success()
-        } else {
+        } else if let err, !err.isEmpty {
             errorMessage = err
-            if result == nil {
-                Haptics.error()
-            }
+            if result == nil { Haptics.error() }
+        } else if result == nil {
+            errorMessage = "检测失败，请稍后重试"
+            Haptics.error()
         }
     }
 }

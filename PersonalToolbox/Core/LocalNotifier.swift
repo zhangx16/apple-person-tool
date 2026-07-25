@@ -147,12 +147,16 @@ final class ForegroundNotificationDelegate: NSObject, UNUserNotificationCenterDe
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
         let info = response.notification.request.content.userInfo
+        // Forward full payload so live room / download URL can deep-link.
         if let route = info["route"] as? String, !route.isEmpty {
             NotificationCenter.default.post(
                 name: Self.routeNotification,
                 object: nil,
-                userInfo: ["route": route]
+                userInfo: info
             )
+            Task { @MainActor in
+                AppDeepLinkStore.shared.handleUserInfo(info)
+            }
         }
         completionHandler()
     }

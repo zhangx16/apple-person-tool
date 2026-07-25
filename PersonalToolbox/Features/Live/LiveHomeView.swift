@@ -37,6 +37,7 @@ struct LiveHomeView: View {
     @FocusState private var searchFocused: Bool
     @State private var clipboardRoomHint: String?
     @EnvironmentObject private var settings: AppSettings
+    @ObservedObject private var deepLink = AppDeepLinkStore.shared
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -67,6 +68,7 @@ struct LiveHomeView: View {
                     follows.refreshMissingAvatars(for: platform)
                 }
                 detectClipboardRoomId()
+                consumeDeepLinkLive()
             }
             .onChange(of: mode) { _, newMode in
                 if newMode == .follow {
@@ -77,7 +79,26 @@ struct LiveHomeView: View {
                 // 仅搜索模式依赖平台；剪贴板提示仍跟当前平台走。
                 detectClipboardRoomId()
             }
+            .onChange(of: deepLink.pendingLive) { _, pending in
+                if pending != nil { consumeDeepLinkLive() }
+            }
         }
+    }
+
+    private func consumeDeepLinkLive() {
+        guard let pending = deepLink.consumeLive() else { return }
+        platform = pending.platform
+        mode = .search
+        openRoom(
+            LiveRoomItem(
+                platform: pending.platform,
+                roomId: pending.roomId,
+                title: "",
+                cover: "",
+                userName: pending.userName,
+                online: 0
+            )
+        )
     }
 
     private func clipboardBanner(_ rid: String) -> some View {

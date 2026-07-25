@@ -25,6 +25,7 @@ struct MeloXContentView: View {
     @State private var nowPlayingSharePresentation: NeteaseSharePresentation?
     @State private var pendingMusicRoute: MusicRoute?
     @Namespace private var musicNavigationNamespace
+    @ObservedObject private var deepLink = AppDeepLinkStore.shared
 
     init(initialTab: MeloXTab = .home, appTabBarHidden: Binding<Bool> = .constant(true)) {
         _selectedTab = State(initialValue: initialTab)
@@ -102,6 +103,16 @@ struct MeloXContentView: View {
                 Text(downloads.errorMessage ?? "无法完成下载操作。")
             }
             .appLaunchExperience()
+            .onAppear {
+                if deepLink.pendingMusicURL != nil {
+                    selectedTab = .search
+                }
+            }
+            .onChange(of: deepLink.pendingMusicURL) { _, url in
+                if url != nil {
+                    selectedTab = .search
+                }
+            }
     }
 
     // MARK: - Bottom chrome

@@ -12,6 +12,7 @@ struct RootTabView: View {
     @EnvironmentObject private var settings: AppSettings
     @EnvironmentObject private var shareInbox: ShareInbox
     @Environment(\.scenePhase) private var scenePhase
+    @ObservedObject private var deepLink = AppDeepLinkStore.shared
 
     @State private var selectedTab: AppTab = .overview
     @State private var isUnlocked = false
@@ -81,6 +82,13 @@ struct RootTabView: View {
                 .transition(.opacity)
                 .zIndex(1)
             }
+
+            // Global clipboard smart bar (top). Hidden under lock / switcher cover.
+            if isContentInteractive, !hideForSwitcher {
+                ClipboardSmartBar(selectedTab: $selectedTab)
+                    .environmentObject(settings)
+                    .zIndex(2)
+            }
         }
         .animation(AppleTheme.preferredSnappy, value: hideForSwitcher)
         .animation(AppleTheme.preferredSnappy, value: isUnlocked)
@@ -104,6 +112,17 @@ struct RootTabView: View {
                 .presentationDetents([.medium, .large])
             }
         }
+        .sheet(item: $deepLink.presentSheet) { sheet in
+            NavigationStack {
+                deepLinkSheetContent(sheet)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("关闭") { deepLink.presentSheet = nil }
+                        }
+                    }
+            }
+            .environmentObject(settings)
+        }
         .onAppear {
             applyInitialLockState()
             updateSwitcherRedaction(for: scenePhase)
@@ -118,6 +137,37 @@ struct RootTabView: View {
             } else {
                 isUnlocked = true
             }
+        }
+        .onChange(of: deepLink.requestedTab) { _, tab in
+            guard let tab else { return }
+            selectedTab = tab
+            deepLink.requestedTab = nil
+        }
+        .onReceive(NotificationCenter.default.publisher(for: ForegroundNotificationDelegate.routeNotification)) { note in
+            if let info = note.userInfo {
+                deepLink.handleUserInfo(info)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func deepLinkSheetContent(_ sheet: AppDeepLinkStore.DeepLinkSheet) -> some View {
+        switch sheet {
+        case .ipCheck(let ip):
+            IPCheckHomeView(initialIP: ip)
+        case .download(let url):
+            DownloadHomeView(isTabSelected: true, initialURL: url.isEmpty ? nil : url)
+                .navigationTitle("视频下载")
+        case .express(let tracking):
+            ExpressHomeView(prefill: tracking)
+        case .watchLater:
+            WatchLaterHomeView()
+        case .proxyPack:
+            ProxyNodePackView()
+        case .controlCenter:
+            ControlCenterView()
+        case .subscriptions:
+            SubscriptionHomeView()
         }
     }
 
@@ -146,6 +196,9 @@ struct RootTabView: View {
             default:
                 break
             }
+        }
+        if phase == .active {
+            LiveOpenNotifyService.evaluate(settings: settings)
         }
     }
 

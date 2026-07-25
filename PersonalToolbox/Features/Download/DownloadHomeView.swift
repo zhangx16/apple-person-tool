@@ -9,6 +9,9 @@ struct DownloadHomeView: View {
     @EnvironmentObject private var settings: AppSettings
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var viewModel = DownloadViewModel()
+    /// Prefill from deep link / smart bar.
+    var initialURL: String? = nil
+    @State private var didApplyInitialURL = false
 
     var body: some View {
         List {
@@ -64,6 +67,11 @@ struct DownloadHomeView: View {
             viewModel.syncProjectFromSettings()
             viewModel.setTabVisible(isTabSelected)
             viewModel.onScenePhase(scenePhase)
+            applyInitialURLIfNeeded()
+        }
+        .onChange(of: initialURL) { _, _ in
+            didApplyInitialURL = false
+            applyInitialURLIfNeeded()
         }
         .onChange(of: isTabSelected) { _, selected in
             if selected {
@@ -432,6 +440,25 @@ struct DownloadHomeView: View {
                     .foregroundStyle(.secondary)
             }
         }
+    }
+
+    private func applyInitialURLIfNeeded() {
+        guard !didApplyInitialURL else { return }
+        let raw = (initialURL ?? AppDeepLinkStore.shared.consumeDownloadURL())?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !raw.isEmpty else { return }
+        didApplyInitialURL = true
+        // Auto-switch project by URL host.
+        let lower = raw.lowercased()
+        if DouyinService.isDouyinURL(DouyinService.extractURL(from: raw) ?? raw) {
+            viewModel.setProject(.douyin)
+        } else if BilibiliDownloadService.isBilibiliURL(raw) || lower.contains("bilibili.com") || lower.contains("b23.tv") {
+            viewModel.setProject(.bilibili)
+        } else {
+            viewModel.setProject(.youtube)
+        }
+        viewModel.urlText = raw
+        Task { await viewModel.parseURL() }
     }
 
     private func bannerRow(text: String, color: Color, dismiss: @escaping () -> Void) -> some View {

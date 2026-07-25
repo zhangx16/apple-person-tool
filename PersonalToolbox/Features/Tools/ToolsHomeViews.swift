@@ -727,6 +727,7 @@ struct ExpressHomeView: View {
     @State private var number = ""
     @State private var note = ""
     @State private var phoneTail = ""
+    @State private var didApplyPrefill = false
 
     var body: some View {
         List {

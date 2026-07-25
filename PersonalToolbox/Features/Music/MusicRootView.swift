@@ -44,7 +44,7 @@ struct MusicRootView: View {
 
     var body: some View {
         MeloXContentView(
-            initialTab: settings.launchTab,
+            initialTab: AppDeepLinkStore.shared.pendingMusicURL != nil ? .search : settings.launchTab,
             appTabBarHidden: $appTabBarHidden
         )
         .environment(settings)
@@ -62,6 +62,9 @@ struct MusicRootView: View {
             )
         ) { _ in
             isLowPowerModeEnabled = ProcessInfo.processInfo.isLowPowerModeEnabled
+        }
+        .onAppear {
+            // Deep link music URL is consumed by SearchView.
         }
     }
 

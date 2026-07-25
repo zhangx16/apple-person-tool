@@ -165,6 +165,30 @@ final class AppSettings: ObservableObject {
     @Published var notifyCertExpiry: Bool {
         didSet { UserDefaults.standard.set(notifyCertExpiry, forKey: Keys.notifyCertExpiry) }
     }
+    /// Local notification when a followed streamer goes live.
+    @Published var notifyLiveOpen: Bool {
+        didSet { UserDefaults.standard.set(notifyLiveOpen, forKey: Keys.notifyLiveOpen) }
+    }
+    /// Show floating smart bar when pasteboard has actionable content.
+    @Published var clipboardSmartBarEnabled: Bool {
+        didSet { UserDefaults.standard.set(clipboardSmartBarEnabled, forKey: Keys.clipboardSmartBarEnabled) }
+    }
+    /// Quiet hours for smart alerts (开播 / 签到 / 账单 / 证书). Download completion still fires.
+    @Published var notifyQuietHoursEnabled: Bool {
+        didSet { UserDefaults.standard.set(notifyQuietHoursEnabled, forKey: Keys.notifyQuietHoursEnabled) }
+    }
+    /// Inclusive start hour 0…23 (default 23).
+    @Published var notifyQuietStartHour: Int {
+        didSet { UserDefaults.standard.set(notifyQuietStartHour, forKey: Keys.notifyQuietStartHour) }
+    }
+    /// Exclusive end hour 0…23 (default 8 → quiet 23:00–08:00).
+    @Published var notifyQuietEndHour: Int {
+        didSet { UserDefaults.standard.set(notifyQuietEndHour, forKey: Keys.notifyQuietEndHour) }
+    }
+    /// Muted clipboard smart kinds (raw values of ClipboardSmartKind).
+    @Published var clipboardMutedKinds: [String] {
+        didSet { UserDefaults.standard.set(clipboardMutedKinds, forKey: Keys.clipboardMutedKinds) }
+    }
 
     // MARK: - 快递100 realtime API
 
@@ -244,6 +268,12 @@ final class AppSettings: ObservableObject {
         static let notifyCheckinFailed = "notifyCheckinFailed"
         static let notifySubscriptionDue = "notifySubscriptionDue"
         static let notifyCertExpiry = "notifyCertExpiry"
+        static let notifyLiveOpen = "notifyLiveOpen"
+        static let clipboardSmartBarEnabled = "clipboardSmartBarEnabled"
+        static let notifyQuietHoursEnabled = "notifyQuietHoursEnabled"
+        static let notifyQuietStartHour = "notifyQuietStartHour"
+        static let notifyQuietEndHour = "notifyQuietEndHour"
+        static let clipboardMutedKinds = "clipboardMutedKinds"
         static let kuaidi100Customer = "kuaidi100Customer"
         static let kuaidi100Key = "kuaidi100Key"
         static let kuaishouCookie = "kuaishouCookie"
@@ -318,6 +348,12 @@ final class AppSettings: ObservableObject {
         notifyCheckinFailed = d.object(forKey: Keys.notifyCheckinFailed) as? Bool ?? true
         notifySubscriptionDue = d.object(forKey: Keys.notifySubscriptionDue) as? Bool ?? true
         notifyCertExpiry = d.object(forKey: Keys.notifyCertExpiry) as? Bool ?? true
+        notifyLiveOpen = d.object(forKey: Keys.notifyLiveOpen) as? Bool ?? true
+        clipboardSmartBarEnabled = d.object(forKey: Keys.clipboardSmartBarEnabled) as? Bool ?? true
+        notifyQuietHoursEnabled = d.object(forKey: Keys.notifyQuietHoursEnabled) as? Bool ?? false
+        notifyQuietStartHour = d.object(forKey: Keys.notifyQuietStartHour) as? Int ?? 23
+        notifyQuietEndHour = d.object(forKey: Keys.notifyQuietEndHour) as? Int ?? 8
+        clipboardMutedKinds = d.stringArray(forKey: Keys.clipboardMutedKinds) ?? []
         // 快递100：仅从本机 UserDefaults / Keychain 读取，不在仓库中预置密钥
         kuaidi100Customer = d.string(forKey: Keys.kuaidi100Customer) ?? ""
         kuaidi100Key = KeychainStore.get(Keys.kuaidi100Key) ?? ""

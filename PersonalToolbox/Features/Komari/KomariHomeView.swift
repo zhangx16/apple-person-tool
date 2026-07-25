@@ -6,6 +6,8 @@ struct KomariHomeView: View {
     @EnvironmentObject private var settings: AppSettings
     @StateObject private var viewModel = KomariViewModel()
     @State private var selected: KomariNodeRow?
+    @State private var importBanner: String?
+    @State private var showImportSheet = false
 
     private let brand = ServiceBrand.komari.tint
 
@@ -13,6 +15,7 @@ struct KomariHomeView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 dashboardBar
+                importBillsBar
                 searchBar
                 contentList
             }
@@ -54,6 +57,41 @@ struct KomariHomeView: View {
         }
         .navigationDestination(item: $selected) { row in
             KomariNodeDetailView(row: row, viewModel: viewModel)
+        }
+        .sheet(isPresented: $showImportSheet) {
+            KomariBillImportSheet(nodes: viewModel.rows.map(\.node)) {
+                importBanner = "已写入订阅账单"
+                showImportSheet = false
+            }
+        }
+    }
+
+    private var importBillsBar: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button {
+                let priced = viewModel.rows.map(\.node).filter { ($0.price ?? 0) > 0 }
+                if priced.isEmpty {
+                    importBanner = "当前列表没有带 price 的节点"
+                } else {
+                    showImportSheet = true
+                }
+            } label: {
+                Label("预览导入节点价格到订阅账单", systemImage: "creditcard.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .foregroundStyle(.white)
+                    .background(brand.brandGradient, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+            .buttonStyle(PressableButtonStyle())
+            if let importBanner {
+                Text(importBanner)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Text("字段：price · currency · expired_at · region/group → 预览后确认")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
         }
     }
 

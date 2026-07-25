@@ -34,6 +34,17 @@ struct SearchView: View {
                 Text(kind.title).tag(kind)
             }
         }
+        .onAppear {
+            if let raw = AppDeepLinkStore.shared.consumeMusicURL() {
+                // Prefer numeric id as search query; else full URL (user can refine).
+                if let idRange = raw.range(of: #"[?&]id=(\d+)"#, options: .regularExpression),
+                   let num = raw[idRange].split(separator: "=").last {
+                    query = String(num)
+                } else {
+                    query = raw
+                }
+            }
+        }
         .overlay {
             if !trimmedQuery.isEmpty, case .failed(let message) = phase {
                 ContentUnavailableView(

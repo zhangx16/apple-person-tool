@@ -17,6 +17,17 @@ actor IPCheckService {
     ///   - targetIP: 为空则多源探测当前出口；非空则查询指定 IP（不做流媒体探针时更有意义）。
     ///   - includeMedia: 流媒体/AI 可用性（仅对当前出口有意义）。
     func check(targetIP: String? = nil, includeMedia: Bool = true) async -> (result: IPCheckResult?, error: String?) {
+        // 全流程兜底：任何未捕获异常都转错误文案，避免把 UI 进程打崩。
+        do {
+            return try await checkThrowing(targetIP: targetIP, includeMedia: includeMedia)
+        } catch is CancellationError {
+            return (nil, nil)
+        } catch {
+            return (nil, (error as? NetworkError)?.errorDescription ?? error.localizedDescription)
+        }
+    }
+
+    private func checkThrowing(targetIP: String?, includeMedia: Bool) async throws -> (result: IPCheckResult?, error: String?) {
         let pathNote = await Self.currentPathDescription()
         let hasVPNPath = pathNote.lowercased().contains("vpn")
             || pathNote.lowercased().contains("tunnel")
@@ -40,17 +51,13 @@ actor IPCheckService {
             isLookup = false
             discovery = await discoverIP()
             guard let found = discovery.ip, !found.isEmpty else {
-                return (nil, "无法获取出口 IP")
+                return (nil, "无法获取出口 IP（请检查网络或代理）")
             }
             ip = found
         }
 
-        let runMedia = includeMedia && !isLookup
-        async let dbTask = collectDatabases(ip: ip)
-        async let mediaTask: [IPMediaRow] = runMedia ? collectMedia() : []
-        let dbs = await dbTask
-        let media = await mediaTask
-
+        // 先聚合地理/风险库（轻量）；流媒体探针单独、限流，避免同时拉大页面导致内存峰值闪退。
+        let dbs = await collectDatabases(ip: ip)
         let geo = buildGeo(ip: ip, dbs: dbs)
 
         var result = IPCheckAnalysis.calculateRisk(
@@ -67,7 +74,7 @@ actor IPCheckService {
         result.typeRows = buildTypes(dbs)
         result.riskRows = buildRisks(dbs)
         result.factorRows = buildFactors(dbs)
-        result.mediaRows = media
+        result.mediaRows = []
         result.isLookupMode = isLookup
         result.qualityNote =
             "聚合口径参考 IPSuper 一站式风险查询与 MaYIHEI/ipquality；多库交叉展示，缺失源不参与判断。流媒体/AI 仅检测当前出口。"
@@ -93,6 +100,12 @@ actor IPCheckService {
             result: result,
             dbs: dbs
         )
+
+        let runMedia = includeMedia && !isLookup
+        if runMedia {
+            // 串行轻量探针，限制单响应体，降低 jetsam 风险。
+            result.mediaRows = await collectMedia()
+        }
 
         return (result, nil)
     }
@@ -608,26 +621,24 @@ actor IPCheckService {
     // MARK: - Media / AI
 
     private func collectMedia() async -> [IPMediaRow] {
-        async let tiktok = testTikTok()
-        async let netflix = testNetflix()
-        async let youtube = testYouTube()
-        async let chatgpt = testChatGPT()
-        async let disney = testDisney()
-        return await [tiktok, netflix, youtube, chatgpt, disney]
+        // 串行 + 限流，避免 5 路大页面并发把内存打满。
+        var rows: [IPMediaRow] = []
+        rows.append(await testTikTok())
+        rows.append(await testNetflix())
+        rows.append(await testYouTube())
+        rows.append(await testChatGPT())
+        rows.append(await testDisney())
+        return rows
     }
 
     private func testTikTok() async -> IPMediaRow {
         do {
-            let (status, body) = try await requestRaw("https://www.tiktok.com/")
-            if let r = body.range(of: #""region"\s*:\s*"([A-Z]{2})""#, options: .regularExpression) {
-                let m = String(body[r])
-                let code = m.replacingOccurrences(of: #""region"\s*:\s*""#, with: "", options: .regularExpression)
-                    .replacingOccurrences(of: "\"", with: "")
-                if code.count == 2 {
-                    return IPMediaRow(name: "TikTok", status: "yes", region: code, note: "页面地区")
-                }
+            let (status, body) = try await requestRaw("https://www.tiktok.com/", maxBytes: 48_000)
+            if let code = Self.firstMatch(body, pattern: #""region"\s*:\s*"([A-Z]{2})""#, group: 1), code.count == 2 {
+                return IPMediaRow(name: "TikTok", status: "yes", region: code, note: "页面地区")
             }
-            if status == 403 || body.range(of: "not available|access denied", options: .regularExpression) != nil {
+            if status == 403 || body.localizedCaseInsensitiveContains("not available")
+                || body.localizedCaseInsensitiveContains("access denied") {
                 return IPMediaRow(name: "TikTok", status: "no", region: "", note: "HTTP \(status)")
             }
             return IPMediaRow(name: "TikTok", status: "unknown", region: "", note: "地区未识别")
@@ -639,7 +650,11 @@ actor IPCheckService {
     private func testNetflix() async -> IPMediaRow {
         // 81280792 self-produced; 70143836 licensed — simplified availability probe
         do {
-            let (status, _) = try await requestRaw("https://www.netflix.com/title/81280792", method: "GET")
+            let (status, _) = try await requestRaw(
+                "https://www.netflix.com/title/81280792",
+                method: "GET",
+                maxBytes: 8_000
+            )
             if status == 200 {
                 return IPMediaRow(name: "Netflix", status: "yes", region: "", note: "标题页可访问")
             }
@@ -654,8 +669,10 @@ actor IPCheckService {
 
     private func testYouTube() async -> IPMediaRow {
         do {
-            let (status, body) = try await requestRaw("https://www.youtube.com/premium")
-            if body.range(of: "www.google.cn|premium.*not available|无法提供", options: [.regularExpression, .caseInsensitive]) != nil {
+            let (status, body) = try await requestRaw("https://www.youtube.com/premium", maxBytes: 32_000)
+            if body.localizedCaseInsensitiveContains("www.google.cn")
+                || body.localizedCaseInsensitiveContains("not available")
+                || body.contains("无法提供") {
                 return IPMediaRow(name: "YouTube", status: "no", region: "", note: "地区限制")
             }
             if status == 200 {
@@ -669,7 +686,7 @@ actor IPCheckService {
 
     private func testChatGPT() async -> IPMediaRow {
         do {
-            let (status, body) = try await requestRaw("https://chatgpt.com/cdn-cgi/trace")
+            let (status, body) = try await requestRaw("https://chatgpt.com/cdn-cgi/trace", maxBytes: 4_000)
             if status == 200, body.contains("loc=") {
                 let loc = body.split(separator: "\n")
                     .first(where: { $0.hasPrefix("loc=") })
@@ -691,7 +708,7 @@ actor IPCheckService {
 
     private func testDisney() async -> IPMediaRow {
         do {
-            let (status, _) = try await requestRaw("https://www.disneyplus.com/")
+            let (status, _) = try await requestRaw("https://www.disneyplus.com/", maxBytes: 8_000)
             if status == 200 {
                 return IPMediaRow(name: "Disney+", status: "yes", region: "", note: "首页可访问")
             }
@@ -706,16 +723,16 @@ actor IPCheckService {
 
     // MARK: - HTTP helpers
 
+    /// Cap response body to avoid multi-MB HTML downloads (jetsam / OOM 闪退主因之一)。
+    private static let defaultMaxBytes = 256_000
+
     private func requestJSON(_ urlString: String) async throws -> [String: Any] {
         guard let url = URL(string: urlString) else { throw NetworkError.invalidURL }
         var req = URLRequest(url: url)
         req.timeoutInterval = 10
         req.setValue("application/json, text/plain, */*", forHTTPHeaderField: "Accept")
         req.setValue(ua, forHTTPHeaderField: "User-Agent")
-        let (data, response) = try await URLSession.shared.data(for: req)
-        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-            throw NetworkError.message("HTTP 失败")
-        }
+        let data = try await fetchData(req, maxBytes: Self.defaultMaxBytes)
         guard let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw NetworkError.message("非 JSON")
         }
@@ -727,24 +744,55 @@ actor IPCheckService {
         var req = URLRequest(url: url)
         req.timeoutInterval = 8
         req.setValue(ua, forHTTPHeaderField: "User-Agent")
-        let (data, response) = try await URLSession.shared.data(for: req)
-        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-            throw NetworkError.message("HTTP 失败")
-        }
+        let data = try await fetchData(req, maxBytes: 16_000)
         return String(data: data, encoding: .utf8) ?? ""
     }
 
-    private func requestRaw(_ urlString: String, method: String = "GET") async throws -> (Int, String) {
+    private func requestRaw(
+        _ urlString: String,
+        method: String = "GET",
+        maxBytes: Int = 32_000
+    ) async throws -> (Int, String) {
         guard let url = URL(string: urlString) else { throw NetworkError.invalidURL }
         var req = URLRequest(url: url)
         req.httpMethod = method
-        req.timeoutInterval = 10
+        req.timeoutInterval = 8
         req.setValue(ua, forHTTPHeaderField: "User-Agent")
         req.setValue("text/html,application/xhtml+xml,application/json,*/*", forHTTPHeaderField: "Accept")
-        let (data, response) = try await URLSession.shared.data(for: req)
-        let status = (response as? HTTPURLResponse)?.statusCode ?? -1
+        let (data, status) = try await fetchDataWithStatus(req, maxBytes: maxBytes)
         let body = String(data: data, encoding: .utf8) ?? ""
         return (status, body)
+    }
+
+    private func fetchData(_ req: URLRequest, maxBytes: Int) async throws -> Data {
+        let (data, status) = try await fetchDataWithStatus(req, maxBytes: maxBytes)
+        guard (200..<300).contains(status) else {
+            throw NetworkError.message("HTTP \(status)")
+        }
+        return data
+    }
+
+    private func fetchDataWithStatus(_ req: URLRequest, maxBytes: Int) async throws -> (Data, Int) {
+        let (bytes, response) = try await URLSession.shared.bytes(for: req)
+        let status = (response as? HTTPURLResponse)?.statusCode ?? -1
+        var data = Data()
+        data.reserveCapacity(min(maxBytes, 16_384))
+        var count = 0
+        for try await b in bytes {
+            data.append(b)
+            count += 1
+            if count >= maxBytes { break }
+        }
+        return (data, status)
+    }
+
+    private static func firstMatch(_ text: String, pattern: String, group: Int) -> String? {
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else { return nil }
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        guard let match = regex.firstMatch(in: text, options: [], range: range),
+              match.numberOfRanges > group,
+              let r = Range(match.range(at: group), in: text) else { return nil }
+        return String(text[r])
     }
 
     private func cloudflareTraceIP(_ text: String) -> String {

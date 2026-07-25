@@ -9,9 +9,11 @@ enum SmartNotifyService {
         force: Bool = false
     ) {
         guard settings.notifySmartAlerts else { return }
+        // Quiet hours: skip 签到/账单/证书/开播 (download still uses its own path).
+        let quietOK = NotifyGate.allowsSmartNotify(settings: settings)
 
         // Check-in failures
-        if settings.notifyCheckinFailed, let projects = checkin?.projects {
+        if quietOK, settings.notifyCheckinFailed, let projects = checkin?.projects {
             let failed = projects.filter { $0.statusKind == .failed }
             if !failed.isEmpty {
                 let names = failed.prefix(3).map(\.displayTitle).joined(separator: "、")
@@ -28,7 +30,7 @@ enum SmartNotifyService {
         }
 
         // Subscriptions due within 7 days
-        if settings.notifySubscriptionDue {
+        if quietOK, settings.notifySubscriptionDue {
             let due = SubscriptionStore.shared.items.filter { $0.daysUntilDue >= 0 && $0.daysUntilDue <= 7 }
             if let first = due.sorted(by: { $0.daysUntilDue < $1.daysUntilDue }).first {
                 LocalNotifier.notify(
@@ -36,14 +38,14 @@ enum SmartNotifyService {
                     title: "订阅即将到期",
                     body: "\(first.name) · \(first.daysUntilDue) 天后 · \(String(format: "%.2f", first.amount)) \(first.currency)",
                     category: LocalNotifier.smartCategory,
-                    userInfo: ["route": "subscription"],
+                    userInfo: ["route": "subscription", "subscriptionId": first.id],
                     collapseByDay: true
                 )
             }
         }
 
         // Certificates
-        if settings.notifyCertExpiry {
+        if quietOK, settings.notifyCertExpiry {
             let expiring = CertExpiryStore.shared.items.filter { ($0.daysLeft ?? 999) <= 14 && ($0.daysLeft ?? 999) >= 0 }
             if let first = expiring.sorted(by: { ($0.daysLeft ?? 99) < ($1.daysLeft ?? 99) }).first,
                let days = first.daysLeft {
@@ -52,10 +54,15 @@ enum SmartNotifyService {
                     title: "证书即将到期",
                     body: "\(first.host) · 剩余 \(days) 天",
                     category: LocalNotifier.smartCategory,
-                    userInfo: ["route": "certs"],
+                    userInfo: ["route": "certs", "certId": first.id],
                     collapseByDay: true
                 )
             }
+        }
+
+        // Live open (also evaluated with throttle in LiveOpenNotifyService)
+        if quietOK, settings.notifyLiveOpen {
+            LiveOpenNotifyService.evaluate(settings: settings)
         }
     }
 

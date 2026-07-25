@@ -62,13 +62,33 @@ struct FilesListView: View {
 
     var body: some View {
         if files.isEmpty {
-            Text("暂无已下载文件")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, 8)
+            VStack(alignment: .leading, spacing: 10) {
+                Text("暂无已下载文件")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                NavigationLink {
+                    WatchLaterHomeView()
+                } label: {
+                    Label("打开稍后再看（\(WatchLaterStore.shared.items.count)）", systemImage: "bookmark")
+                        .font(.caption.weight(.semibold))
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 8)
         } else {
             VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text("\(files.count) 个文件")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    NavigationLink {
+                        WatchLaterHomeView()
+                    } label: {
+                        Label("稍后再看", systemImage: "bookmark")
+                            .font(.caption.weight(.semibold))
+                    }
+                }
                 HStack {
                     Picker("排序", selection: $sort) {
                         ForEach(DownloadFileSort.allCases) { s in

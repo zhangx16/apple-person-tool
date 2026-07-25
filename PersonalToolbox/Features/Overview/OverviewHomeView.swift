@@ -31,6 +31,9 @@ final class OverviewViewModel: ObservableObject {
         case subscriptions
         case certs
         case ssh
+        case controlCenter
+        case proxyPack
+        case watchLater
     }
 
     @Published private(set) var isLoading = false
@@ -39,6 +42,12 @@ final class OverviewViewModel: ObservableObject {
     @Published private(set) var healthItems: [ServiceHealthItem] = []
     @Published private(set) var lastRefreshed: Date?
     @Published private(set) var activity: [ActivityEvent] = []
+    @Published private(set) var liveNowCount = 0
+    @Published private(set) var liveNowNames: [String] = []
+    @Published private(set) var subsDueSoon: [SubscriptionItem] = []
+    @Published private(set) var certsDueSoon: Int = 0
+    @Published private(set) var watchLaterCount = 0
+    @Published private(set) var komariOnlineHint: String?
 
     private let checkin = CheckinService.shared
     private let health = ServiceHealthService.shared
@@ -62,8 +71,11 @@ final class OverviewViewModel: ObservableObject {
     }
 
     var headlineStatus: String {
-        let fail = attentionItems.count
-        if fail == 0 {
+        var bits: [String] = []
+        if liveNowCount > 0 { bits.append("\(liveNowCount) 位主播直播中") }
+        if !subsDueSoon.isEmpty { bits.append("\(subsDueSoon.count) 笔账单将到期") }
+        if healthFail > 0 { bits.append("\(healthFail) 项服务异常") }
+        if bits.isEmpty {
             let healthy = checkinSummary?.counts?.healthyValue
             let total = checkinSummary?.counts?.totalValue
             if let healthy, let total, total > 0 {
@@ -71,11 +83,22 @@ final class OverviewViewModel: ObservableObject {
             }
             return "一切顺利 · 从下方进入常用服务"
         }
-        return "\(fail) 项需关注 · 点卡片处理"
+        return bits.joined(separator: " · ")
     }
 
     var attentionItems: [AttentionItem] {
         var list: [AttentionItem] = []
+
+        if liveNowCount > 0 {
+            list.append(.init(
+                id: "live-now",
+                title: "\(liveNowCount) 位关注主播直播中",
+                subtitle: liveNowNames.prefix(3).joined(separator: "、") + (liveNowNames.count > 3 ? " 等" : ""),
+                tint: Color(hex: 0xFF375F),
+                systemImage: "dot.radiowaves.left.and.right",
+                destination: .liveTab
+            ))
+        }
 
         if !AppSettings.shared.isCheckinConfigured {
             list.append(.init(
@@ -112,6 +135,28 @@ final class OverviewViewModel: ObservableObject {
             ))
         }
 
+        if let first = subsDueSoon.first {
+            list.append(.init(
+                id: "sub-due",
+                title: "\(subsDueSoon.count) 笔订阅 14 天内到期",
+                subtitle: "\(first.name) · \(first.daysUntilDue) 天 · \(String(format: "%.2f", first.amount)) \(first.currency)",
+                tint: Color(hex: 0xFF9F0A),
+                systemImage: "creditcard.fill",
+                destination: .subscriptions
+            ))
+        }
+
+        if certsDueSoon > 0 {
+            list.append(.init(
+                id: "cert-due",
+                title: "\(certsDueSoon) 张证书 14 天内到期",
+                subtitle: "打开证书监视查看详情",
+                tint: Color(hex: 0xFF453A),
+                systemImage: "lock.shield.fill",
+                destination: .certs
+            ))
+        }
+
         return list
     }
 
@@ -128,16 +173,28 @@ final class OverviewViewModel: ObservableObject {
     var healthFail: Int { healthItems.filter { $0.status == .fail }.count }
     var healthConfigured: Int { healthItems.filter { $0.status != .skip }.count }
 
+    private static let komariCacheKey = "overview.komariOnlineHint.v1"
+    private static let komariCacheAtKey = "overview.komariOnlineAt.v1"
+
     func refresh(settings: AppSettings) async {
         isLoading = true
         errorMessage = nil
+        // Phase 0: local dashboard immediately (no network).
+        reloadLocalDashboard(settings: settings)
+        loadKomariCache()
+
         defer {
             isLoading = false
             lastRefreshed = .now
             activity = activityStore.recent
+            reloadLocalDashboard(settings: settings)
         }
 
-        // Parallel-ish: health then checkin (health is sequential internally).
+        // Phase 1: live metadata + notify (background-friendly).
+        LiveFollowStore.shared.refreshMetadata(for: nil, forceStatus: true)
+        LiveOpenNotifyService.evaluate(settings: settings)
+
+        // Phase 2: service health
         await health.probeAll()
         healthItems = health.items
         let fails = healthItems.filter { $0.status == .fail }
@@ -151,6 +208,7 @@ final class OverviewViewModel: ObservableObject {
             ))
         }
 
+        // Phase 3: check-in
         if settings.isCheckinConfigured {
             do {
                 var base = settings.checkinBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -171,7 +229,6 @@ final class OverviewViewModel: ObservableObject {
                 }
                 SmartNotifyService.evaluate(settings: settings, checkin: checkinSummary)
             } catch {
-                // Don't block whole overview; surface soft error.
                 errorMessage = (error as? NetworkError)?.errorDescription ?? error.localizedDescription
                 activityStore.log(.make(
                     title: "签到同步失败",
@@ -183,8 +240,53 @@ final class OverviewViewModel: ObservableObject {
             }
         } else {
             checkinSummary = nil
+            SmartNotifyService.evaluate(settings: settings, checkin: nil)
         }
+
+        // Phase 4: Komari online (cache 5 min)
+        await refreshKomariIfNeeded(settings: settings)
+
+        try? await Task.sleep(nanoseconds: 350_000_000)
+        reloadLocalDashboard(settings: settings)
         activity = activityStore.recent
+    }
+
+    private func reloadLocalDashboard(settings: AppSettings) {
+        let live = LiveFollowStore.shared.items.filter { $0.isLive == true }
+        liveNowCount = live.count
+        liveNowNames = live.map(\.displayName)
+        subsDueSoon = SubscriptionStore.shared.dueSoon
+        certsDueSoon = CertExpiryStore.shared.items.filter { ($0.daysLeft ?? 999) <= 14 && ($0.daysLeft ?? 999) >= 0 }.count
+        watchLaterCount = WatchLaterStore.shared.items.count
+    }
+
+    private func loadKomariCache() {
+        if let cached = UserDefaults.standard.string(forKey: Self.komariCacheKey), !cached.isEmpty {
+            komariOnlineHint = cached
+        }
+    }
+
+    private func refreshKomariIfNeeded(settings: AppSettings) async {
+        let komari = settings.komariBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !komari.isEmpty else {
+            komariOnlineHint = nil
+            return
+        }
+        let last = UserDefaults.standard.object(forKey: Self.komariCacheAtKey) as? Date
+        if let last, Date().timeIntervalSince(last) < 300, komariOnlineHint != nil {
+            return
+        }
+        do {
+            let rows = try await KomariService.shared.dashboard(baseURL: komari)
+            let online = rows.filter(\.isOnline).count
+            let text = "\(online)/\(rows.count) 在线"
+            komariOnlineHint = text
+            UserDefaults.standard.set(text, forKey: Self.komariCacheKey)
+            UserDefaults.standard.set(Date(), forKey: Self.komariCacheAtKey)
+        } catch {
+            // keep cache on failure
+            if komariOnlineHint == nil { komariOnlineHint = "—" }
+        }
     }
 
     var setupChecklist: [(String, Bool, OverviewDestination)] {
@@ -212,10 +314,10 @@ struct OverviewHomeView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: AppleTheme.space5) {
                     heroHeader
+                    todayPulseStrip
                     onboardingSection
                     todayTodosSection
                     attentionSection
-                    activitySection
                     todayStrip
                     servicesQuickGrid
                     moreToolsRow
@@ -404,57 +506,114 @@ struct OverviewHomeView: View {
         }
     }
 
-    // MARK: - Activity timeline
+    // MARK: - Today pulse (live / bills / komari / watch later)
 
-    @ViewBuilder
-    private var activitySection: some View {
-        if !viewModel.activity.isEmpty {
-            VStack(alignment: .leading, spacing: 10) {
-                AppSectionTitle(title: "最近动态", systemImage: "clock.arrow.circlepath")
-                VStack(spacing: 0) {
-                    ForEach(Array(viewModel.activity.prefix(8))) { ev in
-                        Button {
-                            if let route = ev.route {
-                                navigateActivity(route)
-                            }
-                        } label: {
-                            HStack(alignment: .top, spacing: 10) {
-                                Image(systemName: ev.systemImage)
-                                    .font(.body.weight(.semibold))
-                                    .foregroundStyle(Color(hex: ev.tintHex))
-                                    .frame(width: 28)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(ev.title)
-                                        .font(.subheadline.weight(.semibold))
-                                        .foregroundStyle(.primary)
-                                    Text(ev.subtitle)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                        .lineLimit(2)
-                                    Text(ev.createdAt.formatted(date: .omitted, time: .shortened))
-                                        .font(.caption2)
-                                        .foregroundStyle(.tertiary)
-                                }
-                                Spacer(minLength: 0)
-                                if ev.route != nil {
-                                    Image(systemName: "chevron.right")
-                                        .font(.caption2.weight(.semibold))
-                                        .foregroundStyle(.tertiary)
-                                }
-                            }
-                            .padding(.vertical, 10)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        if ev.id != viewModel.activity.prefix(8).last?.id {
-                            Divider().opacity(0.35)
+    private var todayPulseStrip: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            AppSectionTitle(title: "今日速览", systemImage: "sparkles")
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    pulseChip(
+                        title: "直播中",
+                        value: "\(viewModel.liveNowCount)",
+                        caption: viewModel.liveNowCount > 0 ? viewModel.liveNowNames.first ?? "关注主播" : "暂无",
+                        tint: Color(hex: 0xFF375F),
+                        systemImage: "play.tv.fill"
+                    ) { navigate(.liveTab) }
+
+                    pulseChip(
+                        title: "账单",
+                        value: "\(viewModel.subsDueSoon.count)",
+                        caption: viewModel.subsDueSoon.first.map { "\($0.daysUntilDue) 天内" } ?? "14 天内到期",
+                        tint: Color(hex: 0xFF9F0A),
+                        systemImage: "creditcard.fill"
+                    ) {
+                        // Prefer sheet with focus when due soon.
+                        if let id = viewModel.subsDueSoon.first?.id {
+                            AppDeepLinkStore.shared.presentSheet = .subscriptions
+                            // Store focus for list highlight
+                            UserDefaults.standard.set(id, forKey: "subscription.focusId")
+                        } else {
+                            navigate(.subscriptions)
                         }
                     }
+
+                    pulseChip(
+                        title: "证书",
+                        value: "\(viewModel.certsDueSoon)",
+                        caption: "14 天内到期",
+                        tint: Color(hex: 0xFF453A),
+                        systemImage: "lock.shield.fill"
+                    ) { navigate(.certs) }
+
+                    pulseChip(
+                        title: "Komari",
+                        value: viewModel.komariOnlineHint ?? "—",
+                        caption: "节点在线",
+                        tint: ServiceBrand.komari.tint,
+                        systemImage: "server.rack"
+                    ) { navigate(.komari) }
+
+                    pulseChip(
+                        title: "稍后再看",
+                        value: "\(viewModel.watchLaterCount)",
+                        caption: "媒体链接",
+                        tint: Color(hex: 0x5E5CE6),
+                        systemImage: "bookmark.fill"
+                    ) { navigate(.watchLater) }
+
+                    pulseChip(
+                        title: "控制中心",
+                        value: "通知",
+                        caption: "开播 / 剪贴板",
+                        tint: Color.accentColor,
+                        systemImage: "switch.2"
+                    ) { navigate(.controlCenter) }
                 }
-                .padding(.horizontal, 14)
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
         }
+    }
+
+    private func pulseChip(
+        title: String,
+        value: String,
+        caption: String,
+        tint: Color,
+        systemImage: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Image(systemName: systemImage)
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 26, height: 26)
+                        .background(tint.brandGradient, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                    Spacer(minLength: 0)
+                }
+                Text(value)
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Text(caption)
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+            }
+            .padding(12)
+            .frame(width: 132, alignment: .leading)
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(AppStroke.highlight, lineWidth: 1)
+            }
+        }
+        .buttonStyle(PressableButtonStyle(scale: 0.97))
     }
 
     // MARK: - Attention
@@ -680,6 +839,32 @@ struct OverviewHomeView: View {
             .buttonStyle(PressableButtonStyle(scale: 0.98))
 
             Button {
+                navigate(.controlCenter)
+            } label: {
+                AppNavRow(
+                    title: "控制中心",
+                    subtitle: "通知 · 开播提醒 · 剪贴板智能条",
+                    systemImage: "switch.2",
+                    tint: .accentColor
+                )
+                .appCard()
+            }
+            .buttonStyle(PressableButtonStyle(scale: 0.98))
+
+            Button {
+                navigate(.proxyPack)
+            } label: {
+                AppNavRow(
+                    title: "代理 / 节点探测包",
+                    subtitle: "出口 IP · 流媒体 · 延迟档案",
+                    systemImage: "network.badge.shield.half.filled",
+                    tint: Color(hex: 0x0A84FF)
+                )
+                .appCard()
+            }
+            .buttonStyle(PressableButtonStyle(scale: 0.98))
+
+            Button {
                 selectedTab = .live
             } label: {
                 AppNavRow(
@@ -718,6 +903,9 @@ struct OverviewHomeView: View {
         case "reminder": navigate(.reminders)
         case "notes": navigate(.notes)
         case "ssh": navigate(.ssh)
+        case "live": navigate(.liveTab)
+        case "proxy": navigate(.proxyPack)
+        case "settings": selectedTab = .settings
         default: break
         }
     }
@@ -747,6 +935,12 @@ struct OverviewHomeView: View {
             SubscriptionHomeView()
         case .certs:
             CertMonitorHomeView()
+        case .controlCenter:
+            ControlCenterView()
+        case .proxyPack:
+            ProxyNodePackView()
+        case .watchLater:
+            WatchLaterHomeView()
         case .ssh:
             SSHHomeView()
         case .servicesTab, .liveTab, .settingsTab, .checkinSettings:

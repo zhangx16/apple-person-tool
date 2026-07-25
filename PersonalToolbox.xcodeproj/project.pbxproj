@@ -6,6 +6,15 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		000000000000000000000813 /* KomariBillImportSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000812 /* KomariBillImportSheet.swift */; };
+		000000000000000000000811 /* AppDeepLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000810 /* AppDeepLink.swift */; };
+		000000000000000000000801 /* ClipboardSmartRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000800 /* ClipboardSmartRouter.swift */; };
+		000000000000000000000803 /* LiveOpenNotifyService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000802 /* LiveOpenNotifyService.swift */; };
+		000000000000000000000805 /* ProxyNodeProfileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000804 /* ProxyNodeProfileStore.swift */; };
+		000000000000000000000807 /* WatchLaterStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000806 /* WatchLaterStore.swift */; };
+		000000000000000000000809 /* ClipboardSmartBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000808 /* ClipboardSmartBar.swift */; };
+		00000000000000000000080B /* ControlCenterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000080A /* ControlCenterView.swift */; };
+		00000000000000000000080D /* ProxyNodePackView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000080C /* ProxyNodePackView.swift */; };
 		000000000000000000008201 /* AudioEqualizerStubs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008200 /* AudioEqualizerStubs.swift */; };
 		000000000000000000008137 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 000000000000000000008136 /* GRDB */; };
 		000000000000000000008001 /* MusicRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008000 /* MusicRootView.swift */; };
@@ -288,6 +297,15 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		000000000000000000000812 /* KomariBillImportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KomariBillImportSheet.swift; sourceTree = "<group>"; };
+		000000000000000000000810 /* AppDeepLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDeepLink.swift; sourceTree = "<group>"; };
+		000000000000000000000800 /* ClipboardSmartRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardSmartRouter.swift; sourceTree = "<group>"; };
+		000000000000000000000802 /* LiveOpenNotifyService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveOpenNotifyService.swift; sourceTree = "<group>"; };
+		000000000000000000000804 /* ProxyNodeProfileStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyNodeProfileStore.swift; sourceTree = "<group>"; };
+		000000000000000000000806 /* WatchLaterStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchLaterStore.swift; sourceTree = "<group>"; };
+		000000000000000000000808 /* ClipboardSmartBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardSmartBar.swift; sourceTree = "<group>"; };
+		00000000000000000000080A /* ControlCenterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlCenterView.swift; sourceTree = "<group>"; };
+		00000000000000000000080C /* ProxyNodePackView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyNodePackView.swift; sourceTree = "<group>"; };
 		000000000000000000008200 /* AudioEqualizerStubs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Playback/AudioEqualizerStubs.swift; sourceTree = "<group>"; };
 		000000000000000000008000 /* MusicRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicRootView.swift; sourceTree = "<group>"; };
 		000000000000000000008002 /* MeloXCompatibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloXCompatibility.swift; sourceTree = "<group>"; };
@@ -832,6 +850,11 @@
 				000000000000000000000722 /* CheckinHistoryStore.swift */,
 				000000000000000000000724 /* NoteOfflineCache.swift */,
 				0000000000000000000005F4 /* SubscriptionStore.swift */,
+				000000000000000000000800 /* ClipboardSmartRouter.swift */,
+				000000000000000000000802 /* LiveOpenNotifyService.swift */,
+				000000000000000000000804 /* ProxyNodeProfileStore.swift */,
+				000000000000000000000806 /* WatchLaterStore.swift */,
+				000000000000000000000810 /* AppDeepLink.swift */,
 				0000000000000000000005F6 /* ReminderStore.swift */,
 				0000000000000000000005F8 /* CertExpiryService.swift */,
 				0000000000000000000005FA /* FastNoteSyncService.swift */,
@@ -892,6 +915,7 @@
 			children = (
 				00000000000000000000012F /* ServiceProbeRow.swift */,
 				000000000000000000000131 /* SettingsView.swift */,
+				00000000000000000000080A /* ControlCenterView.swift */,
 				000000000000000000000133 /* SettingsViewModel.swift */,
 			);
 			path = Settings;
@@ -1007,6 +1031,7 @@
 				000000000000000000000308 /* Download */,
 				000000000000000000000309 /* Settings */,
 				0000000000000000000005FE /* LifeExtrasViews.swift */,
+				000000000000000000000812 /* KomariBillImportSheet.swift */,
 				000000000000000000000712 /* SSHTerminalView.swift */,
 			);
 			path = Features;
@@ -1057,6 +1082,8 @@
 			isa = PBXGroup;
 			children = (
 				000000000000000000000516 /* ToolsHomeViews.swift */,
+				000000000000000000000808 /* ClipboardSmartBar.swift */,
+				00000000000000000000080C /* ProxyNodePackView.swift */,
 			);
 			path = Tools;
 			sourceTree = "<group>";
@@ -1220,6 +1247,15 @@
 				000000000000000000000507 /* ActionRouter.swift in Sources */,
 				000000000000000000000509 /* PasswordGenerator.swift in Sources */,
 				00000000000000000000050B /* ClipboardStore.swift in Sources */,
+				000000000000000000000813 /* KomariBillImportSheet.swift in Sources */,
+				000000000000000000000811 /* AppDeepLink.swift in Sources */,
+				000000000000000000000801 /* ClipboardSmartRouter.swift in Sources */,
+				000000000000000000000803 /* LiveOpenNotifyService.swift in Sources */,
+				000000000000000000000805 /* ProxyNodeProfileStore.swift in Sources */,
+				000000000000000000000807 /* WatchLaterStore.swift in Sources */,
+				000000000000000000000809 /* ClipboardSmartBar.swift in Sources */,
+				00000000000000000000080B /* ControlCenterView.swift in Sources */,
+				00000000000000000000080D /* ProxyNodePackView.swift in Sources */,
 				00000000000000000000050D /* ServiceHealthService.swift in Sources */,
 				00000000000000000000050F /* RSSStore.swift in Sources */,
 				000000000000000000000511 /* HabitTodoStore.swift in Sources */,
@@ -1531,7 +1567,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 91;
+				CURRENT_PROJECT_VERSION = 92;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				CODE_SIGN_ENTITLEMENTS = PersonalToolbox/PersonalToolbox.entitlements;
@@ -1558,7 +1594,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 91;
+				CURRENT_PROJECT_VERSION = 92;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				CODE_SIGN_ENTITLEMENTS = PersonalToolbox/PersonalToolbox.entitlements;
@@ -1585,7 +1621,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 91;
+				CURRENT_PROJECT_VERSION = 92;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
@@ -1611,7 +1647,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 91;
+				CURRENT_PROJECT_VERSION = 92;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;

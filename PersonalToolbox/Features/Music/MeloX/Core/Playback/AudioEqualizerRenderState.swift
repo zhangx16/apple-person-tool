@@ -45,7 +45,6 @@ nonisolated final class SharedAudioEqualizerConfiguration: Sendable {
         gains89 = Atomic(Self.packGains(renderConfiguration, 8, 9))
     }
 
-    @MainActor
     func update(_ configuration: AudioEqualizerConfiguration) {
         let nextRevision = revision.load(ordering: .relaxed) &+ 2
         let renderConfiguration = Self.renderConfiguration(

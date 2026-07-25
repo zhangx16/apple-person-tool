@@ -10,7 +10,6 @@ nonisolated final class AudioEqualizerProcessor {
         )
     }
 
-    @MainActor
     func update(configuration: AudioEqualizerConfiguration) {
         sharedConfiguration.update(configuration)
     }

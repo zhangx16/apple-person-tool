@@ -2,6 +2,7 @@
 // Ported to native SwiftUI under the PV Tool Non-Commercial License.
 
 import SwiftUI
+import Darwin
 
 enum TextPVTextResources {
     static let formulae = [
@@ -21,7 +22,7 @@ enum TextPVTextResources {
     static let serifFamilies: Set<String> = ["Noto Serif JP"]
     static let strokeDirections: [CGPoint] = (0..<12).map { index in
         let angle = CGFloat(index) / 12 * 2 * .pi
-        return CGPoint(x: cos(angle), y: sin(angle))
+        return CGPoint(x: CGFloat(Darwin.cos(Double(angle))), y: CGFloat(Darwin.sin(Double(angle))))
     }
 }
 
@@ -180,8 +181,8 @@ extension TextPVEffectPainter {
         height: CGFloat,
         rotation: CGFloat
     ) -> Path {
-        let cosine = cos(rotation)
-        let sine = sin(rotation)
+        let cosine = CGFloat(Darwin.cos(Double(rotation)))
+        let sine = CGFloat(Darwin.sin(Double(rotation)))
         let corners = [
             CGPoint(x: -width / 2, y: -height / 2),
             CGPoint(x: width / 2, y: -height / 2),
@@ -207,8 +208,8 @@ extension TextPVEffectPainter {
             let angle = CGFloat(index) * .pi / CGFloat(points) - .pi / 2
             let currentRadius = index.isMultiple(of: 2) ? radius : radius * 0.28
             let point = CGPoint(
-                x: center.x + cos(angle) * currentRadius,
-                y: center.y + sin(angle) * currentRadius
+                x: center.x + CGFloat(Darwin.cos(Double(angle))) * currentRadius,
+                y: center.y + CGFloat(Darwin.sin(Double(angle))) * currentRadius
             )
             index == 0 ? path.move(to: point) : path.addLine(to: point)
         }

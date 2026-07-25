@@ -80,6 +80,7 @@ struct MiniPlayerView: View {
             .padding(.horizontal, isInline ? 8 : 12)
             .padding(.vertical, isInline ? 3 : 6)
             .frame(maxWidth: .infinity)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             .contentShape(.rect)
             .simultaneousGesture(trackSwipeGesture)
             .accessibilityAction(named: "上一首") {

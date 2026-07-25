@@ -1,7 +1,9 @@
 import SwiftUI
 
 /// Native MeloX experience embedded in PersonalToolbox.
-/// Top segment control avoids a second bottom tab bar under the app shell.
+///
+/// Section switching lives in a **bottom** module bar (above the app tab bar),
+/// so content pages keep a clean top navigation title — no top segment strip.
 struct MeloXContentView: View {
     @Environment(PlayerStore.self) private var player
     @Environment(MeloXSettings.self) private var settings
@@ -35,110 +37,130 @@ struct MeloXContentView: View {
     }
 
     private var mainExperience: some View {
-        ZStack(alignment: .bottom) {
-            VStack(spacing: 0) {
-                musicSectionPicker
-                Divider()
-                sectionStack
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
+        sectionStack
             .environment(\.musicNavigationNamespace, musicNavigationNamespace)
+            // Bottom chrome: mini player + section tabs. Content uses full top for nav titles.
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                bottomChrome
+            }
+            .environment(\.openMusicRoute, OpenMusicRouteAction(action: openMusicRoute))
+            .environment(\.openNeteaseShare, OpenNeteaseShareAction(action: openNeteaseShare))
+            .fullScreenCover(item: $playerPresentation, onDismiss: finishPendingSongNavigation) { destination in
+                switch destination {
+                case .nowPlaying:
+                    NowPlayingView(initialPage: initialNowPlayingPage)
+                        .environment(\.openMusicRoute, OpenMusicRouteAction(action: openMusicRoute))
+                        .environment(
+                            \.openNeteaseShare,
+                            OpenNeteaseShareAction { presentation in
+                                presentNeteaseShare(presentation, fromNowPlaying: true)
+                            }
+                        )
+                        .sheet(item: $nowPlayingSharePresentation) { presentation in
+                            NeteaseShareSheet(presentation: presentation)
+                        }
+                }
+            }
+            .sheet(item: $neteaseSharePresentation) { presentation in
+                NeteaseShareSheet(presentation: presentation)
+            }
+            .task { await player.restore() }
+            .task(id: settings.cookie) { await library.refresh() }
+            .onChange(of: selectedTab) { _, tab in
+                settings.lastSelectedTab = tab
+            }
+            .alert(
+                "歌曲无法播放",
+                isPresented: Binding(
+                    get: { player.playbackIssue != nil },
+                    set: { if !$0 { player.dismissPlaybackIssue() } }
+                )
+            ) {
+                if player.canPlayNext {
+                    Button("播放下一首") {
+                        player.dismissPlaybackIssue()
+                        Task { await player.next() }
+                    }
+                }
+                Button("好", role: .cancel) { player.dismissPlaybackIssue() }
+            } message: {
+                Text(player.playbackIssue?.message ?? "当前歌曲暂时无法播放。")
+            }
+            .alert(
+                "下载操作失败",
+                isPresented: Binding(
+                    get: { downloads.errorMessage != nil },
+                    set: { if !$0 { downloads.clearError() } }
+                )
+            ) {
+                Button("好", role: .cancel) { downloads.clearError() }
+            } message: {
+                Text(downloads.errorMessage ?? "无法完成下载操作。")
+            }
+            .appLaunchExperience()
+    }
 
+    /// Mini player (if any) + compact section icons.
+    private var bottomChrome: some View {
+        VStack(spacing: 0) {
             if player.currentSong != nil {
                 MiniPlayerView {
                     playerPresentation = .nowPlaying
                 }
-                .padding(.horizontal, 10)
-                .padding(.bottom, 8)
+                .padding(.horizontal, 12)
+                .padding(.top, 6)
+                .padding(.bottom, 4)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
+
+            musicSectionBar
+        }
+        .background {
+            Rectangle()
+                .fill(.bar)
+                .ignoresSafeArea(edges: .bottom)
         }
         .animation(.snappy(duration: 0.28), value: player.currentSong?.id)
-        .environment(\.openMusicRoute, OpenMusicRouteAction(action: openMusicRoute))
-        .environment(\.openNeteaseShare, OpenNeteaseShareAction(action: openNeteaseShare))
-        .fullScreenCover(item: $playerPresentation, onDismiss: finishPendingSongNavigation) { destination in
-            switch destination {
-            case .nowPlaying:
-                NowPlayingView(initialPage: initialNowPlayingPage)
-                    .environment(\.openMusicRoute, OpenMusicRouteAction(action: openMusicRoute))
-                    .environment(
-                        \.openNeteaseShare,
-                        OpenNeteaseShareAction { presentation in
-                            presentNeteaseShare(presentation, fromNowPlaying: true)
-                        }
-                    )
-                    .sheet(item: $nowPlayingSharePresentation) { presentation in
-                        NeteaseShareSheet(presentation: presentation)
-                    }
-            }
-        }
-        .sheet(item: $neteaseSharePresentation) { presentation in
-            NeteaseShareSheet(presentation: presentation)
-        }
-        .task { await player.restore() }
-        .task(id: settings.cookie) { await library.refresh() }
-        .onChange(of: selectedTab) { _, tab in
-            settings.lastSelectedTab = tab
-        }
-        .alert(
-            "歌曲无法播放",
-            isPresented: Binding(
-                get: { player.playbackIssue != nil },
-                set: { if !$0 { player.dismissPlaybackIssue() } }
-            )
-        ) {
-            if player.canPlayNext {
-                Button("播放下一首") {
-                    player.dismissPlaybackIssue()
-                    Task { await player.next() }
-                }
-            }
-            Button("好", role: .cancel) { player.dismissPlaybackIssue() }
-        } message: {
-            Text(player.playbackIssue?.message ?? "当前歌曲暂时无法播放。")
-        }
-        .alert(
-            "下载操作失败",
-            isPresented: Binding(
-                get: { downloads.errorMessage != nil },
-                set: { if !$0 { downloads.clearError() } }
-            )
-        ) {
-            Button("好", role: .cancel) { downloads.clearError() }
-        } message: {
-            Text(downloads.errorMessage ?? "无法完成下载操作。")
-        }
-        .appLaunchExperience()
     }
 
-    private var musicSectionPicker: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(MeloXTab.allCases) { tab in
-                    let on = selectedTab == tab
-                    Button {
-                        withAnimation(.snappy(duration: 0.22)) { selectedTab = tab }
-                    } label: {
-                        Label(tab.title, systemImage: tab.systemImage)
-                            .font(.subheadline.weight(on ? .semibold : .regular))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .foregroundStyle(on ? Color.white : Color.primary)
-                            .background {
-                                if on {
-                                    Capsule().fill(Color.red.gradient)
-                                } else {
-                                    Capsule().fill(Color(.secondarySystemFill))
-                                }
-                            }
+    /// Icon + short label row — sits above the app’s own tab bar.
+    private var musicSectionBar: some View {
+        HStack(spacing: 0) {
+            ForEach(MeloXTab.allCases) { tab in
+                let on = selectedTab == tab
+                Button {
+                    // Double-tap same tab pops to root of that stack.
+                    if selectedTab == tab {
+                        popToRoot(tab)
+                    } else {
+                        withAnimation(.snappy(duration: 0.2)) {
+                            selectedTab = tab
+                        }
                     }
-                    .buttonStyle(.plain)
+                } label: {
+                    VStack(spacing: 3) {
+                        Image(systemName: tab.systemImage)
+                            .font(.system(size: 18, weight: on ? .semibold : .regular))
+                            .symbolVariant(on ? .fill : .none)
+                        Text(tab.title)
+                            .font(.system(size: 10, weight: on ? .semibold : .regular))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
+                    .foregroundStyle(on ? Color.red : Color.secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(on ? .isSelected : [])
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
         }
-        .background(Color(.systemBackground))
+        .padding(.horizontal, 4)
+        .padding(.bottom, 2)
+        .overlay(alignment: .top) {
+            Divider()
+        }
     }
 
     @ViewBuilder
@@ -146,23 +168,40 @@ struct MeloXContentView: View {
         switch selectedTab {
         case .home:
             NavigationStack(path: $homePath) {
-                HomeView().musicDestinations(in: musicNavigationNamespace)
+                HomeView()
+                    .musicDestinations(in: musicNavigationNamespace)
             }
         case .explore:
             NavigationStack(path: $explorePath) {
-                ExploreView().musicDestinations(in: musicNavigationNamespace)
+                ExploreView()
+                    .musicDestinations(in: musicNavigationNamespace)
             }
         case .library:
             NavigationStack(path: $libraryPath) {
-                LibraryView().musicDestinations(in: musicNavigationNamespace)
+                LibraryView()
+                    .musicDestinations(in: musicNavigationNamespace)
             }
         case .search:
             NavigationStack(path: $searchPath) {
-                SearchView().musicDestinations(in: musicNavigationNamespace)
+                SearchView()
+                    .musicDestinations(in: musicNavigationNamespace)
             }
         case .settings:
             NavigationStack(path: $settingsPath) {
-                MeloXSettingsView().musicDestinations(in: musicNavigationNamespace)
+                MeloXSettingsView()
+                    .musicDestinations(in: musicNavigationNamespace)
+            }
+        }
+    }
+
+    private func popToRoot(_ tab: MeloXTab) {
+        withAnimation(.snappy(duration: 0.2)) {
+            switch tab {
+            case .home: homePath = NavigationPath()
+            case .explore: explorePath = NavigationPath()
+            case .library: libraryPath = NavigationPath()
+            case .search: searchPath = NavigationPath()
+            case .settings: settingsPath = NavigationPath()
             }
         }
     }

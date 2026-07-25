@@ -1,6 +1,110 @@
 import SwiftUI
+import Darwin
 
-// Placeholder for future MeloX iOS 17 shims when native target is re-enabled.
-enum MeloXBuildNote {
-    static let requiresXcode16 = true
+// MARK: - Compatibility shims for embedding MeloX on older SDKs
+// On Xcode 16+ / newer SDKs, system APIs exist — avoid redeclaration.
+
+#if compiler(<6.0)
+extension View {
+    func matchedTransitionSource<ID: Hashable>(
+        id: ID,
+        in namespace: Namespace.ID
+    ) -> some View {
+        self
+    }
+
+    func navigationTransition(_ transition: Any) -> some View { self }
+
+    func tabBarMinimizeBehavior(_ behavior: Any) -> some View { self }
+
+    func tabViewBottomAccessory<Content: View>(
+        @ViewBuilder content: () -> Content
+    ) -> some View { self }
+
+    func sharedBackgroundVisibility(_ visibility: Any) -> some View { self }
+
+    func sliderThumbVisibility(_ visibility: Any) -> some View { self }
+}
+
+extension Text {
+    func customAttribute(_ attribute: Any) -> Text { self }
+}
+#else
+// Provide no-ops only for APIs that may still be missing / iOS 26-only.
+extension View {
+    @ViewBuilder
+    func sharedBackgroundVisibility(_ visibility: Any) -> some View {
+        self
+    }
+
+    @ViewBuilder
+    func sliderThumbVisibility(_ visibility: Any) -> some View {
+        // iOS 18 has this; keep no-op overload for Any to satisfy call sites that pass enums.
+        self
+    }
+}
+
+extension Text {
+    /// Fallback when building against SDKs without timed-lyric custom attributes.
+    func customAttribute(_ attribute: Any) -> Text { self }
+}
+#endif
+
+enum MeloXTabAccessoryPlacement: Equatable {
+    case inline
+    case expanded
+}
+
+private enum MeloXTabAccessoryPlacementKey: EnvironmentKey {
+    static let defaultValue: MeloXTabAccessoryPlacement = .expanded
+}
+
+extension EnvironmentValues {
+    var tabViewBottomAccessoryPlacement: MeloXTabAccessoryPlacement {
+        get { self[MeloXTabAccessoryPlacementKey.self] }
+        set { self[MeloXTabAccessoryPlacementKey.self] = newValue }
+    }
+}
+
+// MARK: - Liquid Glass fallbacks (iOS 26)
+
+struct GlassEffectContainer<Content: View>: View {
+    var spacing: CGFloat = 12
+    @ViewBuilder var content: () -> Content
+
+    init(spacing: CGFloat = 12, @ViewBuilder content: @escaping () -> Content) {
+        self.spacing = spacing
+        self.content = content
+    }
+
+    var body: some View { content() }
+}
+
+struct MeloXGlassButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(Color(.secondarySystemFill), in: Capsule())
+            .opacity(configuration.isPressed ? 0.75 : 1)
+    }
+}
+
+struct MeloXGlassProminentButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .padding(.horizontal, 18)
+            .padding(.vertical, 12)
+            .foregroundStyle(.white)
+            .background(Color.red.gradient, in: Capsule())
+            .opacity(configuration.isPressed ? 0.85 : 1)
+    }
+}
+
+extension ButtonStyle where Self == MeloXGlassButtonStyle {
+    static var glass: MeloXGlassButtonStyle { MeloXGlassButtonStyle() }
+}
+
+extension ButtonStyle where Self == MeloXGlassProminentButtonStyle {
+    static var glassProminent: MeloXGlassProminentButtonStyle { MeloXGlassProminentButtonStyle() }
 }

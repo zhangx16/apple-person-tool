@@ -25,9 +25,27 @@ jobs:
 
       - name: Select Xcode
         run: |
-          sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer \
-            || sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          set -euo pipefail
+          # Prefer newest available Xcode for MeloX (needs modern SwiftUI / Observation).
+          # Fall back through 16.x then 15.4 so the job still runs on older images.
+          for app in \
+            /Applications/Xcode_16.4.app \
+            /Applications/Xcode_16.3.app \
+            /Applications/Xcode_16.2.app \
+            /Applications/Xcode_16.1.app \
+            /Applications/Xcode_16.0.app \
+            /Applications/Xcode_16.app \
+            /Applications/Xcode_15.4.app \
+            /Applications/Xcode.app
+          do
+            if [ -d "$app/Contents/Developer" ]; then
+              sudo xcode-select -s "$app/Contents/Developer"
+              echo "Selected $app"
+              break
+            fi
+          done
           xcodebuild -version
+          ls /Applications | grep -i xcode || true
           openssl version
 
       - name: Build signing keychain from PEM secrets

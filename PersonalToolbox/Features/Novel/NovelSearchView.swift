@@ -101,9 +101,13 @@ struct NovelSearchView: View {
         let result = await NovelBookService.search(key: key, sources: src)
         hits = result.hits
         errors = result.errors
-        status = hits.isEmpty
-            ? "未找到结果（\(src.count) 个书源）"
-            : "完成 · \(hits.count) 条 · \(src.count) 源"
+        if hits.isEmpty {
+            status = result.errors.isEmpty
+                ? "未找到结果（已试 \(src.count) 个书源）"
+                : "未找到结果 · \(result.errors.count)/\(src.count) 源失败（见下方）"
+        } else {
+            status = "完成 · \(hits.count) 条 · \(src.count) 源"
+        }
         isSearching = false
     }
 }

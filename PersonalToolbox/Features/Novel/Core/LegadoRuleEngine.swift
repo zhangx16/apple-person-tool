@@ -265,14 +265,31 @@ enum LegadoRuleEngine {
 
     private static func selectSingle(_ token: String, in html: String) -> [String] {
         var t = token.trimmingCharacters(in: .whitespaces)
+        // Legado aliases: class.xxx / tag.xxx / id.xxx / @css:selector
+        if t.hasPrefix("@css:") {
+            t = String(t.dropFirst(5))
+        }
+        if t.hasPrefix("class.") {
+            t = "." + String(t.dropFirst(6))
+        } else if t.hasPrefix("tag.") {
+            t = String(t.dropFirst(4))
+        } else if t.hasPrefix("id.") {
+            t = "#" + String(t.dropFirst(3))
+        }
         if t.hasPrefix(".") {
-            // class only
             let cls = String(t.dropFirst())
+            // class may be "foo.0" with index already stripped by htmlList
             return elementsWithClass(cls, in: html)
         }
         if t.hasPrefix("#") {
             let id = String(t.dropFirst())
             return elementsWithID(id, in: html)
+        }
+        // tag[attr=value] / tag[attr*=value]
+        if let bracket = t.firstIndex(of: "["), t.hasSuffix("]") {
+            let tag = String(t[..<bracket])
+            let inside = String(t[t.index(after: bracket)..<t.index(before: t.endIndex)])
+            return elementsWithAttr(tag: tag.isEmpty ? nil : tag, attrExpr: inside, in: html)
         }
         // tag or tag.class
         var tag = t
@@ -282,6 +299,52 @@ enum LegadoRuleEngine {
             cls = String(t[t.index(after: dot)...])
         }
         return elements(tag: tag.isEmpty ? nil : tag, className: cls, in: html)
+    }
+
+    /// Supports `attr=value`, `attr*=value`, `attr^=value`, `attr$=value`.
+    private static func elementsWithAttr(tag: String?, attrExpr: String, in html: String) -> [String] {
+        let expr = attrExpr.trimmingCharacters(in: .whitespaces)
+        let name: String
+        let mode: String
+        let value: String
+        if let r = expr.range(of: "*=") {
+            name = String(expr[..<r.lowerBound]); mode = "*"; value = trimQuotes(String(expr[r.upperBound...]))
+        } else if let r = expr.range(of: "^=") {
+            name = String(expr[..<r.lowerBound]); mode = "^"; value = trimQuotes(String(expr[r.upperBound...]))
+        } else if let r = expr.range(of: "$=") {
+            name = String(expr[..<r.lowerBound]); mode = "$"; value = trimQuotes(String(expr[r.upperBound...]))
+        } else if let r = expr.range(of: "=") {
+            name = String(expr[..<r.lowerBound]); mode = "="; value = trimQuotes(String(expr[r.upperBound...]))
+        } else {
+            return elements(tag: tag, className: nil, in: html)
+        }
+        let tagPat = tag.map { NSRegularExpression.escapedPattern(for: $0) } ?? "[a-zA-Z0-9]+"
+        let pattern = #"<(\#(tagPat))([^>]*)>([\s\S]*?)</\1>"#
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else {
+            return []
+        }
+        let ns = html as NSString
+        let matches = regex.matches(in: html, range: NSRange(location: 0, length: ns.length))
+        return matches.compactMap { m -> String? in
+            let full = ns.substring(with: m.range)
+            let attrVal = attribute(name.trimmingCharacters(in: .whitespaces), of: full)
+            let ok: Bool
+            switch mode {
+            case "*": ok = attrVal.contains(value)
+            case "^": ok = attrVal.hasPrefix(value)
+            case "$": ok = attrVal.hasSuffix(value)
+            default: ok = attrVal == value
+            }
+            return ok ? full : nil
+        }
+    }
+
+    private static func trimQuotes(_ s: String) -> String {
+        var t = s.trimmingCharacters(in: .whitespaces)
+        if (t.hasPrefix("\"") && t.hasSuffix("\"")) || (t.hasPrefix("'") && t.hasSuffix("'")) {
+            t = String(t.dropFirst().dropLast())
+        }
+        return t
     }
 
     private static func elementsWithClass(_ className: String, in html: String) -> [String] {
@@ -340,12 +403,20 @@ enum LegadoRuleEngine {
         if let re = try? NSRegularExpression(pattern: #"<style[\s\S]*?</style>"#, options: .caseInsensitive) {
             s = re.stringByReplacingMatches(in: s, range: NSRange(s.startIndex..., in: s), withTemplate: "")
         }
+        // Preserve paragraph breaks
+        s = s.replacingOccurrences(of: "<br>", with: "\n", options: .caseInsensitive)
+        s = s.replacingOccurrences(of: "<br/>", with: "\n", options: .caseInsensitive)
+        s = s.replacingOccurrences(of: "<br />", with: "\n", options: .caseInsensitive)
+        s = s.replacingOccurrences(of: "</p>", with: "\n", options: .caseInsensitive)
+        s = s.replacingOccurrences(of: "</div>", with: "\n", options: .caseInsensitive)
         if let re = try? NSRegularExpression(pattern: #"<[^>]+>"#, options: []) {
             s = re.stringByReplacingMatches(in: s, range: NSRange(s.startIndex..., in: s), withTemplate: "")
         }
         return decodeEntities(s)
             .replacingOccurrences(of: "\u{00a0}", with: " ")
-            .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+            .replacingOccurrences(of: #"[ \t]+\n"#, with: "\n", options: .regularExpression)
+            .replacingOccurrences(of: #"\n{3,}"#, with: "\n\n", options: .regularExpression)
+            .replacingOccurrences(of: #"[ \t]{2,}"#, with: " ", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 

@@ -24,7 +24,9 @@ enum NovelBookService {
                         let found = try await searchOne(source: source, key: keyword, page: page)
                         return .success(found)
                     } catch {
-                        return .failure(error)
+                        let name = source.bookSourceName
+                        let msg = error.localizedDescription
+                        return .failure(NovelError.network("「\(name)」\(msg.replacingOccurrences(of: "网络错误：", with: ""))"))
                     }
                 }
             }
@@ -33,6 +35,7 @@ enum NovelBookService {
                 case .success(let found):
                     hits.append(contentsOf: found)
                 case .failure(let error):
+                    // Keep short; UI shows a failure section.
                     errors.append(error.localizedDescription)
                 }
             }
@@ -103,6 +106,9 @@ enum NovelBookService {
             let name = LegadoRuleEngine.getString(rule: toc.chapterName, in: frag, baseURL: base)
             let url = LegadoRuleEngine.getString(rule: toc.chapterUrl, in: frag, baseURL: base)
             guard !name.isEmpty else { return nil }
+            // Skip nav junk (page jump / empty anchors)
+            if name.contains("↓") || name.contains("直达") || name.contains("顶部") { return nil }
+            if url.hasPrefix("#") { return nil }
             return NovelChapter(name: name, url: url.isEmpty ? book.bookURL : url)
         }
         if chapters.isEmpty { throw NovelError.noChapters }
@@ -127,18 +133,42 @@ enum NovelBookService {
         let rule = source.ruleContent?.content
         var text = LegadoRuleEngine.getString(rule: rule, in: html, baseURL: base)
         if text.isEmpty {
-            // Fallback: strip article-like body
-            text = LegadoRuleEngine.getString(rule: "#content@text||.content@text||#chaptercontent@text", in: html, baseURL: base)
+            // Fallback: common content containers
+            text = LegadoRuleEngine.getString(
+                rule: "#chaptercontent@text||#content@text||.content@text||.Readarea@text",
+                in: html,
+                baseURL: base
+            )
         }
         if let rep = source.ruleContent?.replaceRegex, !rep.isEmpty {
-            text = LegadoRuleEngine.getString(rule: "@text##\(rep)##", in: text, baseURL: base)
+            text = applyLegadoReplaceRegex(rep, to: text)
         }
         text = text
             .replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\u{00a0}", with: " ")
             .replacingOccurrences(of: "\n{3,}", with: "\n\n", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)
         if text.isEmpty { throw NovelError.emptyContent }
         return text
+    }
+
+    /// Legado `replaceRegex`: `##regex##replacement` chained pairs (replacement may be empty).
+    private static func applyLegadoReplaceRegex(_ rule: String, to text: String) -> String {
+        var result = text
+        var tokens = rule.components(separatedBy: "##")
+        if tokens.first?.isEmpty == true { tokens.removeFirst() }
+        var i = 0
+        while i < tokens.count {
+            let pattern = tokens[i]
+            let repl = (i + 1 < tokens.count) ? tokens[i + 1] : ""
+            if !pattern.isEmpty,
+               let regex = try? NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators]) {
+                let range = NSRange(result.startIndex..., in: result)
+                result = regex.stringByReplacingMatches(in: result, range: range, withTemplate: repl)
+            }
+            i += 2
+        }
+        return result
     }
 
     // MARK: - Local TXT

@@ -158,11 +158,11 @@ struct NovelSourceImportView: View {
                 } footer: {
                     Text("""
                     检查结论（2026-07）：
-                    · XIU2/Yuedu：可用（Bitbucket / jsd CDN）。完整包约 26 条，其中约 5 条无 JS。分享页 yuedu.xiu2.xyz 仅为导航，勿当 JSON 导入。
-                    · 大灰狼 shidahuilang/shuyuan（good.json / jinghua.json）：GitHub 仓库因 ToS 被封锁，raw/jsDelivr 均 404，暂不可导入。
-                    · Yiove：网站 SPA；请用上方「Yiove API」按钮。API 偶发 520。
-                    · 源仓库 YckCeo.Vip：发布/导航页，无稳定直链书源 JSON。
-                    · 引擎限制：仅 CSS/JSON 规则可搜索；含 <js>/@js: 的源导入后可留存，搜索会跳过。
+                    · 内置精选：顶点小说（m.bgg99.cc）与飘天文学已实测可搜；升级后会自动合并。
+                    · XIU2 完整包可导入，多数含 JS 本引擎会跳过。
+                    · 大灰狼 good.json：GitHub 封锁不可用。Yiove API 偶发 5xx。
+                    · ATS 已允许 HTTP；仍建议优先 HTTPS 书源。
+                    · 引擎：CSS/JSON 规则；含 <js>/@js: 的源无法搜索。
                     """)
                     .font(.caption2)
                 }

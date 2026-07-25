@@ -19,7 +19,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>4.2</string>
 	<key>CFBundleVersion</key>
-	<string>102</string>
+	<string>103</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -88,6 +88,9 @@
 	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>
+		<!-- Novel book sources often use cleartext HTTP; allow with per-site still preferred. -->
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
 		<key>NSExceptionDomains</key>
 		<dict>
 			<key>ip-api.com</key>

@@ -8,6 +8,9 @@ final class BookSourceStore {
     private(set) var sources: [BookSource] = []
     private let fileURL: URL
     private let defaultsKey = "novel.bookSources.v1"
+    private let seedVersionKey = "novel.bookSources.seedVersion"
+    /// Bump when bundled default sources are refreshed (merges into existing store).
+    private let currentSeedVersion = 3
 
     private init() {
         let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -30,6 +33,7 @@ final class BookSourceStore {
            let list = try? JSONDecoder().decode([BookSource].self, from: data),
            !list.isEmpty {
             sources = list
+            migrateSeedIfNeeded()
             return
         }
         if let data = UserDefaults.standard.data(forKey: defaultsKey),
@@ -37,13 +41,36 @@ final class BookSourceStore {
            !list.isEmpty {
             sources = list
             persist()
+            migrateSeedIfNeeded()
             return
         }
-        // First launch: seed curated CSS/JSON sources (XIU2 native-compatible).
+        // First launch: seed curated CSS/JSON sources.
         if seedBundledDefaults() {
+            UserDefaults.standard.set(currentSeedVersion, forKey: seedVersionKey)
             return
         }
         sources = []
+    }
+
+    /// Merge refreshed bundled sources; disable known-dead endpoints.
+    private func migrateSeedIfNeeded() {
+        let v = UserDefaults.standard.integer(forKey: seedVersionKey)
+        guard v < currentSeedVersion else { return }
+        _ = seedBundledDefaults()
+        let deadHosts = [
+            "www.dxmwx.org",
+            "www.deqixs.com",
+            "www.kuaishu5.com",
+            "www.92xs.info"
+        ]
+        for i in sources.indices {
+            if let host = URL(string: sources[i].bookSourceUrl)?.host,
+               deadHosts.contains(where: { host == $0 || host.hasSuffix(".\($0)") }) {
+                sources[i].enabled = false
+            }
+        }
+        persist()
+        UserDefaults.standard.set(currentSeedVersion, forKey: seedVersionKey)
     }
 
     /// Load `Resources/Novel/default_book_sources.json` if present.

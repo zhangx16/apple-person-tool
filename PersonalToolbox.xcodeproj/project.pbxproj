@@ -317,7 +317,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		000000000000000000008250 /* default_book_sources.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = Resources/Novel/default_book_sources.json; sourceTree = "<group>"; };
+		000000000000000000008250 /* default_book_sources.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = Novel/default_book_sources.json; sourceTree = "<group>"; };
 		000000000000000000008224 /* BookSourceModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/BookSourceModels.swift; sourceTree = "<group>"; };
 		000000000000000000008226 /* BookSourceStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/BookSourceStore.swift; sourceTree = "<group>"; };
 		000000000000000000008228 /* LegadoRuleEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Core/LegadoRuleEngine.swift; sourceTree = "<group>"; };

@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 
+@MainActor
 @Observable
 final class PlayerStore {
     private(set) var currentSong: Song?
@@ -448,7 +449,11 @@ final class PlayerStore {
         if repeatMode == .one {
             hasRecordedCurrentStart = false
             seek(to: 0)
-            engine.play()
+            if isUsingAppleMusic {
+                try? await appleMusic.resume()
+            } else {
+                engine.play()
+            }
             return
         }
         await moveToNext(recordingCurrentPlayback: false)
@@ -485,8 +490,13 @@ final class PlayerStore {
     }
 
     private func stopAtQueueEnd() {
-        engine.pause()
-        engine.seek(to: 0)
+        if isUsingAppleMusic {
+            appleMusic.pause()
+            appleMusic.seek(to: 0)
+        } else {
+            engine.pause()
+            engine.seek(to: 0)
+        }
         progress = 0
         lastProgressUpdateDate = Date()
         isPlaying = false
@@ -547,12 +557,20 @@ final class PlayerStore {
         engine.onInterruptionBegan = { [weak self] in
             guard let self else { return }
             self.shouldResumeAfterInterruption = self.isPlaying
-            self.engine.pause()
+            if self.isUsingAppleMusic {
+                self.appleMusic.pause()
+            } else {
+                self.engine.pause()
+            }
         }
         engine.onInterruptionEnded = { [weak self] shouldResume in
             guard let self else { return }
             if shouldResume, self.shouldResumeAfterInterruption {
-                self.engine.play()
+                if self.isUsingAppleMusic {
+                    Task { @MainActor in try? await self.appleMusic.resume() }
+                } else {
+                    self.engine.play()
+                }
             }
             self.shouldResumeAfterInterruption = false
         }
@@ -564,14 +582,21 @@ final class PlayerStore {
     private func bindRemoteCommands() {
         nowPlayingSession.onPlay = { [weak self] in
             guard let self else { return }
-            if self.engine.hasCurrentItem {
+            if self.isUsingAppleMusic {
+                Task { @MainActor in try? await self.appleMusic.resume() }
+            } else if self.engine.hasCurrentItem {
                 self.engine.play()
             } else {
                 Task { @MainActor in await self.retry() }
             }
         }
         nowPlayingSession.onPause = { [weak self] in
-            self?.engine.pause()
+            guard let self else { return }
+            if self.isUsingAppleMusic {
+                self.appleMusic.pause()
+            } else {
+                self.engine.pause()
+            }
         }
         nowPlayingSession.onNext = { [weak self] in
             Task { @MainActor in await self?.next() }

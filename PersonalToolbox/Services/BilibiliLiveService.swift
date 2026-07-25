@@ -698,12 +698,12 @@ actor BilibiliLiveService {
             let v = raw.filter { !"!'()*".contains($0) }
             filtered[k] = v
         }
-        let query = filtered.keys.sorted().map { key in
+        let queryString: String = filtered.keys.sorted().map { key -> String in
             let val = filtered[key] ?? ""
             let enc = val.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? val
             return "\(key)=\(enc)"
         }.joined(separator: "&")
-        let signedPayload = String(query) + String(mixin)
+        let signedPayload: String = "\(queryString)\(mixin)"
         let digest = Insecure.MD5.hash(data: Data(signedPayload.utf8))
         let rid = digest.map { String(format: "%02x", $0) }.joined()
         var out = p

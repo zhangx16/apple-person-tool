@@ -154,9 +154,8 @@ struct ClipboardSmartBar: View {
             deepLink.openMusic(url: hit.payload)
             flash("已切换到音乐 · 可在搜索粘贴链接")
         case .videoDownload:
-            WatchLaterStore.shared.add(url: hit.payload, title: "剪贴板视频", source: "clipboard")
             deepLink.openDownload(url: hit.payload)
-            flash("已填入下载并加入稍后再看")
+            flash("已填入下载")
         case .ipAddress:
             deepLink.openIP(hit.payload)
             flash("打开 IP 检测")

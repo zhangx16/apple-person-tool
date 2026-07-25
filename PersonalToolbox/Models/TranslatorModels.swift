@@ -75,22 +75,12 @@ struct TranslatorEngine: Identifiable, Codable, Hashable, Sendable {
     var compatibilityMode: TranslatorAiMode?
 
     static func defaults(sub2Base: String, sub2Key: String, model: String) -> [TranslatorEngine] {
+        // 产品决策：仅保留 Google 网页翻译（不再默认暴露 Grok / Sub2API 引擎）。
         [
-            TranslatorEngine(
-                id: "sub2api",
-                kind: .sub2api,
-                label: "Sub2API (Grok)",
-                systemImage: "sparkles",
-                enabled: true,
-                apiKey: sub2Key.isEmpty ? nil : sub2Key,
-                baseURL: sub2Base,
-                model: model,
-                compatibilityMode: .newapi
-            ),
             TranslatorEngine(
                 id: "google",
                 kind: .google,
-                label: "Google 网页翻译",
+                label: "Google 翻译",
                 systemImage: "g.circle",
                 enabled: true
             )

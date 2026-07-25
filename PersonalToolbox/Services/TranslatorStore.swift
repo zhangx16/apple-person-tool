@@ -49,37 +49,29 @@ final class TranslatorStore: ObservableObject {
         persist()
     }
 
-    /// Fill blank sub2api fields from AppSettings without overwriting custom values.
+    /// Strip Grok/Sub2API engines; keep Google as the only default.
     func syncSub2Placeholders(from app: AppSettings) {
-        guard let idx = engines.firstIndex(where: { $0.kind == .sub2api }) else {
-            // Ensure at least one sub2api engine exists
-            let defaults = TranslatorEngine.defaults(
-                sub2Base: app.sub2apiBaseURL,
-                sub2Key: app.sub2apiAPIKey,
-                model: app.preferredModel
+        let before = engines.count
+        engines.removeAll {
+            $0.kind == .sub2api || $0.label.localizedCaseInsensitiveContains("grok")
+        }
+        if !engines.contains(where: { $0.kind == .google }) {
+            engines.insert(
+                TranslatorEngine(
+                    id: "google",
+                    kind: .google,
+                    label: "Google 翻译",
+                    systemImage: "g.circle",
+                    enabled: true
+                ),
+                at: 0
             )
-            if let sub = defaults.first(where: { $0.kind == .sub2api }) {
-                engines.insert(sub, at: 0)
-                persist()
-            }
-            return
         }
-        var e = engines[idx]
-        var changed = false
-        if (e.baseURL ?? "").isEmpty {
-            e.baseURL = app.sub2apiBaseURL
-            changed = true
+        if engines.allSatisfy({ !$0.enabled }),
+           let idx = engines.firstIndex(where: { $0.kind == .google }) {
+            engines[idx].enabled = true
         }
-        if (e.apiKey ?? "").isEmpty, !app.sub2apiAPIKey.isEmpty {
-            e.apiKey = app.sub2apiAPIKey
-            changed = true
-        }
-        if (e.model ?? "").isEmpty {
-            e.model = app.preferredModel
-            changed = true
-        }
-        if changed {
-            engines[idx] = e
+        if engines.count != before {
             persist()
         }
     }

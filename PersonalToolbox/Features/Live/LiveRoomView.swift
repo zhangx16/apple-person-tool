@@ -1394,17 +1394,22 @@ struct LiveDanmakuOverlay: View {
     enum Placement {
         /// 竖屏播放器底部堆叠
         case bottomStack
-        /// 全屏顶部滚动列表
-        case topScroll
+        /// 全屏主流弹幕：横向滚动（右→左，B站/斗鱼风格）
+        case flying
     }
 
     let messages: [LiveChatMessage]
     var placement: Placement = .bottomStack
+    @ObservedObject private var prefs = LiveDanmakuPrefs.shared
+
+    private var filtered: [LiveChatMessage] {
+        messages.filter { prefs.allows($0.text) && prefs.allows($0.userName) }
+    }
 
     private var visible: [LiveChatMessage] {
         switch placement {
-        case .bottomStack: return Array(messages.suffix(6))
-        case .topScroll: return Array(messages.suffix(24))
+        case .bottomStack: return Array(filtered.suffix(6))
+        case .flying: return Array(filtered.suffix(36))
         }
     }
 
@@ -1412,8 +1417,8 @@ struct LiveDanmakuOverlay: View {
         switch placement {
         case .bottomStack:
             bottomStackBody
-        case .topScroll:
-            topScrollBody
+        case .flying:
+            flyingBody
         }
     }
 
@@ -1432,56 +1437,36 @@ struct LiveDanmakuOverlay: View {
         }
     }
 
-    /// 全屏：贴顶滚动，新弹幕从下方推进（类似直播间顶栏弹幕流）
-    private var topScrollBody: some View {
-        VStack(spacing: 0) {
-            ScrollViewReader { proxy in
-                ScrollView(.vertical, showsIndicators: false) {
-                    LazyVStack(alignment: .leading, spacing: 5) {
-                        ForEach(visible) { msg in
-                            danmakuChip(msg, compact: false)
-                                .id(msg.id)
-                                .transition(.opacity.combined(with: .move(edge: .top)))
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
-                    .padding(.bottom, 6)
-                }
-                .frame(maxHeight: 148)
-                .mask(
-                    LinearGradient(
-                        colors: [.black, .black, .black.opacity(0.15)],
-                        startPoint: .top,
-                        endPoint: .bottom
+    /// 主流：弹幕从右侧进入、向左飞出；范围/字号/透明度可调。
+    private var flyingBody: some View {
+        GeometryReader { geo in
+            let trackCount = max(3, min(10, Int(geo.size.height * prefs.areaRatio / 28)))
+            let areaH = geo.size.height * prefs.areaRatio
+            ZStack(alignment: .top) {
+                ForEach(Array(visible.enumerated()), id: \.element.id) { idx, msg in
+                    FlyingDanmakuLine(
+                        text: displayText(msg),
+                        color: Color(hexColor: msg.colorHex),
+                        fontSize: prefs.fontSize,
+                        opacity: prefs.opacity,
+                        track: idx % trackCount,
+                        trackHeight: areaH / CGFloat(trackCount),
+                        containerWidth: geo.size.width,
+                        duration: 7.5 + Double(idx % 5) * 0.35
                     )
-                )
-                .onChange(of: messages.count) { _, _ in
-                    guard let last = visible.last else { return }
-                    withAnimation(.easeOut(duration: 0.22)) {
-                        proxy.scrollTo(last.id, anchor: .bottom)
-                    }
-                }
-                .onAppear {
-                    if let last = visible.last {
-                        proxy.scrollTo(last.id, anchor: .bottom)
-                    }
                 }
             }
-            .background(
-                LinearGradient(
-                    colors: [Color.black.opacity(0.55), Color.black.opacity(0.18), .clear],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .frame(height: 168)
-                .allowsHitTesting(false),
-                alignment: .top
-            )
-            Spacer(minLength: 0)
+            .frame(height: areaH, alignment: .top)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .clipped()
         }
-        .padding(.top, 4)
+        .allowsHitTesting(false)
+        .opacity(prefs.enabled ? 1 : 0)
+    }
+
+    private func displayText(_ msg: LiveChatMessage) -> String {
+        let u = msg.userName.isEmpty ? "" : "\(msg.userName): "
+        return u + msg.text
     }
 
     private func danmakuChip(_ msg: LiveChatMessage, compact: Bool) -> some View {
@@ -1497,6 +1482,84 @@ struct LiveDanmakuOverlay: View {
         .padding(.horizontal, compact ? 8 : 10)
         .padding(.vertical, compact ? 3 : 5)
         .background(Color.black.opacity(compact ? 0.42 : 0.48), in: Capsule())
+    }
+}
+
+/// Single flying bullet (right → left).
+private struct FlyingDanmakuLine: View {
+    let text: String
+    let color: Color
+    let fontSize: Double
+    let opacity: Double
+    let track: Int
+    let trackHeight: CGFloat
+    let containerWidth: CGFloat
+    let duration: Double
+
+    @State private var x: CGFloat = 0
+    @State private var started = false
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: fontSize, weight: .semibold))
+            .foregroundStyle(color.opacity(opacity))
+            .shadow(color: .black.opacity(0.55), radius: 1, y: 1)
+            .lineLimit(1)
+            .fixedSize()
+            .offset(x: x, y: CGFloat(track) * trackHeight + 4)
+            .onAppear {
+                guard !started else { return }
+                started = true
+                x = containerWidth + 20
+                withAnimation(.linear(duration: duration)) {
+                    x = -containerWidth - 200
+                }
+            }
+    }
+}
+
+/// Settings panel for fullscreen danmaku.
+struct LiveDanmakuSettingsSheet: View {
+    @ObservedObject private var prefs = LiveDanmakuPrefs.shared
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Toggle("显示弹幕", isOn: $prefs.enabled)
+                Section("外观") {
+                    HStack {
+                        Text("字号")
+                        Slider(value: $prefs.fontSize, in: 11...24, step: 1)
+                        Text("\(Int(prefs.fontSize))").monospacedDigit().frame(width: 28)
+                    }
+                    HStack {
+                        Text("透明度")
+                        Slider(value: $prefs.opacity, in: 0.3...1.0)
+                        Text("\(Int(prefs.opacity * 100))%").monospacedDigit().frame(width: 40)
+                    }
+                    HStack {
+                        Text("显示范围")
+                        Slider(value: $prefs.areaRatio, in: 0.2...0.85)
+                        Text("\(Int(prefs.areaRatio * 100))%").monospacedDigit().frame(width: 40)
+                    }
+                    Text("弹幕从右侧飞入、向左滚出（B站/斗鱼主流样式）。")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                Section("屏蔽词") {
+                    TextField("逗号分隔，如：广告,加微信", text: $prefs.blockWordsRaw, axis: .vertical)
+                        .lineLimit(3...6)
+                }
+            }
+            .navigationTitle("弹幕设置")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("完成") { dismiss() }
+                }
+            }
+        }
     }
 }
 
@@ -1605,6 +1668,7 @@ struct LiveRoomFullscreenView: View {
     @State private var gestureIsLeft = true
     @State private var gestureActive = false
     @State private var lockChromeHideTask: Task<Void, Never>?
+    @State private var showDanmakuSettings = false
 
     private var brand: Color {
         LiveUI.brand(vm.detail?.platform ?? .huya)
@@ -1616,11 +1680,11 @@ struct LiveRoomFullscreenView: View {
                 LivePlayerSurface(vm: vm, isActive: true)
                     .ignoresSafeArea()
 
-                // 全屏：顶部滚动弹幕（不挡中部手势区）
+                // 全屏主流弹幕：横向飞幕
                 if showDanmaku {
-                    LiveDanmakuOverlay(messages: danmaku.messages, placement: .topScroll)
+                    LiveDanmakuOverlay(messages: danmaku.messages, placement: .flying)
                         .allowsHitTesting(false)
-                        .padding(.top, 52)
+                        .padding(.top, 48)
                 }
 
                 // Full-screen hit layer: tap + vertical drag (brightness/volume).
@@ -1714,6 +1778,7 @@ struct LiveRoomFullscreenView: View {
                 Button {
                     showDanmaku.toggle()
                     danmaku.isEnabled = showDanmaku
+                    LiveDanmakuPrefs.shared.enabled = showDanmaku
                     if showDanmaku, let detail = vm.detail {
                         danmaku.start(
                             platform: detail.platform,
@@ -1732,6 +1797,16 @@ struct LiveRoomFullscreenView: View {
                 }
                 .accessibilityLabel(showDanmaku ? "关闭弹幕" : "开启弹幕")
                 Button {
+                    showDanmakuSettings = true
+                } label: {
+                    Image(systemName: "slider.horizontal.3")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 40, height: 40)
+                        .background(Color.white.opacity(0.15), in: Circle())
+                }
+                .accessibilityLabel("弹幕设置")
+                Button {
                     withAnimation(.easeInOut(duration: 0.15)) {
                         vm.isControlsLocked = true
                         showChrome = false
@@ -1748,6 +1823,9 @@ struct LiveRoomFullscreenView: View {
             }
             .padding(.horizontal, 16)
             .padding(.top, 12)
+            .sheet(isPresented: $showDanmakuSettings) {
+                LiveDanmakuSettingsSheet()
+            }
 
             Spacer()
 

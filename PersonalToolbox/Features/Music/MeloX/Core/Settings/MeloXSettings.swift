@@ -102,6 +102,7 @@ final class MeloXSettings {
         static let rememberedNowPlayingPage = "rememberedNowPlayingPage"
         static let previousRestartsCurrentSong = "previousRestartsCurrentSong"
         static let checksUpdatesOnLaunch = "checksUpdatesOnLaunch"
+        static let appleMusicAutoFallback = "appleMusicAutoFallback"
         static let automaticallyCachesFrequentlyPlayedSongs = "automaticallyCachesFrequentlyPlayedSongs"
         static let automaticCachePlaybackThreshold = "automaticCachePlaybackThreshold"
         static let automaticCacheQuality = "automaticCacheQuality"
@@ -375,6 +376,11 @@ final class MeloXSettings {
         didSet { defaults.set(checksUpdatesOnLaunch, forKey: Key.checksUpdatesOnLaunch) }
     }
 
+    /// When Netease has no playable URL, automatically try Apple Music (MusicKit).
+    var appleMusicAutoFallback: Bool {
+        didSet { defaults.set(appleMusicAutoFallback, forKey: Key.appleMusicAutoFallback) }
+    }
+
     var automaticallyCachesFrequentlyPlayedSongs: Bool {
         didSet {
             defaults.set(
@@ -575,6 +581,7 @@ final class MeloXSettings {
         rememberedNowPlayingPage = defaults.string(forKey: Key.rememberedNowPlayingPage) ?? "artwork"
         previousRestartsCurrentSong = defaults.object(forKey: Key.previousRestartsCurrentSong) as? Bool ?? true
         checksUpdatesOnLaunch = defaults.object(forKey: Key.checksUpdatesOnLaunch) as? Bool ?? true
+        appleMusicAutoFallback = defaults.object(forKey: Key.appleMusicAutoFallback) as? Bool ?? true
         automaticallyCachesFrequentlyPlayedSongs = defaults.object(
             forKey: Key.automaticallyCachesFrequentlyPlayedSongs
         ) as? Bool ?? false
@@ -636,6 +643,7 @@ final class MeloXSettings {
         rememberNowPlayingPage = false
         rememberedNowPlayingPage = "artwork"
         previousRestartsCurrentSong = true
+        appleMusicAutoFallback = true
         skylineLyrics.reset()
     }
 }

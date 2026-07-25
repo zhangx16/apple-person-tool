@@ -102,6 +102,7 @@ struct SubscriptionHomeView: View {
     @EnvironmentObject private var settings: AppSettings
     @StateObject private var store = SubscriptionStore.shared
     @State private var showAdd = false
+    @State private var editingItem: SubscriptionItem?
     @State private var isImporting = false
     @State private var importMessage: String?
     @State private var importNodes: [KomariNode]?
@@ -154,23 +155,32 @@ struct SubscriptionHomeView: View {
                         Text("记录 VPS / 流媒体 / API 账单").foregroundStyle(.secondary)
                     }
                     ForEach(items) { item in
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                Text(item.name).font(.headline)
-                                Spacer()
-                                Text(String(format: "%.2f %@", item.amount, item.currency))
-                                    .font(.subheadline.monospacedDigit())
-                            }
-                            Text("\(item.cycleTitle) · 下次 \(item.nextDue.formatted(date: .abbreviated, time: .omitted)) · \(item.daysUntilDue) 天")
-                                .font(.caption)
-                                .foregroundStyle(item.daysUntilDue <= 7 ? Color.orange : .secondary)
-                            if !item.notes.isEmpty {
-                                Text(item.notes)
-                                    .font(.caption2)
-                                    .foregroundStyle(.tertiary)
-                                    .lineLimit(2)
+                        Button {
+                            editingItem = item
+                        } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text(item.name).font(.headline).foregroundStyle(.primary)
+                                    Spacer()
+                                    Text(String(format: "%.2f %@", item.amount, item.currency))
+                                        .font(.subheadline.monospacedDigit())
+                                        .foregroundStyle(.primary)
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption2.weight(.semibold))
+                                        .foregroundStyle(.tertiary)
+                                }
+                                Text("\(item.cycleTitle) · 下次 \(item.nextDue.formatted(date: .abbreviated, time: .omitted)) · \(item.daysUntilDue) 天")
+                                    .font(.caption)
+                                    .foregroundStyle(item.daysUntilDue <= 7 ? Color.orange : .secondary)
+                                if !item.notes.isEmpty {
+                                    Text(item.notes)
+                                        .font(.caption2)
+                                        .foregroundStyle(.tertiary)
+                                        .lineLimit(2)
+                                }
                             }
                         }
+                        .buttonStyle(.plain)
                         .listRowBackground(
                             resolvedFocusId == item.id
                                 ? Color.orange.opacity(0.12)
@@ -192,7 +202,10 @@ struct SubscriptionHomeView: View {
             }
         }
         .sheet(isPresented: $showAdd) {
-            SubscriptionEditorSheet { showAdd = false }
+            SubscriptionEditorSheet(existing: nil) { showAdd = false }
+        }
+        .sheet(item: $editingItem) { item in
+            SubscriptionEditorSheet(existing: item) { editingItem = nil }
         }
         .sheet(item: Binding(
             get: { importNodes.map { NodeBox(nodes: $0) } },
@@ -233,6 +246,7 @@ struct SubscriptionHomeView: View {
 }
 
 private struct SubscriptionEditorSheet: View {
+    var existing: SubscriptionItem?
     var onDone: () -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var name = ""
@@ -259,14 +273,25 @@ private struct SubscriptionEditorSheet: View {
                 TextField("官网 / 面板", text: $url)
                 TextField("备注", text: $notes)
             }
-            .navigationTitle("添加订阅")
+            .navigationTitle(existing == nil ? "添加订阅" : "编辑订阅")
+            .onAppear {
+                if let e = existing {
+                    name = e.name
+                    amount = String(format: "%g", e.amount)
+                    currency = e.currency
+                    cycle = e.cycle
+                    nextDue = e.nextDue
+                    notes = e.notes
+                    url = e.url
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("保存") {
                         let a = Double(amount) ?? 0
                         let item = SubscriptionItem(
-                            id: UUID().uuidString,
+                            id: existing?.id ?? UUID().uuidString,
                             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
                             amount: a,
                             currency: currency,
@@ -274,12 +299,12 @@ private struct SubscriptionEditorSheet: View {
                             nextDue: nextDue,
                             notes: notes,
                             url: url,
-                            createdAt: Date()
+                            createdAt: existing?.createdAt ?? Date()
                         )
                         guard !item.name.isEmpty else { return }
                         SubscriptionStore.shared.upsert(item)
                         ActivityEventStore.shared.log(.make(
-                            title: "添加订阅",
+                            title: existing == nil ? "添加订阅" : "更新订阅",
                             subtitle: item.name,
                             systemImage: "creditcard.fill",
                             tintHex: 0x34C759,
@@ -300,10 +325,15 @@ struct CertMonitorHomeView: View {
     @StateObject private var store = CertExpiryStore.shared
     @State private var host = ""
     @State private var notAfter = Date().addingTimeInterval(86400 * 90)
-    @State private var useManualDate = true
+    @State private var useManualDate = false
 
     var body: some View {
         List {
+            Section {
+                Text("添加域名后可自动探测 TLS 到期日（参考常见 cert 监控思路：握手读取 notAfter）。失败时可改手动日期。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
             Section("添加域名") {
                 TextField("host（如 checkin.031216.xyz）", text: $host)
                     .textInputAutocapitalization(.never)
@@ -312,13 +342,14 @@ struct CertMonitorHomeView: View {
                 if useManualDate {
                     DatePicker("证书到期", selection: $notAfter, displayedComponents: .date)
                 }
-                Button("添加") {
+                Button("添加并探测") {
                     store.add(
                         host: host,
                         note: "",
                         notAfter: useManualDate ? notAfter : nil
                     )
                     host = ""
+                    Task { await store.refreshAll() }
                 }
             }
             Section {
@@ -328,7 +359,7 @@ struct CertMonitorHomeView: View {
                     if store.isChecking {
                         ProgressView()
                     } else {
-                        Label("探测 HTTPS 连通", systemImage: "network")
+                        Label("重新探测全部 TLS 到期", systemImage: "network")
                     }
                 }
             }

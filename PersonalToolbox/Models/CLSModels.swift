@@ -32,7 +32,13 @@ enum CLSAccent {
 }
 
 enum CLSNewsParsing {
-    static let defaultFeedURL = "https://pyrsshub.vercel.app/cls/telegraph/"
+    /// Prefer public RSSHub mirrors; pyrsshub.vercel often 403/empty.
+    static let defaultFeedURL = "https://rsshub.rssforever.com/cls/telegraph"
+    static let fallbackFeedURLs: [String] = [
+        "https://rsshub.rssforever.com/cls/telegraph",
+        "https://rsshub.app/cls/telegraph",
+        "https://pyrsshub.vercel.app/cls/telegraph/"
+    ]
 
     static func formatTime(_ dateStr: String) -> String {
         // Try ISO8601 first

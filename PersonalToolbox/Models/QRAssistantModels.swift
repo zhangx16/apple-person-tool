@@ -173,7 +173,55 @@ enum QRRedirectDefaults {
             keyword: "login.xuexi.cn",
             urlScheme: "dtxuexi://appclient/page/study_feeds?url={content}",
             appName: "学习强国"
+        ),
+        // Expanded common deep-link apps (local only; remote merge still allowlisted).
+        QRRedirectRule(
+            keyword: "bilibili,b23.tv,bili",
+            urlScheme: "bilibili://search?keyword={content}",
+            appName: "哔哩哔哩"
+        ),
+        QRRedirectRule(
+            keyword: "netease,music.163,163cn.tv",
+            urlScheme: "orpheus://search?keyword={content}",
+            appName: "网易云音乐"
+        ),
+        QRRedirectRule(
+            keyword: "pinduoduo,yangkeduo,pdd",
+            urlScheme: "pinduoduo://com.xunmeng.pinduoduo/search?keyword={content}",
+            appName: "拼多多"
+        ),
+        QRRedirectRule(
+            keyword: "ele.me,eleme,elemecdn",
+            urlScheme: "eleme://web?url={content}",
+            appName: "饿了么"
+        ),
+        QRRedirectRule(
+            keyword: "unionpay,95516,chinapay",
+            urlScheme: "upwallet://",
+            appName: "云闪付"
+        ),
+        QRRedirectRule(
+            keyword: "baidu,map.baidu,j.map.baidu",
+            urlScheme: "baidumap://map/place/search?query={content}",
+            appName: "百度地图"
+        ),
+        QRRedirectRule(
+            keyword: "amap,autonavi,gaode",
+            urlScheme: "iosamap://path?sourceApplication=XIN",
+            appName: "高德地图"
+        ),
+        QRRedirectRule(
+            keyword: "wifi,WIFI:,WPA,WEP",
+            urlScheme: "App-Prefs:root=WIFI",
+            appName: "系统 Wi‑Fi 设置"
         )
+    ]
+
+    /// Hosts allowed for remote rule JSON (HTTPS only, path must end with .json).
+    static let remoteAllowlistHosts: Set<String> = [
+        "raw.githubusercontent.com",
+        "gist.githubusercontent.com",
+        "cdn.jsdelivr.net"
     ]
 }
 

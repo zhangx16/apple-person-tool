@@ -346,22 +346,42 @@ final class ExpressService: ObservableObject {
         }
     }
 
-    static func nameForCode(_ code: String) -> String {
+    static func guessCarrierName(_ no: String) -> String {
+        nameForCode(guessCarrierCode(no))
+    }
+
+    /// SF Symbol for carrier badge in UI.
+    static func carrierSystemImage(_ code: String) -> String {
         switch code {
-        case "shunfeng": return "顺丰"
-        case "yuantong": return "圆通"
-        case "yunda": return "韵达"
-        case "zhongtong": return "中通"
-        case "shentong": return "申通"
-        case "jtexpress": return "极兔"
-        case "jd": return "京东"
-        case "ems", "youzhengguonei": return "邮政/EMS"
-        default: return code
+        case "shunfeng": return "box.truck.fill"
+        case "yuantong": return "shippingbox.fill"
+        case "yunda": return "shippingbox.circle.fill"
+        case "zhongtong": return "cube.box.fill"
+        case "shentong": return "archivebox.fill"
+        case "jtexpress": return "box.truck"
+        case "jd": return "bag.fill"
+        case "ems": return "envelope.fill"
+        case "debangwuliu": return "truck.box.fill"
+        case "youzhengguonei": return "building.columns.fill"
+        default: return "shippingbox"
         }
     }
 
-    static func guessCarrierName(_ no: String) -> String {
-        nameForCode(guessCarrierCode(no))
+    static func nameForCode(_ code: String) -> String {
+        switch code {
+        case "shunfeng": return "顺丰速运"
+        case "yuantong": return "圆通速递"
+        case "yunda": return "韵达快递"
+        case "zhongtong": return "中通快递"
+        case "shentong": return "申通快递"
+        case "jtexpress": return "极兔速递"
+        case "jd": return "京东快递"
+        case "ems": return "EMS"
+        case "debangwuliu": return "德邦快递"
+        case "youzhengguonei": return "邮政包裹"
+        case "unknown": return "自动识别"
+        default: return code
+        }
     }
 
     static func guessCarrierCode(_ no: String) -> String {
@@ -373,7 +393,10 @@ final class ExpressService: ObservableObject {
         if u.hasPrefix("STO") || u.hasPrefix("77") { return "shentong" }
         if u.hasPrefix("JT") { return "jtexpress" }
         if u.hasPrefix("JD") { return "jd" }
+        if u.hasPrefix("DB") { return "debangwuliu" }
         if u.hasPrefix("EMS") || (u.count == 13 && u.hasSuffix("CN")) { return "ems" }
+        // 12–15 pure digits often STO/YTO — leave unknown until autoCom
+        if u.count >= 10, u.allSatisfy(\.isNumber) { return "unknown" }
         return "unknown"
     }
 

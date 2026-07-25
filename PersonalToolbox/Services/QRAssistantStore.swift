@@ -151,10 +151,21 @@ final class QRAssistantStore: ObservableObject {
     }
 
     /// Fetch remote JSON array of rules and merge.
+    /// Security: HTTPS only + host allowlist + scheme validation (no javascript:/data:).
     func refreshSubscription() async {
         let raw = settings.subscriptionUrl.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !raw.isEmpty, let url = URL(string: raw) else {
             lastError = "订阅地址无效"
+            return
+        }
+        guard url.scheme?.lowercased() == "https" else {
+            lastError = "仅允许 HTTPS 规则订阅"
+            return
+        }
+        guard let host = url.host?.lowercased(),
+              QRRedirectDefaults.remoteAllowlistHosts.contains(host)
+                || host.hasSuffix(".githubusercontent.com") else {
+            lastError = "域名不在安全白名单（GitHub raw / jsDelivr）"
             return
         }
         do {
@@ -163,7 +174,21 @@ final class QRAssistantStore: ObservableObject {
                 lastError = "订阅请求失败 (\(http.statusCode))"
                 return
             }
-            let remote = try JSONDecoder().decode([QRRedirectRule].self, from: data)
+            guard data.count < 512_000 else {
+                lastError = "规则文件过大"
+                return
+            }
+            var remote = try JSONDecoder().decode([QRRedirectRule].self, from: data)
+            // Sanitize schemes
+            remote = remote.compactMap { rule in
+                let scheme = rule.urlScheme.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                if scheme.hasPrefix("javascript:") || scheme.hasPrefix("data:") || scheme.hasPrefix("file:") {
+                    return nil
+                }
+                var r = rule
+                r.source = .remote
+                return r
+            }
             settings.redirectRules = QRRedirectEngine.mergeRemote(
                 local: settings.redirectRules,
                 remote: remote

@@ -116,22 +116,87 @@ final class MarketQuotesService: ObservableObject {
     }
 
     private func fetchGold() async -> MarketQuote? {
-        if let url = URL(string: "https://api.metals.live/v1/spot/gold") {
-            if let (data, resp) = try? await URLSession.shared.data(from: url),
-               let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode),
-               let arr = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]],
-               let first = arr.first,
-               let price = first["price"] as? Double ?? (first["price"] as? NSNumber)?.doubleValue {
-                return MarketQuote(
-                    id: "gold",
-                    title: "黄金 (XAU/USD)",
-                    value: String(format: "%.2f USD/oz", price),
-                    subtitle: "现货参考 · metals.live",
-                    systemImage: "circle.hexagongrid.fill"
-                )
-            }
+        // 1) metals.dev-style free mirrors / public JSON
+        if let q = await fetchGoldFromMetalsLive() { return q }
+        if let q = await fetchGoldFromGoldAPI() { return q }
+        if let q = await fetchGoldFromStooq() { return q }
+        return MarketQuote(
+            id: "gold",
+            title: "黄金 (XAU)",
+            value: "暂不可用",
+            subtitle: "多源拉取失败 · 请稍后重试",
+            systemImage: "circle.hexagongrid.fill"
+        )
+    }
+
+    private func fetchGoldFromMetalsLive() async -> MarketQuote? {
+        guard let url = URL(string: "https://api.metals.live/v1/spot/gold") else { return nil }
+        guard let (data, resp) = try? await URLSession.shared.data(from: url),
+              let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { return nil }
+        if let arr = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]],
+           let first = arr.first,
+           let price = first["price"] as? Double ?? (first["price"] as? NSNumber)?.doubleValue {
+            return MarketQuote(
+                id: "gold",
+                title: "黄金 (XAU/USD)",
+                value: String(format: "%.2f USD/oz", price),
+                subtitle: "现货参考 · metals.live",
+                systemImage: "circle.hexagongrid.fill"
+            )
+        }
+        if let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let price = obj["price"] as? Double ?? (obj["price"] as? NSNumber)?.doubleValue {
+            return MarketQuote(
+                id: "gold",
+                title: "黄金 (XAU/USD)",
+                value: String(format: "%.2f USD/oz", price),
+                subtitle: "现货参考 · metals.live",
+                systemImage: "circle.hexagongrid.fill"
+            )
         }
         return nil
+    }
+
+    /// Free gold price JSON used by many dashboards (no key).
+    private func fetchGoldFromGoldAPI() async -> MarketQuote? {
+        // data-asg.goldprice.org is commonly used for spot XAU
+        guard let url = URL(string: "https://data-asg.goldprice.org/dbXRates/USD") else { return nil }
+        var req = URLRequest(url: url)
+        req.timeoutInterval = 12
+        req.setValue("Mozilla/5.0", forHTTPHeaderField: "User-Agent")
+        guard let (data, resp) = try? await URLSession.shared.data(for: req),
+              let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode),
+              let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let items = root["items"] as? [[String: Any]],
+              let first = items.first else { return nil }
+        let xau = first["xauPrice"] as? Double ?? (first["xauPrice"] as? NSNumber)?.doubleValue
+        guard let price = xau else { return nil }
+        return MarketQuote(
+            id: "gold",
+            title: "黄金 (XAU/USD)",
+            value: String(format: "%.2f USD/oz", price),
+            subtitle: "现货参考 · goldprice.org",
+            systemImage: "circle.hexagongrid.fill"
+        )
+    }
+
+    private func fetchGoldFromStooq() async -> MarketQuote? {
+        // XAUUSD continuous on stooq
+        guard let url = URL(string: "https://stooq.com/q/l/?s=xauusd&f=sd2t2ohlcv&h&e=csv") else { return nil }
+        guard let (data, resp) = try? await URLSession.shared.data(from: url),
+              let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode),
+              let text = String(data: data, encoding: .utf8) else { return nil }
+        let lines = text.split(whereSeparator: \.isNewline)
+        guard lines.count >= 2 else { return nil }
+        let cols = lines[1].split(separator: ",").map(String.init)
+        guard cols.count >= 7, let close = Double(cols[6]) else { return nil }
+        return MarketQuote(
+            id: "gold",
+            title: "黄金 (XAU/USD)",
+            value: String(format: "%.2f USD/oz", close),
+            subtitle: "国际参考 · stooq xauusd",
+            systemImage: "circle.hexagongrid.fill"
+        )
     }
 
     private func fetchWTI() async -> [MarketQuote] {

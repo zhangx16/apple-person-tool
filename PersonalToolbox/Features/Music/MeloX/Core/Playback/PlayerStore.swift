@@ -12,6 +12,10 @@ final class PlayerStore {
     private(set) var playbackIssue: PlaybackIssue?
     private(set) var volume: Double = 1
     private(set) var repeatMode: RepeatMode = .off
+    /// True when current audio is ApplicationMusicPlayer (Apple Music).
+    private(set) var isUsingAppleMusic = false
+    /// Matched Apple Music track label for UI.
+    private(set) var appleMusicMatchLabel: String?
 
     private var playbackQueue = PlaybackQueue()
 
@@ -73,6 +77,9 @@ final class PlayerStore {
     @ObservationIgnored
     private var currentLoadShouldAutoplay = false
 
+    @ObservationIgnored
+    private let appleMusic = AppleMusicBridge.shared
+
     init(
         api: NeteaseAPI,
         settings: MeloXSettings,
@@ -95,6 +102,7 @@ final class PlayerStore {
         nowPlayingSession = NowPlayingSession(player: engine.nowPlayingPlayer)
         bindEngine()
         bindRemoteCommands()
+        bindAppleMusic()
         applyVolumeControlMode()
     }
 
@@ -155,6 +163,19 @@ final class PlayerStore {
 
     func togglePlayback() {
         guard currentSong != nil else { return }
+        if isUsingAppleMusic {
+            if isPlaying {
+                appleMusic.pause()
+                isPlaying = false
+                persistSnapshot()
+            } else {
+                playbackIssue = nil
+                Task { @MainActor [weak self] in
+                    try? await self?.appleMusic.resume()
+                }
+            }
+            return
+        }
         if engine.hasCurrentItem {
             if isPlaying {
                 engine.pause()
@@ -172,7 +193,48 @@ final class PlayerStore {
 
     func retry() async {
         guard currentSong != nil else { return }
+        stopAppleMusicIfNeeded()
         await loadCurrentSong(autoplay: true)
+    }
+
+    /// Switch current track to Apple Music catalog playback (MusicKit).
+    func playViaAppleMusic() async {
+        guard let song = currentSong else { return }
+        isLoading = true
+        playbackIssue = nil
+        // Tear down Netease AVPlayer path.
+        engine.unload()
+        isUsingDownloadedSource = false
+        do {
+            let matched = try await appleMusic.playMatching(
+                title: song.name,
+                artist: song.artistText
+            )
+            isUsingAppleMusic = true
+            appleMusicMatchLabel = "\(matched.title) · \(matched.artistName)"
+            isLoading = false
+            isPlaying = true
+            duration = matched.duration ?? TimeInterval(song.durationMS) / 1_000
+            progress = 0
+            lastProgressUpdateDate = Date()
+            nowPlayingSession.setSong(
+                song,
+                duration: duration,
+                queueIndex: currentIndex,
+                queueCount: queue.count
+            )
+            updateNowPlayingState()
+            persistSnapshot()
+            recordCurrentPlaybackStartIfNeeded()
+        } catch {
+            isUsingAppleMusic = false
+            appleMusicMatchLabel = nil
+            isLoading = false
+            isPlaying = false
+            playbackIssue = PlaybackIssue(song: song, error: error)
+            updateNowPlayingState()
+            persistSnapshot()
+        }
     }
 
     func dismissPlaybackIssue() {
@@ -233,7 +295,11 @@ final class PlayerStore {
     func seek(to seconds: TimeInterval) {
         let maximum = duration > 0 ? duration : TimeInterval(currentSong?.durationMS ?? 0) / 1_000
         let clamped = max(0, min(seconds, maximum))
-        engine.seek(to: clamped)
+        if isUsingAppleMusic {
+            appleMusic.seek(to: clamped)
+        } else {
+            engine.seek(to: clamped)
+        }
         progress = clamped
         seekRevision += 1
         lastProgressUpdateDate = Date()
@@ -295,6 +361,7 @@ final class PlayerStore {
         isLoading = true
         isPlaying = false
         isUsingDownloadedSource = false
+        stopAppleMusicIfNeeded()
         currentLoadShouldAutoplay = autoplay
         playbackIssue = nil
         engine.unload()
@@ -327,11 +394,52 @@ final class PlayerStore {
         } catch {
             guard generation == loadGeneration, currentSong?.id == song.id else { return }
             isResolvingSource = false
+            // Auto-fallback to Apple Music when Netease has no playable URL / failed.
+            let shouldFallback: Bool
+            if let apiError = error as? APIError, case .noPlayableSource = apiError {
+                shouldFallback = true
+            } else if error is AudioPlaybackError {
+                shouldFallback = true
+            } else {
+                shouldFallback = settings.appleMusicAutoFallback
+            }
+            if shouldFallback, settings.appleMusicAutoFallback, autoplay {
+                await playViaAppleMusic()
+                if isUsingAppleMusic { return }
+            }
             isLoading = false
             isPlaying = false
             playbackIssue = PlaybackIssue(song: song, error: error)
             updateNowPlayingState()
             persistSnapshot()
+        }
+    }
+
+    private func stopAppleMusicIfNeeded() {
+        if isUsingAppleMusic || appleMusic.isActive {
+            appleMusic.stop()
+        }
+        isUsingAppleMusic = false
+        appleMusicMatchLabel = nil
+    }
+
+    private func bindAppleMusic() {
+        appleMusic.onPlaybackState = { [weak self] playing, position, duration in
+            guard let self, self.isUsingAppleMusic else { return }
+            self.isPlaying = playing
+            self.isLoading = false
+            self.progress = position
+            if duration > 0 {
+                self.duration = duration
+            }
+            self.lastProgressUpdateDate = Date()
+            self.updateNowPlayingState()
+        }
+        appleMusic.onEnded = { [weak self] in
+            guard let self else { return }
+            Task { @MainActor in
+                await self.handlePlaybackEnded()
+            }
         }
     }
 

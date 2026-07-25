@@ -33,33 +33,45 @@ actor CLSNewsService {
             }
         }
 
-        do {
-            let items = try await downloadAndParse(urlString: effective)
-            if !items.isEmpty {
-                let cache = CLSNewsCache(items: items, lastUpdated: Date(), sourceURL: effective)
-                saveCache(cache)
-                return FetchResult(items: items, fromCache: false, lastUpdated: cache.lastUpdated, errorMessage: nil)
-            }
-            throw NetworkError.message("RSS 解析为空")
-        } catch {
-            if let cache = loadCache(), !cache.items.isEmpty {
-                let age = Date().timeIntervalSince(cache.lastUpdated)
-                if age < hardTTL {
-                    return FetchResult(
-                        items: cache.items,
-                        fromCache: true,
-                        lastUpdated: cache.lastUpdated,
-                        errorMessage: error.localizedDescription
-                    )
-                }
-            }
-            return FetchResult(
-                items: [],
-                fromCache: false,
-                lastUpdated: nil,
-                errorMessage: error.localizedDescription
-            )
+        // Try primary then known working mirrors (RSSHub-style routes).
+        var candidates = [effective]
+        for u in CLSNewsParsing.fallbackFeedURLs where !candidates.contains(u) {
+            candidates.append(u)
         }
+
+        var lastError: Error?
+        for urlString in candidates {
+            do {
+                let items = try await downloadAndParse(urlString: urlString)
+                if !items.isEmpty {
+                    let cache = CLSNewsCache(items: items, lastUpdated: Date(), sourceURL: urlString)
+                    saveCache(cache)
+                    return FetchResult(items: items, fromCache: false, lastUpdated: cache.lastUpdated, errorMessage: nil)
+                }
+                lastError = NetworkError.message("RSS 解析为空")
+            } catch {
+                lastError = error
+                continue
+            }
+        }
+
+        if let cache = loadCache(), !cache.items.isEmpty {
+            let age = Date().timeIntervalSince(cache.lastUpdated)
+            if age < hardTTL {
+                return FetchResult(
+                    items: cache.items,
+                    fromCache: true,
+                    lastUpdated: cache.lastUpdated,
+                    errorMessage: lastError?.localizedDescription
+                )
+            }
+        }
+        return FetchResult(
+            items: [],
+            fromCache: false,
+            lastUpdated: nil,
+            errorMessage: lastError?.localizedDescription ?? "财联社电报拉取失败"
+        )
     }
 
     func clearCache() {

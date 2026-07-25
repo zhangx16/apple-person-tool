@@ -7,7 +7,7 @@ struct RSSFeedSource: Identifiable, Codable, Hashable {
     var enabled: Bool
 
     static let defaults: [RSSFeedSource] = [
-        .init(id: "cls", title: "财联社电报", url: "https://pyrsshub.vercel.app/cls/telegraph/", enabled: true),
+        .init(id: "cls", title: "财联社电报", url: "https://rsshub.rssforever.com/cls/telegraph", enabled: true),
         .init(id: "hn", title: "Hacker News", url: "https://hnrss.org/frontpage", enabled: true),
         .init(id: "bbc", title: "BBC World", url: "https://feeds.bbci.co.uk/news/world/rss.xml", enabled: false)
     ]

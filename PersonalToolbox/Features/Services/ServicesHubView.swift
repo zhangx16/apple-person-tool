@@ -302,31 +302,22 @@ struct ServicesHubView: View {
                 }
             ]),
             SectionModel(title: "生活", symbol: "heart.fill", items: [
-                item("anniversary", "纪念日", "生日 · 倒计时 · 本地提醒", .anniversary) {
-                    AnyView(AnniversaryHomeView())
+                item("lifeHub", "生活中心", "提醒 · 账单 · 纪念日 · 习惯 · Markdown 笔记", .habits) {
+                    AnyView(LifeHubView())
                 },
-                item("reminders", "提醒倒计时", "续费 · 账单 · 本地通知", .habits) {
-                    AnyView(ReminderHomeView())
-                },
-                item("subscriptions", "订阅账单", "月度估算 · 到期提醒", .express) {
-                    AnyView(SubscriptionHomeView())
-                },
-                item("notes", "笔记同步", "Fast Note Sync · 可与 Obsidian 共用", .translator) {
+                item("notes", "笔记同步", "Fast Note · Markdown 预览", .translator) {
                     AnyView(FastNoteHomeView())
                 },
-                item("habits", "习惯与待办", "打卡连续天数 · 待办清单", .habits) {
-                    AnyView(HabitsTodosHomeView())
-                },
-                item("qr", "二维码助手", "扫码 · 生成 · 智能跳转", .qrAssistant) {
+                item("qr", "二维码助手", "扫码 · 生成 · 安全规则订阅", .qrAssistant) {
                     AnyView(QRAssistantHomeView())
                 },
-                item("translator", "翻译器", "Sub2API · Google · 多引擎", .translator) {
+                item("translator", "翻译器", "Google 翻译", .translator) {
                     AnyView(TranslatorHomeView())
                 },
-                item("express", "快递查询", "单号本机管理 · 跳转查询", .express) {
+                item("express", "快递查询", "承运商识别 · 单号管理", .express) {
                     AnyView(ExpressHomeView())
                 },
-                item("market", "油价 / 汇率 / 金价", "国际参考行情", .market) {
+                item("market", "油价 / 汇率 / 金价", "多源金价 · 油价 · 汇率", .market) {
                     AnyView(MarketQuotesHomeView())
                 }
             ]),
@@ -364,19 +355,10 @@ struct ServicesHubView: View {
                 item("checkin", "签到中心", settings.isCheckinConfigured ? "GLaDOS / Emby / TG Bot 状态" : "未配置 · 设置里填写 Token", .checkin) {
                     AnyView(CheckinHomeView())
                 },
-                item("ip", "IP 检测", "IPSuper 风格聚合 · 风险画像 · 流媒体", .ipCheck) {
+                item("ip", "IP 检测", "出口风险 · 流媒体 · 节点探测档案", .ipCheck) {
                     AnyView(IPCheckHomeView())
                 },
-                item("proxyPack", "节点探测包", "换节点后测出口 / 流媒体 / 延迟", .health) {
-                    AnyView(ProxyNodePackView())
-                },
-                item("watchLater", "稍后再看", "媒体链接收藏 · 剪贴板一键加入", .youtube) {
-                    AnyView(WatchLaterHomeView())
-                },
-                item("controlCenter", "控制中心", "通知 · 开播提醒 · 剪贴板智能条", .settings) {
-                    AnyView(ControlCenterView())
-                },
-                item("certs", "证书到期", "域名 TLS 到期监视", .cloudflare) {
+                item("certs", "证书到期", "域名 TLS 到期监视 · 自动探测", .cloudflare) {
                     AnyView(CertMonitorHomeView())
                 },
                 item("ssh", "SSH 主机", "书签 · Next Terminal · 推荐 Blink/Citadel", .komari) {

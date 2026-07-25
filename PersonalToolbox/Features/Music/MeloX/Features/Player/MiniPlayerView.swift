@@ -21,9 +21,13 @@ struct MiniPlayerView: View {
                                 .lineLimit(1)
 
                             if !isInline {
-                                Text(song.artistText)
+                                Text(
+                                    player.isUsingAppleMusic
+                                        ? (player.appleMusicMatchLabel ?? "Apple Music")
+                                        : song.artistText
+                                )
                                     .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(player.isUsingAppleMusic ? Color.pink : .secondary)
                                     .lineLimit(1)
                             }
                         }

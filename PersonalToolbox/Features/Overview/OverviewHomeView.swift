@@ -555,14 +555,6 @@ struct OverviewHomeView: View {
                     ) { navigate(.komari) }
 
                     pulseChip(
-                        title: "稍后再看",
-                        value: "\(viewModel.watchLaterCount)",
-                        caption: "媒体链接",
-                        tint: Color(hex: 0x5E5CE6),
-                        systemImage: "bookmark.fill"
-                    ) { navigate(.watchLater) }
-
-                    pulseChip(
                         title: "控制中心",
                         value: "通知",
                         caption: "开播 / 剪贴板",

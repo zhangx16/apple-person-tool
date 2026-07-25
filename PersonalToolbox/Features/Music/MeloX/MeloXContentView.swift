@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Native MeloX embedded in PersonalToolbox.
 ///
@@ -87,9 +88,21 @@ struct MeloXContentView: View {
                         Task { await player.next() }
                     }
                 }
+                Button("用 Apple Music 播放") {
+                    player.dismissPlaybackIssue()
+                    Task { await player.playViaAppleMusic() }
+                }
+                Button("在 Apple Music 中搜索") {
+                    let name = player.currentSong?.name ?? ""
+                    let artist = player.currentSong?.artistText ?? ""
+                    let q = [name, artist].filter { !$0.isEmpty }.joined(separator: " ")
+                    player.dismissPlaybackIssue()
+                    openAppleMusicSearch(q)
+                }
                 Button("好", role: .cancel) { player.dismissPlaybackIssue() }
             } message: {
-                Text(player.playbackIssue?.message ?? "当前歌曲暂时无法播放。")
+                Text((player.playbackIssue?.message ?? "当前歌曲暂时无法播放。")
+                    + "\n可改用 Apple Music 真播放（需本机登录 Apple Music 会员）。")
             }
             .alert(
                 "下载操作失败",
@@ -298,6 +311,21 @@ struct MeloXContentView: View {
         case .library: libraryPath.append(route)
         case .search: searchPath.append(route)
         case .settings: settingsPath.append(route)
+        }
+    }
+
+    /// Prefer native Apple Music app; fall back to web search.
+    private func openAppleMusicSearch(_ query: String) {
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !q.isEmpty else { return }
+        let encoded = q.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? q
+        if let appURL = URL(string: "music://music.apple.com/search?term=\(encoded)"),
+           UIApplication.shared.canOpenURL(appURL) {
+            UIApplication.shared.open(appURL)
+            return
+        }
+        if let web = URL(string: "https://music.apple.com/search?term=\(encoded)") {
+            UIApplication.shared.open(web)
         }
     }
 }

@@ -6,6 +6,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		000000000000000000000831 /* AppleMusicBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000830 /* AppleMusicBridge.swift */; };
+		000000000000000000000823 /* LiveDanmakuPrefs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000822 /* LiveDanmakuPrefs.swift */; };
+		000000000000000000000821 /* LifeHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000820 /* LifeHubView.swift */; };
 		000000000000000000000813 /* KomariBillImportSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000812 /* KomariBillImportSheet.swift */; };
 		000000000000000000000811 /* AppDeepLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000810 /* AppDeepLink.swift */; };
 		000000000000000000000801 /* ClipboardSmartRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000800 /* ClipboardSmartRouter.swift */; };
@@ -297,6 +300,9 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		000000000000000000000830 /* AppleMusicBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Playback/AppleMusicBridge.swift; sourceTree = "<group>"; };
+		000000000000000000000822 /* LiveDanmakuPrefs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveDanmakuPrefs.swift; sourceTree = "<group>"; };
+		000000000000000000000820 /* LifeHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Life/LifeHubView.swift; sourceTree = "<group>"; };
 		000000000000000000000812 /* KomariBillImportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Life/KomariBillImportSheet.swift; sourceTree = "<group>"; };
 		000000000000000000000810 /* AppDeepLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDeepLink.swift; sourceTree = "<group>"; };
 		000000000000000000000800 /* ClipboardSmartRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardSmartRouter.swift; sourceTree = "<group>"; };
@@ -634,6 +640,7 @@
 				00000000000000000000804A /* PlaybackQueue.swift */,
 				00000000000000000000804C /* PlaybackSource.swift */,
 				00000000000000000000804E /* PlayerStore.swift */,
+				000000000000000000000830 /* AppleMusicBridge.swift */,
 				000000000000000000008050 /* AudioEqualizerPreferences.swift */,
 				000000000000000000008052 /* LyricsRefreshRate.swift */,
 				000000000000000000008054 /* LyricsStyle.swift */,
@@ -854,6 +861,7 @@
 				000000000000000000000802 /* LiveOpenNotifyService.swift */,
 				000000000000000000000804 /* ProxyNodeProfileStore.swift */,
 				000000000000000000000806 /* WatchLaterStore.swift */,
+				000000000000000000000822 /* LiveDanmakuPrefs.swift */,
 				000000000000000000000810 /* AppDeepLink.swift */,
 				0000000000000000000005F6 /* ReminderStore.swift */,
 				0000000000000000000005F8 /* CertExpiryService.swift */,
@@ -1031,6 +1039,7 @@
 				000000000000000000000308 /* Download */,
 				000000000000000000000309 /* Settings */,
 				0000000000000000000005FE /* LifeExtrasViews.swift */,
+				000000000000000000000820 /* LifeHubView.swift */,
 				000000000000000000000812 /* KomariBillImportSheet.swift */,
 				000000000000000000000712 /* SSHTerminalView.swift */,
 			);
@@ -1247,6 +1256,9 @@
 				000000000000000000000507 /* ActionRouter.swift in Sources */,
 				000000000000000000000509 /* PasswordGenerator.swift in Sources */,
 				00000000000000000000050B /* ClipboardStore.swift in Sources */,
+				000000000000000000000831 /* AppleMusicBridge.swift in Sources */,
+				000000000000000000000823 /* LiveDanmakuPrefs.swift in Sources */,
+				000000000000000000000821 /* LifeHubView.swift in Sources */,
 				000000000000000000000813 /* KomariBillImportSheet.swift in Sources */,
 				000000000000000000000811 /* AppDeepLink.swift in Sources */,
 				000000000000000000000801 /* ClipboardSmartRouter.swift in Sources */,
@@ -1567,7 +1579,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 92;
+				CURRENT_PROJECT_VERSION = 93;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				CODE_SIGN_ENTITLEMENTS = PersonalToolbox/PersonalToolbox.entitlements;
@@ -1594,7 +1606,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 92;
+				CURRENT_PROJECT_VERSION = 93;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				CODE_SIGN_ENTITLEMENTS = PersonalToolbox/PersonalToolbox.entitlements;
@@ -1621,7 +1633,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 92;
+				CURRENT_PROJECT_VERSION = 93;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
@@ -1647,7 +1659,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 92;
+				CURRENT_PROJECT_VERSION = 93;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;

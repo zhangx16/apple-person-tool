@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 // MARK: - Clipboard (CAIS-class)
 
@@ -452,30 +453,69 @@ struct RSSHomeView: View {
     @State private var showAdd = false
     @State private var newTitle = ""
     @State private var newURL = ""
+    @State private var filterFeedId: String?
+
+    var filteredEntries: [RSSEntry] {
+        guard let filterFeedId else { return store.entries }
+        return store.entries.filter { $0.feedId == filterFeedId }
+    }
 
     var body: some View {
         List {
             if let err = store.errorMessage {
                 Section { Text(err).foregroundStyle(.red).font(.footnote) }
             }
-            Section("条目") {
-                if store.isLoading && store.entries.isEmpty {
-                    ProgressView("加载中…")
-                } else if store.entries.isEmpty {
-                    Text("下拉刷新或添加订阅源").foregroundStyle(.secondary)
-                } else {
-                    ForEach(store.entries) { e in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(e.title).font(.subheadline.weight(.semibold))
-                            Text(e.feedTitle).font(.caption2).foregroundStyle(.secondary)
-                            if !e.summary.isEmpty {
-                                Text(e.summary).font(.caption).foregroundStyle(.secondary).lineLimit(3)
-                            }
-                            if let link = e.link, let url = URL(string: link) {
-                                Link("打开原文", destination: url).font(.caption)
+            Section {
+                Text("支持任意 RSS/Atom。可用 RSSHub 路由（如 `https://rsshub.app/…` 或自建实例）订阅站点时间线。")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        FilterChip(title: "全部", systemImage: "list.bullet", isSelected: filterFeedId == nil, tint: .accentColor) {
+                            filterFeedId = nil
+                        }
+                        ForEach(store.sources.filter(\.enabled)) { s in
+                            FilterChip(title: s.title, systemImage: "dot.radiowaves.up.forward", isSelected: filterFeedId == s.id, tint: .accentColor) {
+                                filterFeedId = s.id
                             }
                         }
-                        .padding(.vertical, 2)
+                    }
+                }
+            }
+            Section("时间线") {
+                if store.isLoading && store.entries.isEmpty {
+                    ProgressView("加载中…")
+                } else if filteredEntries.isEmpty {
+                    Text("下拉刷新或添加订阅源").foregroundStyle(.secondary)
+                } else {
+                    ForEach(filteredEntries) { e in
+                        NavigationLink {
+                            RSSEntryDetailView(entry: e)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(e.title)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.primary)
+                                    .lineLimit(2)
+                                HStack(spacing: 6) {
+                                    Text(e.feedTitle)
+                                        .font(.caption2.weight(.semibold))
+                                        .foregroundStyle(Color.accentColor)
+                                    if !e.published.isEmpty {
+                                        Text(e.published)
+                                            .font(.caption2)
+                                            .foregroundStyle(.tertiary)
+                                    }
+                                }
+                                if !e.summary.isEmpty {
+                                    Text(e.summary)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(3)
+                                }
+                            }
+                            .padding(.vertical, 2)
+                        }
                     }
                 }
             }
@@ -493,6 +533,12 @@ struct RSSHomeView: View {
                 }
                 .onDelete { idx in
                     idx.map { store.sources[$0].id }.forEach(store.removeSource)
+                }
+                Button {
+                    store.addSource(title: "BBC World", url: "https://feeds.bbci.co.uk/news/world/rss.xml")
+                    Task { await store.refresh() }
+                } label: {
+                    Label("添加示例：BBC", systemImage: "plus.circle")
                 }
             }
         }
@@ -517,9 +563,12 @@ struct RSSHomeView: View {
             NavigationStack {
                 Form {
                     TextField("名称", text: $newTitle)
-                    TextField("Feed URL", text: $newURL)
+                    TextField("Feed URL（可填 RSSHub 路由）", text: $newURL)
                         .textInputAutocapitalization(.never)
                         .keyboardType(.URL)
+                    Text("例：https://rsshub.app/bilibili/user/video/2267573")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
                 .navigationTitle("添加订阅")
                 .toolbar {
@@ -546,6 +595,55 @@ struct RSSHomeView: View {
         .onAppear {
             if let initialURL, !initialURL.isEmpty {
                 newURL = initialURL
+            }
+        }
+    }
+}
+
+private struct RSSEntryDetailView: View {
+    let entry: RSSEntry
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(entry.title)
+                    .font(.title3.weight(.bold))
+                HStack {
+                    Text(entry.feedTitle)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.accentColor)
+                    if !entry.published.isEmpty {
+                        Text(entry.published)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Divider()
+                Text(entry.summary.isEmpty ? "无摘要" : entry.summary)
+                    .font(.body)
+                    .foregroundStyle(.primary)
+                if let link = entry.link, let url = URL(string: link) {
+                    Link(destination: url) {
+                        Label("在浏览器打开原文", systemImage: "safari")
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .padding(.top, 8)
+                }
+            }
+            .padding()
+        }
+        .navigationTitle("阅读")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    UIPasteboard.general.string = entry.link ?? entry.title
+                    Haptics.success()
+                } label: {
+                    Image(systemName: "doc.on.doc")
+                }
             }
         }
     }
@@ -766,6 +864,26 @@ struct ExpressHomeView: View {
                 Section { Text(msg).font(.caption).foregroundStyle(.secondary) }
             }
 
+            if !number.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Section("承运商识别") {
+                    let code = ExpressService.guessCarrierCode(number)
+                    HStack(spacing: 12) {
+                        Image(systemName: ExpressService.carrierSystemImage(code))
+                            .font(.title2)
+                            .foregroundStyle(.white)
+                            .frame(width: 44, height: 44)
+                            .background(Color.accentColor.gradient, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(ExpressService.nameForCode(code))
+                                .font(.headline)
+                            Text(code == "unknown" ? "添加后将自动查询确认" : "运单号前缀匹配 · \(code)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+
             Section("包裹 (\(store.packages.count))") {
                 if store.packages.isEmpty {
                     Text("暂无包裹").foregroundStyle(.secondary)
@@ -774,16 +892,19 @@ struct ExpressHomeView: View {
                         NavigationLink {
                             ExpressDetailView(packageId: p.id)
                         } label: {
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack {
+                            HStack(spacing: 12) {
+                                Image(systemName: ExpressService.carrierSystemImage(p.carrierCode))
+                                    .font(.body.weight(.semibold))
+                                    .foregroundStyle(.white)
+                                    .frame(width: 36, height: 36)
+                                    .background(Color.accentColor.opacity(0.9), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                VStack(alignment: .leading, spacing: 4) {
                                     Text(p.trackingNo).font(.subheadline.weight(.semibold).monospaced())
-                                    Spacer()
-                                    Text(p.carrierName).font(.caption).foregroundStyle(.secondary)
+                                    Text("\(p.carrierName.isEmpty ? ExpressService.nameForCode(p.carrierCode) : p.carrierName) · \(p.lastStatus)")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(2)
                                 }
-                                Text(p.lastStatus)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(2)
                             }
                             .padding(.vertical, 2)
                         }

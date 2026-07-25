@@ -94,14 +94,9 @@ struct ControlCenterView: View {
 
             Section("快捷入口") {
                 NavigationLink {
-                    ProxyNodePackView()
+                    IPCheckHomeView()
                 } label: {
-                    Label("代理 / 节点探测包", systemImage: "network.badge.shield.half.filled")
-                }
-                NavigationLink {
-                    WatchLaterHomeView()
-                } label: {
-                    Label("稍后再看（媒体库）", systemImage: "bookmark.fill")
+                    Label("IP 检测 / 节点档案", systemImage: "antenna.radiowaves.left.and.right")
                 }
             }
         }

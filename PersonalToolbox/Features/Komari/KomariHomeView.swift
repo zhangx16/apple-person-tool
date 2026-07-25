@@ -735,22 +735,54 @@ private func formatOs(_ os: String) -> String {
     return os.split(whereSeparator: { $0 == " " || $0 == "/" }).first.map(String.init) ?? os
 }
 
-/// Region → flag emoji (ISO country code or common aliases).
+/// Region → flag emoji (ISO country code or common aliases / Chinese names).
 private func flagEmoji(for region: String?) -> String {
     guard var code = region?.trimmingCharacters(in: .whitespacesAndNewlines), !code.isEmpty else {
         return "🌐"
     }
-    // Already emoji / long name
-    if code.count > 3 { return "🌐" }
-    // common aliases
+    // Chinese / English name → ISO
+    let nameMap: [String: String] = [
+        "中国": "CN", "大陆": "CN", "cn": "CN", "china": "CN",
+        "香港": "HK", "hongkong": "HK", "hk": "HK",
+        "台湾": "TW", "台灣": "TW", "taiwan": "TW",
+        "澳门": "MO", "澳門": "MO",
+        "日本": "JP", "japan": "JP", "jp": "JP",
+        "韩国": "KR", "韓國": "KR", "korea": "KR", "kr": "KR",
+        "新加坡": "SG", "singapore": "SG", "sg": "SG",
+        "美国": "US", "美國": "US", "usa": "US", "us": "US",
+        "英国": "GB", "英國": "GB", "uk": "GB", "gb": "GB",
+        "德国": "DE", "德國": "DE", "germany": "DE", "de": "DE",
+        "法国": "FR", "法國": "FR", "france": "FR", "fr": "FR",
+        "荷兰": "NL", "荷蘭": "NL", "netherlands": "NL", "nl": "NL",
+        "俄罗斯": "RU", "俄羅斯": "RU", "russia": "RU", "ru": "RU",
+        "印度": "IN", "india": "IN", "in": "IN",
+        "澳大利亚": "AU", "澳洲": "AU", "australia": "AU", "au": "AU",
+        "加拿大": "CA", "canada": "CA", "ca": "CA",
+        "越南": "VN", "vietnam": "VN", "vn": "VN",
+        "泰国": "TH", "thailand": "TH", "th": "TH",
+        "马来西亚": "MY", "malaysia": "MY", "my": "MY",
+        "菲律宾": "PH", "philippines": "PH", "ph": "PH",
+        "土耳其": "TR", "turkey": "TR", "tr": "TR",
+        "巴西": "BR", "brazil": "BR", "br": "BR"
+    ]
+    let key = code.lowercased()
+    if let mapped = nameMap[key] ?? nameMap[code] {
+        code = mapped
+    }
     let aliases: [String: String] = [
         "CN": "CN", "HK": "HK", "TW": "TW", "MO": "MO",
         "JP": "JP", "KR": "KR", "SG": "SG", "US": "US",
         "UK": "GB", "GB": "GB", "DE": "DE", "FR": "FR",
-        "NL": "NL", "RU": "RU", "IN": "IN", "AU": "AU"
+        "NL": "NL", "RU": "RU", "IN": "IN", "AU": "AU",
+        "CA": "CA", "VN": "VN", "TH": "TH", "MY": "MY",
+        "PH": "PH", "TR": "TR", "BR": "BR"
     ]
     code = code.uppercased()
     if let mapped = aliases[code] { code = mapped }
+    // strip flag already
+    if code.unicodeScalars.contains(where: { $0.value >= 0x1F1E6 && $0.value <= 0x1F1FF }) {
+        return region ?? "🌐"
+    }
     guard code.count == 2, code.unicodeScalars.allSatisfy({ CharacterSet.uppercaseLetters.contains($0) }) else {
         return "🌐"
     }

@@ -55,6 +55,7 @@ struct IPCheckHomeView: View {
                     if includeMedia, !result.mediaRows.isEmpty {
                         mediaCard(result.mediaRows)
                     }
+                    nodeProbeSection
                     if !result.qualityNote.isEmpty {
                         Text(result.qualityNote)
                             .font(.caption2)
@@ -568,6 +569,48 @@ struct IPCheckHomeView: View {
         if v > 60 { return "出口更像机房/代理，若你在用代理属正常。" }
         if v > 20 { return "存在部分代理或机房特征，请结合多源评分判断。" }
         return "更接近家宽/直连特征。"
+    }
+
+    /// Merged former「节点探测包」into IP check.
+    private var nodeProbeSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("节点探测档案")
+                    .font(.subheadline.weight(.bold))
+                Spacer()
+                NavigationLink("管理") {
+                    ProxyNodePackView()
+                }
+                .font(.caption.weight(.semibold))
+            }
+            Text("换节点后一键保存：出口 IP · 风险 · 流媒体 · 延迟。")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            Button {
+                Task {
+                    let name = viewModel.result?.primary?.query ?? "节点"
+                    _ = await ProxyNodeProfileStore.shared.probeAndSave(
+                        name: "节点 \(name)",
+                        includeMedia: includeMedia && queryIP.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                        latencyHost: "www.google.com"
+                    )
+                    Haptics.success()
+                }
+            } label: {
+                Label("探测当前出口并保存档案", systemImage: "bolt.horizontal.circle.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(accent)
+            if let latest = ProxyNodeProfileStore.shared.items.first {
+                Text("最近：\(latest.subtitle)")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .appCard()
     }
 
     private func displayIP(_ ip: String) -> String {

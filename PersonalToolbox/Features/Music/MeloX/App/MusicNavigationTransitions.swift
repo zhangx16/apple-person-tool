@@ -40,12 +40,8 @@ private struct MusicMatchedTransitionSourceModifier: ViewModifier {
 
     @ViewBuilder
     func body(content: Content) -> some View {
-        if route.usesCardExpansionTransition, let namespace {
-            content.matchedTransitionSource(
-                id: route.transitionID,
-                in: namespace
-            )
-            .modifier(
+        if route.usesCardExpansionTransition {
+            content.modifier(
                 ArtworkDetailAssetsPrefetchModifier(
                     artworkURL: route.transitionArtworkURL
                 )

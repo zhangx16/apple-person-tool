@@ -98,7 +98,6 @@ struct AccountHomeView: View {
             }
             .accessibilityLabel("更多")
         }
-        .sharedBackgroundVisibility(.visible)
     }
 
     private func loadArtworkAssets() async {

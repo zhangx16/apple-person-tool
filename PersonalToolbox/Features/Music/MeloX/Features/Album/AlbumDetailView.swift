@@ -164,7 +164,6 @@ struct AlbumDetailView: View {
             }
             .accessibilityLabel("更多")
         }
-        .sharedBackgroundVisibility(.visible)
     }
 
     private func toggleSubscription() {

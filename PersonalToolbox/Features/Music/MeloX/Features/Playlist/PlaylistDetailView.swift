@@ -199,7 +199,6 @@ struct PlaylistDetailView: View {
             }
             .accessibilityLabel("更多")
         }
-        .sharedBackgroundVisibility(.visible)
     }
 
     private func load(

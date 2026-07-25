@@ -181,23 +181,29 @@ extension TextPVEffectPainter {
         height: CGFloat,
         rotation: CGFloat
     ) -> Path {
+        // Split locals so the type-checker does not time out on Xcode 16.
         let cosine = CGFloat(Darwin.cos(Double(rotation)))
         let sine = CGFloat(Darwin.sin(Double(rotation)))
-        let corners = [
-            CGPoint(x: -width / 2, y: -height / 2),
-            CGPoint(x: width / 2, y: -height / 2),
-            CGPoint(x: width / 2, y: height / 2),
-            CGPoint(x: -width / 2, y: height / 2),
-        ].map { point in
+        let halfW = width / 2
+        let halfH = height / 2
+
+        func rotate(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
             CGPoint(
-                x: center.x + point.x * cosine - point.y * sine,
-                y: center.y + point.x * sine + point.y * cosine
+                x: center.x + x * cosine - y * sine,
+                y: center.y + x * sine + y * cosine
             )
         }
 
+        let c0 = rotate(-halfW, -halfH)
+        let c1 = rotate(halfW, -halfH)
+        let c2 = rotate(halfW, halfH)
+        let c3 = rotate(-halfW, halfH)
+
         var path = Path()
-        path.move(to: corners[0])
-        corners.dropFirst().forEach { path.addLine(to: $0) }
+        path.move(to: c0)
+        path.addLine(to: c1)
+        path.addLine(to: c2)
+        path.addLine(to: c3)
         path.closeSubpath()
         return path
     }

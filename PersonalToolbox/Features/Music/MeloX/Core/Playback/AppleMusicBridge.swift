@@ -127,7 +127,8 @@ final class AppleMusicBridge {
     ) async throws -> MusicKit.Song {
         lastErrorDescription = nil
         try await ensureAuthorized()
-        try activatePlaybackSession()
+        // Best-effort only: OSStatus -50 must not block MusicKit play.
+        activatePlaybackSessionBestEffort()
 
         // Cached id first; drop cache if play fails.
         if let neteaseSongID,
@@ -161,7 +162,7 @@ final class AppleMusicBridge {
     func playMusicItemID(_ idRaw: String, neteaseSongID: Int? = nil) async throws -> MusicKit.Song {
         lastErrorDescription = nil
         try await ensureAuthorized()
-        try activatePlaybackSession()
+        activatePlaybackSessionBestEffort()
         guard let song = try await fetchSong(idRaw: idRaw) else {
             let err = BridgeError.playFailed("无法加载所选曲目（id=\(idRaw)）。")
             lastErrorDescription = err.localizedDescription
@@ -182,7 +183,7 @@ final class AppleMusicBridge {
 
     func resume() async throws {
         guard isActive else { return }
-        try activatePlaybackSession()
+        activatePlaybackSessionBestEffort()
         do {
             try await player.play()
             onPlaybackState?(true, player.playbackTime, activeDuration)
@@ -292,7 +293,7 @@ final class AppleMusicBridge {
             throw err
         }
 
-        try activatePlaybackSession()
+        activatePlaybackSessionBestEffort()
 
         // Reset any prior queue state cleanly.
         player.stop()
@@ -309,8 +310,8 @@ final class AppleMusicBridge {
             try await player.play()
         } catch {
             // One retry after re-activating session (common after AVPlayer teardown).
-            try? activatePlaybackSession()
-            try? await Task.sleep(nanoseconds: 200_000_000)
+            activatePlaybackSessionBestEffort(forceReset: true)
+            try? await Task.sleep(nanoseconds: 250_000_000)
             do {
                 player.queue = ApplicationMusicPlayer.Queue(for: [song])
                 try await player.play()
@@ -354,17 +355,40 @@ final class AppleMusicBridge {
         return .playFailed(msg)
     }
 
-    private func activatePlaybackSession() throws {
+    /// Configure AVAudioSession for MusicKit. Never throw to callers — OSStatus -50
+    /// (paramErr) is common when options clash after AVPlayer teardown; MusicKit can
+    /// still play once a simple `.playback` category is applied (or even if setActive fails).
+    private func activatePlaybackSessionBestEffort(forceReset: Bool = false) {
         let session = AVAudioSession.sharedInstance()
-        do {
-            try session.setCategory(
-                .playback,
-                mode: .default,
-                options: [.allowAirPlay, .allowBluetoothA2DP]
-            )
-            try session.setActive(true, options: [])
-        } catch {
-            throw BridgeError.audioSession(error.localizedDescription)
+
+        if forceReset {
+            try? session.setActive(false, options: .notifyOthersOnDeactivation)
+        }
+
+        // Mirror AudioPlaybackEngine: simplest API avoids -50 from option combos.
+        let attempts: [() throws -> Void] = [
+            {
+                try session.setCategory(.playback, mode: .default)
+                try session.setActive(true)
+            },
+            {
+                try session.setCategory(.playback)
+                try session.setActive(true)
+            },
+            {
+                // Last resort: category only, ignore setActive failure.
+                try session.setCategory(.playback, mode: .default)
+            },
+        ]
+
+        for (index, attempt) in attempts.enumerated() {
+            do {
+                try attempt()
+                return
+            } catch {
+                lastErrorDescription = "audioSession attempt\(index + 1): \(error.localizedDescription)"
+                continue
+            }
         }
     }
 

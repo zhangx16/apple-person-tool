@@ -44,8 +44,8 @@ struct ExploreFeaturedPlaylistView: View {
             ZStack(alignment: .bottomLeading) {
                 ArtworkImage(
                     url: playlist.artworkURL,
-                    cornerRadius: 22,
-                    aspectRatio: 1.55
+                    cornerRadius: 14,
+                    aspectRatio: 1.7
                 )
 
                 LinearGradient(
@@ -53,15 +53,15 @@ struct ExploreFeaturedPlaylistView: View {
                     startPoint: .center,
                     endPoint: .bottom
                 )
-                .clipShape(.rect(cornerRadius: 22))
+                .clipShape(.rect(cornerRadius: 14))
 
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(badge)
-                        .font(.caption.weight(.bold))
+                        .font(.caption2.weight(.bold))
                         .foregroundStyle(.white.opacity(0.78))
 
                     Text(playlist.name)
-                        .font(.title2.bold())
+                        .font(.headline.weight(.bold))
                         .foregroundStyle(.white)
                         .lineLimit(2)
 
@@ -75,11 +75,11 @@ struct ExploreFeaturedPlaylistView: View {
                             Label(playCountText(playlist.playCount), systemImage: "play.fill")
                         }
                     }
-                    .font(.caption)
+                    .font(.caption2)
                     .foregroundStyle(.white.opacity(0.76))
                 }
-                .padding(20)
-                .padding(.trailing, 20)
+                .padding(14)
+                .padding(.trailing, 14)
             }
             .contentShape(.rect)
         }
@@ -94,8 +94,8 @@ struct ExplorePlaylistCardView: View {
     let showsPlayCount: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ArtworkImage(url: playlist.artworkURL, cornerRadius: 12)
+        VStack(alignment: .leading, spacing: 6) {
+            ArtworkImage(url: playlist.artworkURL, cornerRadius: 10)
                 .overlay(alignment: .topTrailing) {
                     if showsPlayCount, playlist.playCount > 0 {
                         Label(playCountText(playlist.playCount), systemImage: "play.fill")

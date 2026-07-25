@@ -59,9 +59,9 @@ struct SearchDiscoveryView: View {
                                     title: playlist.name,
                                     subtitle: playlist.copywriter ?? playlist.creator?.nickname,
                                     artworkURL: playlist.artworkURL,
-                                    artworkSize: 172
+                                    artworkSize: 118
                                 )
-                                .frame(width: 172)
+                                .frame(width: 118)
                             }
                             .buttonStyle(.plain)
                             .musicMatchedTransitionSource(for: MusicRoute.playlist(playlist))

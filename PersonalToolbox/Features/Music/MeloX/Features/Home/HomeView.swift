@@ -23,7 +23,8 @@ struct HomeView: View {
             }
         }
         .navigationTitle("首页")
-        .navigationBarTitleDisplayMode(.large)
+        // Inline title frees vertical space inside the toolbox tab.
+        .navigationBarTitleDisplayMode(.inline)
         .task(id: reloadToken) {
             guard phase != .loaded else { return }
             await load()
@@ -51,7 +52,7 @@ struct HomeView: View {
 
     private var content: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 34) {
+            LazyVStack(alignment: .leading, spacing: 20) {
                 featuredSection
 
                 if !remainingRecommendations.isEmpty {
@@ -70,7 +71,8 @@ struct HomeView: View {
                     artistSection
                 }
             }
-            .padding(.bottom, 28)
+            .padding(.top, 4)
+            .padding(.bottom, 20)
         }
         .refreshable {
             await load(showsInitialLoading: false)
@@ -79,7 +81,7 @@ struct HomeView: View {
 
     private var featuredSection: some View {
         ScrollView(.horizontal) {
-            LazyHStack(alignment: .top, spacing: 16) {
+            LazyHStack(alignment: .top, spacing: 12) {
                 NavigationLink(value: MusicRoute.dailySongs) {
                     HomeEditorialCard(
                         eyebrow: "每日更新",
@@ -192,7 +194,8 @@ struct HomeView: View {
 private extension View {
     func homeFeaturedWidth() -> some View {
         containerRelativeFrame(.horizontal) { length, _ in
-            length * 0.86
+            // Slightly narrower cards so more content fits on screen.
+            length * 0.72
         }
         .buttonStyle(.plain)
     }

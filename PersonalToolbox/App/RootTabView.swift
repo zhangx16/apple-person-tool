@@ -16,6 +16,8 @@ struct RootTabView: View {
     @State private var selectedTab: AppTab = .overview
     @State private var isUnlocked = false
     @State private var hideForSwitcher = false
+    /// When true (default on Music tab), system tab bar is hidden so music section bar owns the bottom.
+    @State private var musicHidesAppTabBar = true
 
     var body: some View {
         ZStack {
@@ -30,10 +32,12 @@ struct RootTabView: View {
                     .tag(AppTab.live)
                     .accessibilityLabel("直播")
 
-                MusicRootView()
+                MusicRootView(appTabBarHidden: $musicHidesAppTabBar)
                     .tabItem { Label("音乐", systemImage: "music.note") }
                     .tag(AppTab.music)
                     .accessibilityLabel("音乐")
+                    // Hide app tab bar while in Music so MeloX bottom bar can sit flush.
+                    .toolbar(musicHidesAppTabBar ? .hidden : .visible, for: .tabBar)
 
                 ServicesHubView(selectedTab: $selectedTab)
                     .tabItem { Label("服务", systemImage: "shippingbox") }
@@ -52,6 +56,14 @@ struct RootTabView: View {
                 appearance.backgroundEffect = UIBlurEffect(style: .systemChromeMaterial)
                 UITabBar.appearance().standardAppearance = appearance
                 UITabBar.appearance().scrollEdgeAppearance = appearance
+            }
+            .onChange(of: selectedTab) { _, tab in
+                // Entering Music: reclaim bottom; leaving: always restore app tabs.
+                if tab == .music {
+                    musicHidesAppTabBar = true
+                } else {
+                    musicHidesAppTabBar = false
+                }
             }
             .preferredColorScheme(preferredScheme)
             .allowsHitTesting(isContentInteractive)

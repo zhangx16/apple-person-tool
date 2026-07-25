@@ -2,6 +2,9 @@ import SwiftUI
 
 /// Native MeloX music module entry for PersonalToolbox bottom tab.
 struct MusicRootView: View {
+    /// Bound to RootTabView: hide system tab bar while immersed in music.
+    @Binding var appTabBarHidden: Bool
+
     @State private var settings: MeloXSettings
     @State private var api: NeteaseAPI
     @State private var library: LibraryStore
@@ -11,9 +14,9 @@ struct MusicRootView: View {
     @State private var screenAwakeCoordinator: ScreenAwakeCoordinator
     @State private var isLowPowerModeEnabled = ProcessInfo.processInfo.isLowPowerModeEnabled
 
-    init() {
+    init(appTabBarHidden: Binding<Bool> = .constant(true)) {
+        _appTabBarHidden = appTabBarHidden
         let settings = MeloXSettings()
-        // Skip onboarding when embedded in the toolbox.
         if !settings.hasCompletedOnboarding {
             settings.hasCompletedOnboarding = true
         }
@@ -40,23 +43,26 @@ struct MusicRootView: View {
     }
 
     var body: some View {
-        MeloXContentView(initialTab: settings.launchTab)
-            .environment(settings)
-            .environment(api)
-            .environment(library)
-            .environment(cloud)
-            .environment(downloads)
-            .environment(player)
-            .environment(screenAwakeCoordinator)
-            .environment(\.effectiveLyricsRefreshRate, effectiveLyricsRefreshRate)
-            .tint(.red)
-            .onReceive(
-                NotificationCenter.default.publisher(
-                    for: .NSProcessInfoPowerStateDidChange
-                )
-            ) { _ in
-                isLowPowerModeEnabled = ProcessInfo.processInfo.isLowPowerModeEnabled
-            }
+        MeloXContentView(
+            initialTab: settings.launchTab,
+            appTabBarHidden: $appTabBarHidden
+        )
+        .environment(settings)
+        .environment(api)
+        .environment(library)
+        .environment(cloud)
+        .environment(downloads)
+        .environment(player)
+        .environment(screenAwakeCoordinator)
+        .environment(\.effectiveLyricsRefreshRate, effectiveLyricsRefreshRate)
+        .tint(.red)
+        .onReceive(
+            NotificationCenter.default.publisher(
+                for: .NSProcessInfoPowerStateDidChange
+            )
+        ) { _ in
+            isLowPowerModeEnabled = ProcessInfo.processInfo.isLowPowerModeEnabled
+        }
     }
 
     private var effectiveLyricsRefreshRate: LyricsRefreshRate {

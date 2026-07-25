@@ -8,18 +8,18 @@ struct HomeEditorialCard: View {
     let colors: [Color]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: 2) {
             Text(eyebrow.uppercased())
-                .font(.caption.weight(.semibold))
+                .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
 
             Text(title)
-                .font(.title3)
+                .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.primary)
                 .lineLimit(1)
 
             Text(subtitle)
-                .font(.subheadline)
+                .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
 
@@ -31,18 +31,18 @@ struct HomeEditorialCard: View {
                 )
 
                 Image(systemName: systemImage)
-                    .font(.system(size: 72, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.24))
+                    .font(.system(size: 44, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.22))
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
 
                 Text(title)
-                    .font(.title.bold())
+                    .font(.headline.weight(.bold))
                     .foregroundStyle(.white)
-                    .padding(18)
+                    .padding(12)
             }
-            .aspectRatio(1.48, contentMode: .fit)
-            .clipShape(.rect(cornerRadius: 14))
-            .padding(.top, 8)
+            .aspectRatio(1.55, contentMode: .fit)
+            .clipShape(.rect(cornerRadius: 12))
+            .padding(.top, 4)
         }
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
@@ -53,26 +53,26 @@ struct HomeFeaturedPlaylistCard: View {
     let playlist: Playlist
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: 2) {
             Text("编辑推荐")
-                .font(.caption.weight(.semibold))
+                .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
 
             Text(playlist.name)
-                .font(.title3)
+                .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.primary)
                 .lineLimit(1)
 
             Text(playlist.copywriter ?? playlist.creator?.nickname ?? "网易云音乐歌单")
-                .font(.subheadline)
+                .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
 
-            ArtworkImage(url: playlist.artworkURL, cornerRadius: 14, aspectRatio: 1.48)
+            ArtworkImage(url: playlist.artworkURL, cornerRadius: 12, aspectRatio: 1.55)
                 .frame(maxWidth: .infinity)
-                .aspectRatio(1.48, contentMode: .fit)
+                .aspectRatio(1.55, contentMode: .fit)
                 .clipped()
-                .padding(.top, 8)
+                .padding(.top, 4)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(.rect)
@@ -86,12 +86,12 @@ struct HomeHorizontalSection<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 10) {
             SectionTitle(title: title, destination: destination)
                 .padding(.horizontal, 16)
 
             ScrollView(.horizontal) {
-                LazyHStack(alignment: .top, spacing: 14) {
+                LazyHStack(alignment: .top, spacing: 10) {
                     content()
                 }
             }
@@ -109,9 +109,9 @@ struct HomePlaylistCard: View {
             title: playlist.name,
             subtitle: playlist.copywriter ?? playlist.updateFrequency ?? playlist.creator?.nickname,
             artworkURL: playlist.artworkURL,
-            artworkSize: 166
+            artworkSize: 118
         )
-        .frame(width: 166)
+        .frame(width: 118)
     }
 }
 
@@ -123,9 +123,9 @@ struct HomeAlbumCard: View {
             title: album.name,
             subtitle: album.artistText,
             artworkURL: album.artworkURL,
-            artworkSize: 166
+            artworkSize: 118
         )
-        .frame(width: 166)
+        .frame(width: 118)
     }
 }
 
@@ -138,8 +138,8 @@ struct HomeArtistCard: View {
             subtitle: artist.aliases.first ?? "歌手",
             artworkURL: artist.artworkURL,
             circular: true,
-            artworkSize: 148
+            artworkSize: 104
         )
-        .frame(width: 148)
+        .frame(width: 104)
     }
 }

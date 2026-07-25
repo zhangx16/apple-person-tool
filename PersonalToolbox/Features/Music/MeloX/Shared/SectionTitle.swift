@@ -7,12 +7,12 @@ struct SectionTitle: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
             Text(title)
-                .font(.title2.bold())
+                .font(.headline.weight(.bold))
             Spacer()
             if let destination {
                 NavigationLink(value: destination) {
                     Text("查看全部")
-                        .font(.subheadline)
+                        .font(.caption.weight(.semibold))
                 }
             }
         }

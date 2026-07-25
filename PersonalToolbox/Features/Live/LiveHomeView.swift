@@ -60,18 +60,21 @@ struct LiveHomeView: View {
                 LiveRoomView(room: route.room)
             }
             .onAppear {
-                follows.refreshMissingAvatars(for: platform)
+                // 关注页聚合全平台；搜索页才按当前平台补头像。
+                if mode == .follow {
+                    follows.refreshMissingAvatars(for: nil)
+                } else {
+                    follows.refreshMissingAvatars(for: platform)
+                }
                 detectClipboardRoomId()
             }
             .onChange(of: mode) { _, newMode in
                 if newMode == .follow {
-                    follows.refreshMissingAvatars(for: platform)
+                    follows.refreshMissingAvatars(for: nil)
                 }
             }
-            .onChange(of: platform) { _, newPlatform in
-                if mode == .follow {
-                    follows.refreshMissingAvatars(for: newPlatform)
-                }
+            .onChange(of: platform) { _, _ in
+                // 仅搜索模式依赖平台；剪贴板提示仍跟当前平台走。
                 detectClipboardRoomId()
             }
         }
@@ -149,8 +152,9 @@ struct LiveHomeView: View {
     private var topChrome: some View {
         VStack(spacing: 14) {
             modeTabs
-            platformScroller
+            // 关注：全平台聚合，不再按平台分类；搜索仍保留平台选择。
             if mode == .search {
+                platformScroller
                 searchFields
                     .transition(.opacity.combined(with: .move(edge: .top)))
             }
@@ -158,6 +162,7 @@ struct LiveHomeView: View {
         .padding(.top, 6)
         .padding(.bottom, 12)
         .background(.bar)
+        .animation(AppleTheme.preferredSnappy, value: mode)
     }
 
     private var modeTabs: some View {
@@ -328,14 +333,15 @@ struct LiveHomeView: View {
 
     @ViewBuilder
     private var followContent: some View {
-        let filtered = follows.items(for: platform)
+        // 聚合全部平台关注，不再按平台 Tab 拆分。
+        let filtered = follows.items
         if filtered.isEmpty {
             LiveEmptyState(
                 symbol: "heart.circle",
                 title: "还没有关注",
                 message: "在「搜索」里找到常看的主播，点爱心收藏。\n也可以直接输入房间号打开。",
                 actionTitle: "去搜索",
-                brand: LiveUI.brand(platform)
+                brand: Color.accentColor
             ) {
                 withAnimation { mode = .search }
             }
@@ -354,10 +360,11 @@ struct LiveHomeView: View {
                         .padding(.horizontal, 4)
                     }
                     ForEach(filtered) { item in
-                        // 关注卡：主播名（加粗）→ 房间号 → 分区
+                        // 关注卡：主播名 → 平台标注 → 房间号 / 分区
                         LiveFollowCard(
                             item: item,
-                            brand: LiveUI.brand(platform)
+                            brand: LiveUI.brand(item.platform),
+                            showPlatformBadge: true
                         ) {
                             openRoom(follows.asRoomItem(item))
                         }
@@ -376,7 +383,7 @@ struct LiveHomeView: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .refreshable {
-                follows.refreshMetadata(for: platform, forceStatus: true)
+                follows.refreshMetadata(for: nil, forceStatus: true)
                 // Brief wait so pull-to-refresh feels responsive.
                 try? await Task.sleep(nanoseconds: 600_000_000)
             }
@@ -604,10 +611,11 @@ private struct LiveEmptyState: View {
     }
 }
 
-/// 关注专用卡：名称加粗 → 房间号 → 分区 + LIVE 角标
+/// 关注专用卡：名称加粗 → 平台标注 → 房间号 → 分区 + LIVE 角标
 private struct LiveFollowCard: View {
     let item: LiveFollowItem
     let brand: Color
+    var showPlatformBadge: Bool = false
     let onTap: () -> Void
 
     var body: some View {
@@ -637,10 +645,24 @@ private struct LiveFollowCard: View {
                             StatusPill(title: "未开播", color: .secondary)
                         }
                     }
-                    Text("房间 \(item.roomId)")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                    // 平台分类标注在主播信息后方（聚合列表用）
+                    if showPlatformBadge {
+                        HStack(spacing: 6) {
+                            LivePlatformMark(platform: item.platform, size: 16)
+                            Text(item.platform.title)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(brand)
+                            Text("房间 \(item.roomId)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                    } else {
+                        Text("房间 \(item.roomId)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
                     HStack(spacing: 4) {
                         Image(systemName: "square.grid.2x2")
                             .font(.caption2)

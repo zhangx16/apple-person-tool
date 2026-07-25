@@ -34,6 +34,7 @@ struct LibraryView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .navigationTitle("音乐库")
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if library.isLoggedIn {
                 ToolbarItem(placement: .primaryAction) {

@@ -171,8 +171,13 @@ final class LiveFollowStore: ObservableObject {
             }
             var changed = false
             // Limit concurrent pressure: sequential is safer for rate limits.
-            // B站只刷前 6 个，降低连发 get_info 压力。
-            let limit = targets.contains(where: { $0.platform == .bilibili }) ? 6 : 12
+            // 聚合关注列表略放宽上限；含 B 站时仍节流。
+            let limit: Int
+            if platform == nil {
+                limit = targets.contains(where: { $0.platform == .bilibili }) ? 12 : 20
+            } else {
+                limit = targets.contains(where: { $0.platform == .bilibili }) ? 6 : 12
+            }
             for item in targets.prefix(limit) {
                 do {
                     let detail = try await LiveSiteRouter.roomDetail(

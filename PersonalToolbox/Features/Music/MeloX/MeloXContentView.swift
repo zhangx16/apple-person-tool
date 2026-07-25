@@ -1,10 +1,14 @@
 import SwiftUI
 
-/// Native MeloX experience embedded in PersonalToolbox.
+/// Native MeloX embedded in PersonalToolbox.
 ///
-/// Section switching lives in a **bottom** module bar (above the app tab bar),
-/// so content pages keep a clean top navigation title — no top segment strip.
+/// When the app tab bar is hidden, this module’s section bar sits at the
+/// physical bottom. Swipe **up** on the bottom chrome to reveal the app tabs;
+/// swipe **down** to hide them again and reclaim vertical space.
 struct MeloXContentView: View {
+    /// `true` = app TabView bar hidden; music section bar replaces it.
+    @Binding var appTabBarHidden: Bool
+
     @Environment(PlayerStore.self) private var player
     @Environment(MeloXSettings.self) private var settings
     @Environment(LibraryStore.self) private var library
@@ -22,8 +26,9 @@ struct MeloXContentView: View {
     @State private var pendingMusicRoute: MusicRoute?
     @Namespace private var musicNavigationNamespace
 
-    init(initialTab: MeloXTab = .home) {
+    init(initialTab: MeloXTab = .home, appTabBarHidden: Binding<Bool> = .constant(true)) {
         _selectedTab = State(initialValue: initialTab)
+        _appTabBarHidden = appTabBarHidden
     }
 
     var body: some View {
@@ -39,7 +44,6 @@ struct MeloXContentView: View {
     private var mainExperience: some View {
         sectionStack
             .environment(\.musicNavigationNamespace, musicNavigationNamespace)
-            // Bottom chrome: mini player + section tabs. Content uses full top for nav titles.
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 bottomChrome
             }
@@ -100,16 +104,17 @@ struct MeloXContentView: View {
             .appLaunchExperience()
     }
 
-    /// Mini player (if any) + compact section icons.
+    // MARK: - Bottom chrome
+
     private var bottomChrome: some View {
         VStack(spacing: 0) {
             if player.currentSong != nil {
                 MiniPlayerView {
                     playerPresentation = .nowPlaying
                 }
-                .padding(.horizontal, 12)
-                .padding(.top, 6)
-                .padding(.bottom, 4)
+                .padding(.horizontal, 10)
+                .padding(.top, 4)
+                .padding(.bottom, 2)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
 
@@ -117,50 +122,81 @@ struct MeloXContentView: View {
         }
         .background {
             Rectangle()
-                .fill(.bar)
+                .fill(.ultraThinMaterial)
                 .ignoresSafeArea(edges: .bottom)
         }
+        // Swipe up → show app tabs; swipe down → hide app tabs (music bar stays).
+        .gesture(tabBarRevealGesture)
         .animation(.snappy(duration: 0.28), value: player.currentSong?.id)
+        .animation(.snappy(duration: 0.25), value: appTabBarHidden)
     }
 
-    /// Icon + short label row — sits above the app’s own tab bar.
-    private var musicSectionBar: some View {
-        HStack(spacing: 0) {
-            ForEach(MeloXTab.allCases) { tab in
-                let on = selectedTab == tab
-                Button {
-                    // Double-tap same tab pops to root of that stack.
-                    if selectedTab == tab {
-                        popToRoot(tab)
-                    } else {
-                        withAnimation(.snappy(duration: 0.2)) {
-                            selectedTab = tab
-                        }
+    private var tabBarRevealGesture: some Gesture {
+        DragGesture(minimumDistance: 24, coordinateSpace: .local)
+            .onEnded { value in
+                let dy = value.translation.height
+                let dx = value.translation.width
+                guard abs(dy) > abs(dx), abs(dy) > 36 else { return }
+                if dy < 0 {
+                    // Up: reveal app tab bar
+                    withAnimation(.snappy(duration: 0.25)) {
+                        appTabBarHidden = false
                     }
-                } label: {
-                    VStack(spacing: 3) {
-                        Image(systemName: tab.systemImage)
-                            .font(.system(size: 18, weight: on ? .semibold : .regular))
-                            .symbolVariant(on ? .fill : .none)
-                        Text(tab.title)
-                            .font(.system(size: 10, weight: on ? .semibold : .regular))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
+                } else {
+                    // Down: hide app tab bar again
+                    withAnimation(.snappy(duration: 0.25)) {
+                        appTabBarHidden = true
                     }
-                    .foregroundStyle(on ? Color.red : Color.secondary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
-                    .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
-                .accessibilityAddTraits(on ? .isSelected : [])
             }
+    }
+
+    private var musicSectionBar: some View {
+        VStack(spacing: 0) {
+            // Hint when app tabs are hidden
+            if appTabBarHidden {
+                Capsule()
+                    .fill(Color.secondary.opacity(0.35))
+                    .frame(width: 36, height: 4)
+                    .padding(.top, 6)
+                    .padding(.bottom, 2)
+                    .accessibilityLabel("上滑显示应用底部导航")
+            }
+
+            HStack(spacing: 0) {
+                ForEach(MeloXTab.allCases) { tab in
+                    let on = selectedTab == tab
+                    Button {
+                        if selectedTab == tab {
+                            popToRoot(tab)
+                        } else {
+                            withAnimation(.snappy(duration: 0.2)) {
+                                selectedTab = tab
+                            }
+                        }
+                    } label: {
+                        VStack(spacing: 2) {
+                            Image(systemName: tab.systemImage)
+                                .font(.system(size: 16, weight: on ? .semibold : .regular))
+                                .symbolVariant(on ? .fill : .none)
+                            Text(tab.title)
+                                .font(.system(size: 9, weight: on ? .semibold : .medium))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.75)
+                        }
+                        .foregroundStyle(on ? Color.red : Color.secondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, appTabBarHidden ? 8 : 5)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(on ? .isSelected : [])
+                }
+            }
+            .padding(.horizontal, 2)
+            .padding(.bottom, appTabBarHidden ? 4 : 0)
         }
-        .padding(.horizontal, 4)
-        .padding(.bottom, 2)
-        .overlay(alignment: .top) {
-            Divider()
-        }
+        .overlay(alignment: .top) { Divider() }
     }
 
     @ViewBuilder

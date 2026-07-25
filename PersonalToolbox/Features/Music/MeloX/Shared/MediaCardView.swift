@@ -8,19 +8,19 @@ struct MediaCardView: View {
     var artworkSize: CGFloat = 160
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             ArtworkImage(
                 url: artworkURL,
-                cornerRadius: circular ? 1_000 : 10
+                cornerRadius: circular ? 1_000 : 8
             )
             .frame(width: artworkSize, height: artworkSize)
             Text(title)
-                .font(.subheadline.weight(.semibold))
+                .font(.caption.weight(.semibold))
                 .lineLimit(2)
                 .foregroundStyle(.primary)
             if let subtitle, !subtitle.isEmpty {
                 Text(subtitle)
-                    .font(.caption)
+                    .font(.caption2)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }

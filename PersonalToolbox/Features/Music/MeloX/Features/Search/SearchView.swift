@@ -23,6 +23,7 @@ struct SearchView: View {
             }
         }
         .navigationTitle("搜索")
+        .navigationBarTitleDisplayMode(.inline)
         .searchable(
             text: $query,
             placement: .navigationBarDrawer(displayMode: .always),

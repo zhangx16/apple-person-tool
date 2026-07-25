@@ -77,10 +77,10 @@ struct MiniPlayerView: View {
                     .accessibilityLabel("下一首")
                 }
             }
-            .padding(.horizontal, isInline ? 8 : 12)
-            .padding(.vertical, isInline ? 3 : 6)
+            .padding(.horizontal, isInline ? 8 : 10)
+            .padding(.vertical, isInline ? 2 : 4)
             .frame(maxWidth: .infinity)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             .contentShape(.rect)
             .simultaneousGesture(trackSwipeGesture)
             .accessibilityAction(named: "上一首") {
@@ -97,7 +97,7 @@ struct MiniPlayerView: View {
     }
 
     private var artworkSize: CGFloat {
-        isInline ? 30 : 40
+        isInline ? 28 : 34
     }
 
     private var trackSwipeGesture: some Gesture {

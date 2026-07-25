@@ -16,12 +16,12 @@ struct ExploreView: View {
         "摇滚", "民谣", "电子", "轻音乐", "影视原声", "ACG",
     ]
     private let columns = [
-        GridItem(.adaptive(minimum: 148, maximum: 220), spacing: 16),
+        GridItem(.adaptive(minimum: 110, maximum: 160), spacing: 12),
     ]
 
     var body: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 26) {
+            LazyVStack(alignment: .leading, spacing: 18) {
                 ExploreCategoryPicker(
                     categories: categories,
                     selection: category,
@@ -31,9 +31,11 @@ struct ExploreView: View {
                 categoryContent
             }
             .padding(.horizontal)
-            .padding(.bottom, 28)
+            .padding(.top, 4)
+            .padding(.bottom, 20)
         }
         .navigationTitle("发现")
+        .navigationBarTitleDisplayMode(.inline)
         .refreshable {
             await load(category: category, force: true)
         }
@@ -67,19 +69,19 @@ struct ExploreView: View {
                 )
             }
 
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .firstTextBaseline) {
                     Text(collectionTitle)
-                        .font(.title2.bold())
+                        .font(.headline.weight(.bold))
 
                     Spacer()
 
                     Text("\(playlists.count) 个歌单")
-                        .font(.caption)
+                        .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
 
-                LazyVGrid(columns: columns, alignment: .leading, spacing: 22) {
+                LazyVGrid(columns: columns, alignment: .leading, spacing: 14) {
                     ForEach(playlists.dropFirst()) { playlist in
                         NavigationLink(value: MusicRoute.playlist(playlist)) {
                             ExplorePlaylistCardView(

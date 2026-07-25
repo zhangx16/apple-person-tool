@@ -115,6 +115,31 @@ final class LiveRoomViewModel: ObservableObject {
         start()
     }
 
+    /// 用户手动刷新：重拉房间信息 / 线路（应用内）或重载网页。
+    func manualRefresh() {
+        reconnectTask?.cancel()
+        reconnectTask = nil
+        isReconnecting = false
+        streamErrorRetryCount = 0
+        mediaErrorRetryCount = 0
+        errorMessage = nil
+        if playMode == .web {
+            //  bump webURL 触发 WKWebView 重载
+            if let current = webURL {
+                webURL = nil
+                DispatchQueue.main.async { [weak self] in
+                    self?.webURL = current
+                }
+            }
+            statusText = "刷新网页…"
+            start()
+        } else {
+            statusText = "手动刷新…"
+            clearStream()
+            start()
+        }
+    }
+
     func switchToWeb() {
         reconnectTask?.cancel()
         reconnectTask = nil
@@ -591,9 +616,11 @@ final class LiveHeaderResourceLoader: NSObject, AVAssetResourceLoaderDelegate {
 struct LiveRoomView: View {
     let room: LiveRoomItem
     @StateObject private var vm: LiveRoomViewModel
+    @StateObject private var danmaku = LiveDanmakuService()
     @ObservedObject private var follows = LiveFollowStore.shared
     @State private var isPlayerFullscreen = false
     @State private var showPlayerChrome = true
+    @State private var showDanmaku = true
 
     init(room: LiveRoomItem) {
         self.room = room
@@ -610,6 +637,7 @@ struct LiveRoomView: View {
                 VStack(spacing: 12) {
                     anchorCard
                     titleBlock
+                    danmakuSection
                     if vm.playMode == .native {
                         qualitySection
                     }
@@ -645,21 +673,48 @@ struct LiveRoomView: View {
                         .lineLimit(1)
                 }
             }
+            // 顶部右侧：手动刷新（全屏已在播放器控件内，不再重复）
             ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    isPlayerFullscreen = true
-                } label: {
-                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                HStack(spacing: 12) {
+                    Button {
+                        showDanmaku.toggle()
+                        danmaku.isEnabled = showDanmaku
+                        if showDanmaku {
+                            restartDanmakuIfNeeded()
+                        } else {
+                            danmaku.stop()
+                        }
+                    } label: {
+                        Image(systemName: showDanmaku ? "text.bubble.fill" : "text.bubble")
+                    }
+                    .accessibilityLabel(showDanmaku ? "关闭弹幕" : "开启弹幕")
+
+                    Button {
+                        vm.manualRefresh()
+                        restartDanmakuIfNeeded()
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                    .accessibilityLabel("刷新直播")
                 }
-                .accessibilityLabel("全屏播放")
             }
         }
         .task { vm.start() }
+        .onChange(of: vm.detail?.danmakuJSON) { _, _ in
+            restartDanmakuIfNeeded()
+        }
+        .onChange(of: vm.detail?.roomId) { _, _ in
+            restartDanmakuIfNeeded()
+        }
         .onDisappear {
-            if !isPlayerFullscreen { vm.stop() }
+            // fullScreenCover 可能触发父视图 disappear；全屏时保持播放与弹幕。
+            if !isPlayerFullscreen {
+                danmaku.stop()
+                vm.stop()
+            }
         }
         .fullScreenCover(isPresented: $isPlayerFullscreen) {
-            LiveRoomFullscreenView(vm: vm)
+            LiveRoomFullscreenView(vm: vm, danmaku: danmaku, showDanmaku: $showDanmaku)
         }
         .onChange(of: isPlayerFullscreen) { _, fullscreen in
             if fullscreen {
@@ -668,6 +723,17 @@ struct LiveRoomView: View {
                 OrientationHelper.lockPortrait()
             }
         }
+    }
+
+    private func restartDanmakuIfNeeded() {
+        guard showDanmaku else { return }
+        guard let detail = vm.detail else { return }
+        danmaku.isEnabled = true
+        danmaku.start(
+            platform: detail.platform,
+            danmakuJSON: detail.danmakuJSON,
+            roomId: detail.roomId
+        )
     }
 
     private var shortTitle: String {
@@ -682,6 +748,12 @@ struct LiveRoomView: View {
             ZStack {
                 // Tear down decoder while fullscreen so we never run two streams at once.
                 LivePlayerSurface(vm: vm, isActive: !isPlayerFullscreen)
+
+                // Floating danmaku on the video surface
+                if showDanmaku, !isPlayerFullscreen {
+                    LiveDanmakuOverlay(messages: danmaku.messages, compact: true)
+                        .allowsHitTesting(false)
+                }
 
                 // Locked: only side unlock (ignore other taps on chrome).
                 if vm.isControlsLocked {
@@ -812,6 +884,20 @@ struct LiveRoomView: View {
                     }
 
                     Spacer()
+
+                    // Manual refresh on the player chrome
+                    Button {
+                        vm.manualRefresh()
+                        restartDanmakuIfNeeded()
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 36, height: 36)
+                            .background(Color.white.opacity(0.18), in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("刷新")
 
                     // Lock controls
                     Button {
@@ -1035,34 +1121,95 @@ struct LiveRoomView: View {
                     vm.switchToWeb()
                 }
             }
-            HStack(spacing: 10) {
-                Button {
-                    vm.retryNative()
-                } label: {
-                    Label("重试", systemImage: "arrow.clockwise")
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                }
-                .buttonStyle(.bordered)
-                .tint(brand)
+            Button {
+                vm.manualRefresh()
+                restartDanmakuIfNeeded()
+            } label: {
+                Label("刷新直播", systemImage: "arrow.clockwise")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .foregroundStyle(.white)
+                    .background(brand.brandGradient, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .strokeBorder(AppStroke.highlight, lineWidth: 0.5)
+                    }
+                    .shadow(color: brand.opacity(0.3), radius: 8, y: 3)
+            }
+            .buttonStyle(PressableButtonStyle())
+        }
+        .appCardV2(corner: 20, padding: 16)
+    }
 
-                Button {
-                    isPlayerFullscreen = true
-                } label: {
-                    Label("全屏", systemImage: "arrow.up.left.and.arrow.down.right")
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .foregroundStyle(.white)
-                        .background(brand.brandGradient, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .strokeBorder(AppStroke.highlight, lineWidth: 0.5)
-                        }
-                        .shadow(color: brand.opacity(0.3), radius: 8, y: 3)
+    // MARK: Danmaku panel
+
+    private var danmakuSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Label("弹幕", systemImage: "text.bubble")
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                if !danmaku.statusText.isEmpty {
+                    Text(danmaku.statusText)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
-                .buttonStyle(PressableButtonStyle())
+                Toggle("", isOn: Binding(
+                    get: { showDanmaku },
+                    set: { on in
+                        showDanmaku = on
+                        danmaku.isEnabled = on
+                        if on {
+                            restartDanmakuIfNeeded()
+                        } else {
+                            danmaku.stop()
+                        }
+                    }
+                ))
+                .labelsHidden()
+                .tint(brand)
+                .controlSize(.mini)
+            }
+
+            if !showDanmaku {
+                Text("弹幕已关闭")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else if danmaku.messages.isEmpty {
+                Text(danmaku.statusText.isEmpty ? "等待弹幕…" : danmaku.statusText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 6) {
+                            ForEach(danmaku.messages.suffix(40)) { msg in
+                                HStack(alignment: .top, spacing: 6) {
+                                    Text(msg.userName.isEmpty ? "用户" : msg.userName)
+                                        .font(.caption2.weight(.semibold))
+                                        .foregroundStyle(brand.opacity(0.9))
+                                        .lineLimit(1)
+                                    Text(msg.text)
+                                        .font(.caption)
+                                        .foregroundStyle(.primary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .id(msg.id)
+                            }
+                        }
+                    }
+                    .frame(maxHeight: 160)
+                    .onChange(of: danmaku.messages.count) { _, _ in
+                        if let last = danmaku.messages.last {
+                            withAnimation(.easeOut(duration: 0.15)) {
+                                proxy.scrollTo(last.id, anchor: .bottom)
+                            }
+                        }
+                    }
+                }
             }
         }
         .appCardV2(corner: 20, padding: 16)
@@ -1126,7 +1273,7 @@ struct LiveRoomView: View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: "lightbulb.fill")
                 .foregroundStyle(.yellow.opacity(0.9))
-            Text("点播放器显示控件；锁图标防误触；全屏后点屏幕切换控制条。")
+            Text("点播放器显示控件；右上角可刷新/开关弹幕；锁图标防误触；全屏在播放器内。")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -1241,6 +1388,58 @@ struct LivePlatformMark: View {
     }
 }
 
+// MARK: - Danmaku floating overlay (on video)
+
+struct LiveDanmakuOverlay: View {
+    let messages: [LiveChatMessage]
+    var compact: Bool = true
+
+    private var visible: [LiveChatMessage] {
+        Array(messages.suffix(compact ? 6 : 10))
+    }
+
+    var body: some View {
+        VStack {
+            Spacer(minLength: 0)
+            VStack(alignment: .leading, spacing: compact ? 3 : 5) {
+                ForEach(visible) { msg in
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text(msg.userName.isEmpty ? "用户" : msg.userName)
+                            .font(compact ? .caption2.weight(.bold) : .caption.weight(.bold))
+                            .foregroundStyle(Color(hexColor: msg.colorHex))
+                        Text(msg.text)
+                            .font(compact ? .caption2 : .caption)
+                            .foregroundStyle(.white)
+                            .lineLimit(compact ? 1 : 2)
+                    }
+                    .padding(.horizontal, compact ? 8 : 10)
+                    .padding(.vertical, compact ? 3 : 5)
+                    .background(Color.black.opacity(0.42), in: Capsule())
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, compact ? 10 : 16)
+            .padding(.bottom, compact ? 10 : 20)
+            .animation(.easeOut(duration: 0.2), value: messages.count)
+        }
+    }
+}
+
+private extension Color {
+    init(hexColor: UInt32) {
+        let r = Double((hexColor >> 16) & 0xFF) / 255.0
+        let g = Double((hexColor >> 8) & 0xFF) / 255.0
+        let b = Double(hexColor & 0xFF) / 255.0
+        // Near-white defaults → soft cyan so names stay readable on video.
+        if r > 0.9, g > 0.9, b > 0.9 {
+            self = Color(red: 0.55, green: 0.85, blue: 1.0)
+        } else {
+            self = Color(red: r, green: g, blue: b)
+        }
+    }
+}
+
 // MARK: - Shared player surface (inline + fullscreen)
 
 struct LivePlayerSurface: View {
@@ -1320,6 +1519,8 @@ struct LivePlayerSurface: View {
 /// Fullscreen player — SimpleLive 风格：竖滑亮度/音量、锁定可隐藏、控制条
 struct LiveRoomFullscreenView: View {
     @ObservedObject var vm: LiveRoomViewModel
+    @ObservedObject var danmaku: LiveDanmakuService
+    @Binding var showDanmaku: Bool
     @Environment(\.dismiss) private var dismiss
     @State private var showChrome = true
     /// 锁定时解锁条默认隐藏，点击画面再显示（避免挡画面）。
@@ -1340,6 +1541,12 @@ struct LiveRoomFullscreenView: View {
             ZStack {
                 LivePlayerSurface(vm: vm, isActive: true)
                     .ignoresSafeArea()
+
+                if showDanmaku {
+                    LiveDanmakuOverlay(messages: danmaku.messages, compact: false)
+                        .allowsHitTesting(false)
+                        .padding(.bottom, 56)
+                }
 
                 // Full-screen hit layer: tap + vertical drag (brightness/volume).
                 // Placed under chrome so buttons still receive hits.
@@ -1419,6 +1626,36 @@ struct LiveRoomFullscreenView: View {
                         .lineLimit(1)
                 }
                 Spacer()
+                Button {
+                    vm.manualRefresh()
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 40, height: 40)
+                        .background(Color.white.opacity(0.15), in: Circle())
+                }
+                .accessibilityLabel("刷新直播")
+                Button {
+                    showDanmaku.toggle()
+                    danmaku.isEnabled = showDanmaku
+                    if showDanmaku, let detail = vm.detail {
+                        danmaku.start(
+                            platform: detail.platform,
+                            danmakuJSON: detail.danmakuJSON,
+                            roomId: detail.roomId
+                        )
+                    } else if !showDanmaku {
+                        danmaku.stop()
+                    }
+                } label: {
+                    Image(systemName: showDanmaku ? "text.bubble.fill" : "text.bubble")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 40, height: 40)
+                        .background(Color.white.opacity(0.15), in: Circle())
+                }
+                .accessibilityLabel(showDanmaku ? "关闭弹幕" : "开启弹幕")
                 Button {
                     withAnimation(.easeInOut(duration: 0.15)) {
                         vm.isControlsLocked = true

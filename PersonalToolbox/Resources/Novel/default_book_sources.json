@@ -37,7 +37,7 @@
       "content": "#chaptercontent@text||.Readarea@text",
       "replaceRegex": "##（本章未完，请翻页）##|##『加入书签，方便阅读』##"
     },
-    "bookSourceComment": "移动站 HTTPS，搜索/目录/正文实测可用。章节多页时点「下一章」继续。"
+    "bookSourceComment": "移动站 HTTPS。完整目录在 /book/id/all.html；字段 text/href 为当前节点提取。"
   },
   {
     "bookSourceName": "顶点小说·备",
@@ -64,7 +64,7 @@
       "kind": "meta[property=og:novel:category]@content",
       "intro": "meta[property=og:description]@content",
       "coverUrl": "meta[property=og:image]@content",
-      "tocUrl": "a[href*=all.html]@href||#list a@href"
+      "tocUrl": "a[href*=all.html]@href||.book_more a@href"
     },
     "ruleToc": {
       "chapterList": "dd a||#list dd a",

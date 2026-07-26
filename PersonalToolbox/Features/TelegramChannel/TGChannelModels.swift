@@ -40,6 +40,9 @@ struct TGPost: Codable, Identifiable, Hashable, Sendable {
     var channelUsername: String?
     var playPath: String?
     var tgLink: String?
+    /// Server has downloaded this video to VPS disk (`data/media`).
+    var cached: Bool
+    var cacheBytes: Int64?
 
     enum CodingKeys: String, CodingKey {
         case id, date, text, duration, width, height
@@ -54,6 +57,8 @@ struct TGPost: Codable, Identifiable, Hashable, Sendable {
         case channelUsername = "channel_username"
         case playPath = "play_path"
         case tgLink = "tg_link"
+        case cached
+        case cacheBytes = "cache_bytes"
     }
 
     init(from decoder: Decoder) throws {
@@ -81,6 +86,14 @@ struct TGPost: Codable, Identifiable, Hashable, Sendable {
         channelUsername = try c.decodeIfPresent(String.self, forKey: .channelUsername)
         playPath = try c.decodeIfPresent(String.self, forKey: .playPath)
         tgLink = try c.decodeIfPresent(String.self, forKey: .tgLink)
+        cached = try c.decodeIfPresent(Bool.self, forKey: .cached) ?? false
+        if let i64 = try c.decodeIfPresent(Int64.self, forKey: .cacheBytes) {
+            cacheBytes = i64
+        } else if let i = try c.decodeIfPresent(Int.self, forKey: .cacheBytes) {
+            cacheBytes = Int64(i)
+        } else {
+            cacheBytes = nil
+        }
     }
 
     var titleLine: String {
@@ -106,15 +119,25 @@ struct TGPost: Codable, Identifiable, Hashable, Sendable {
     }
 
     var fileSizeText: String? {
-        guard let fileSize, fileSize > 0 else { return nil }
-        let mb = Double(fileSize) / 1_048_576
+        Self.formatBytes(fileSize.map { Int64($0) })
+    }
+
+    var cacheSizeText: String? {
+        guard cached else { return nil }
+        return Self.formatBytes(cacheBytes)
+    }
+
+    /// Public so list header can format aggregate cache size.
+    static func formatBytes(_ n: Int64?) -> String? {
+        guard let n, n > 0 else { return nil }
+        let mb = Double(n) / 1_048_576
         if mb >= 1024 {
             return String(format: "%.1f GB", mb / 1024)
         }
         if mb >= 1 {
             return String(format: "%.0f MB", mb)
         }
-        return String(format: "%.0f KB", Double(fileSize) / 1024)
+        return String(format: "%.0f KB", Double(n) / 1024)
     }
 }
 
@@ -122,6 +145,42 @@ struct TGPostListResponse: Codable, Sendable {
     var items: [TGPost]
     var total: Int?
     var username: String?
+    var cacheTotalBytes: Int64?
+    var cacheFileCount: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case items, total, username
+        case cacheTotalBytes = "cache_total_bytes"
+        case cacheFileCount = "cache_file_count"
+    }
+}
+
+struct TGCacheStats: Codable, Sendable {
+    var ok: Bool?
+    var fileCount: Int?
+    var totalBytes: Int64?
+    var mediaDir: String?
+
+    enum CodingKeys: String, CodingKey {
+        case ok
+        case fileCount = "file_count"
+        case totalBytes = "total_bytes"
+        case mediaDir = "media_dir"
+    }
+}
+
+struct TGCacheDeleteResult: Codable, Sendable {
+    var ok: Bool?
+    var deleted: Bool?
+    var freedBytes: Int64?
+    var removedCount: Int?
+    var reason: String?
+
+    enum CodingKeys: String, CodingKey {
+        case ok, deleted, reason
+        case freedBytes = "freed_bytes"
+        case removedCount = "removed_count"
+    }
 }
 
 struct TGHealth: Codable, Sendable {

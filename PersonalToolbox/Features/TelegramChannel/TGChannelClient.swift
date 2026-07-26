@@ -71,6 +71,29 @@ actor TGChannelClient {
         try validate(resp, data: data)
     }
 
+    func cacheStats() async throws -> TGCacheStats {
+        try await get("/v1/cache")
+    }
+
+    /// Delete server-side cached file for one post (frees VPS disk). Post stays in list.
+    @discardableResult
+    func deleteCache(postId: String) async throws -> TGCacheDeleteResult {
+        let encoded = postId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? postId
+        let req = try makeRequest(path: "/v1/posts/\(encoded)/cache", method: "DELETE")
+        let (data, resp) = try await session.data(for: req)
+        try validate(resp, data: data)
+        return try JSONDecoder().decode(TGCacheDeleteResult.self, from: data)
+    }
+
+    /// Wipe all files under server media cache directory.
+    @discardableResult
+    func clearAllCache() async throws -> TGCacheDeleteResult {
+        let req = try makeRequest(path: "/v1/cache", method: "DELETE")
+        let (data, resp) = try await session.data(for: req)
+        try validate(resp, data: data)
+        return try JSONDecoder().decode(TGCacheDeleteResult.self, from: data)
+    }
+
     /// Absolute play URL (with token as query is insecure; use header via AVURLAsset resource loader is complex).
     /// We download via URLRequest with Authorization into a temp file, or use cookie-less signed approach.
     /// For MVP: return URLRequest the player can use with header — AVPlayer needs AVURLAsset + resource loader

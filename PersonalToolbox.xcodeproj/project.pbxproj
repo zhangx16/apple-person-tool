@@ -31,6 +31,7 @@
 		000000000000000000000823 /* LiveDanmakuPrefs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000822 /* LiveDanmakuPrefs.swift */; };
 		000000000000000000000821 /* LifeHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000820 /* LifeHubView.swift */; };
 		000000000000000000000813 /* KomariBillImportSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000812 /* KomariBillImportSheet.swift */; };
+		000000000000000000008261 /* NoteMarkdownView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008260 /* NoteMarkdownView.swift */; };
 		000000000000000000000811 /* AppDeepLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000810 /* AppDeepLink.swift */; };
 		000000000000000000000801 /* ClipboardSmartRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000800 /* ClipboardSmartRouter.swift */; };
 		000000000000000000000803 /* LiveOpenNotifyService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000802 /* LiveOpenNotifyService.swift */; };
@@ -345,6 +346,7 @@
 		000000000000000000000822 /* LiveDanmakuPrefs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveDanmakuPrefs.swift; sourceTree = "<group>"; };
 		000000000000000000000820 /* LifeHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Life/LifeHubView.swift; sourceTree = "<group>"; };
 		000000000000000000000812 /* KomariBillImportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Life/KomariBillImportSheet.swift; sourceTree = "<group>"; };
+		000000000000000000008260 /* NoteMarkdownView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Life/NoteMarkdownView.swift; sourceTree = "<group>"; };
 		000000000000000000000810 /* AppDeepLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDeepLink.swift; sourceTree = "<group>"; };
 		000000000000000000000800 /* ClipboardSmartRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardSmartRouter.swift; sourceTree = "<group>"; };
 		000000000000000000000802 /* LiveOpenNotifyService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveOpenNotifyService.swift; sourceTree = "<group>"; };
@@ -1085,6 +1087,7 @@
 				0000000000000000000005FE /* LifeExtrasViews.swift */,
 				000000000000000000000820 /* LifeHubView.swift */,
 				000000000000000000000812 /* KomariBillImportSheet.swift */,
+				000000000000000000008260 /* NoteMarkdownView.swift */,
 				000000000000000000000712 /* SSHTerminalView.swift */,
 			);
 			path = Features;
@@ -1361,6 +1364,7 @@
 				000000000000000000000823 /* LiveDanmakuPrefs.swift in Sources */,
 				000000000000000000000821 /* LifeHubView.swift in Sources */,
 				000000000000000000000813 /* KomariBillImportSheet.swift in Sources */,
+				000000000000000000008261 /* NoteMarkdownView.swift in Sources */,
 				000000000000000000000811 /* AppDeepLink.swift in Sources */,
 				000000000000000000000801 /* ClipboardSmartRouter.swift in Sources */,
 				000000000000000000000803 /* LiveOpenNotifyService.swift in Sources */,

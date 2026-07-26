@@ -90,7 +90,7 @@
     "ruleSearch": {
       "bookList": "table tr!0",
       "name": "td.odd a@text||td a@text",
-      "author": "td.odd.2@text||td.3@text",
+      "author": "td.odd.1@text||td.2@text",
       "lastChapter": "td.even a@text",
       "bookUrl": "td.odd a@href||td a@href",
       "checkKeyWord": "斗破苍穹"
@@ -114,17 +114,54 @@
     "bookSourceComment": "GBK 搜索；正文为整页清洗。部分目录链到 index.html。"
   },
   {
+    "bookSourceName": "笔趣阁(biquuge)",
+    "bookSourceGroup": "精选·可用",
+    "bookSourceType": 0,
+    "bookSourceUrl": "https://www.biquuge.com",
+    "enabled": true,
+    "enabledExplore": false,
+    "customOrder": 4,
+    "weight": 85,
+    "searchUrl": "/search.php?q={{key}}",
+    "ruleSearch": {
+      "bookList": "dl",
+      "name": "h3 a@text",
+      "author": "dd.1@text##作者：##",
+      "lastChapter": "dd.4 a@text",
+      "coverUrl": "img@src",
+      "bookUrl": "h3 a@href",
+      "checkKeyWord": "斗破苍穹"
+    },
+    "ruleBookInfo": {
+      "name": "h1@text",
+      "author": ".options li.0@text##作者：##",
+      "intro": "#intro_pc@text##[\\s\\S]*简介：##",
+      "coverUrl": "img@src"
+    },
+    "ruleToc": {
+      "chapterList": "li.col-md-3 a",
+      "chapterName": "text",
+      "chapterUrl": "href"
+    },
+    "ruleContent": {
+      "content": "article.font_max@text",
+      "nextContentUrl": "#next1@href",
+      "replaceRegex": "##第\\(\\d+/\\d+\\)页##"
+    },
+    "bookSourceComment": "目录直接嵌在详情页（无需 tocUrl，留空即用 bookUrl）；正文按页码自动翻页拼接（第x/y页）。已用真实请求核实 search/详情/目录/正文四层结构。"
+  },
+  {
     "bookSourceName": "天天看小说",
     "bookSourceGroup": "备选",
     "bookSourceType": 0,
     "bookSourceUrl": "https://cn.ttkan.co",
-    "enabled": true,
+    "enabled": false,
     "enabledExplore": false,
     "customOrder": 10,
     "weight": 60,
     "searchUrl": "/novel/search?q={{key}}",
     "ruleSearch": {
-      "bookList": ".hot_cell_info||.novel_name",
+      "bookList": ".novel_name||.hot_cell_info",
       "name": "h3@text||a@text",
       "author": "p.0@text##作者：##",
       "intro": "p.1@text##介绍：##",
@@ -145,7 +182,7 @@
       "content": ".content p@text||.content@text",
       "replaceRegex": "##\\n.*\\(本章完\\)$##"
     },
-    "bookSourceComment": "SSR 站，搜索可用；规则为简化 CSS。"
+    "bookSourceComment": "默认关闭：/novel/search?q= 实测返回站内热门列表而非查询结果（q 参数未生效，也未找到有效替代参数），bookList 顺序已修正以防误用，但搜索本身不可用。"
   },
   {
     "bookSourceName": "手机小说",

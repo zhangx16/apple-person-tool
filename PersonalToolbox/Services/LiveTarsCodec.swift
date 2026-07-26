@@ -285,36 +285,6 @@ enum LiveTars {
             return nil
         }
 
-        func readStruct(tag: Int) -> Reader? {
-            guard let head = peekHead(), head.tag == tag else { return nil }
-            _ = skipHead()
-            if head.type == .structBegin {
-                let start = pos
-                // find matching end at same nesting - simple: read until structEnd at depth 0
-                var depth = 1
-                let begin = pos
-                while pos < data.count && depth > 0 {
-                    guard let h = skipHead() else { break }
-                    if h.type == .structBegin {
-                        depth += 1
-                    } else if h.type == .structEnd {
-                        depth -= 1
-                    } else {
-                        // undo and skip properly - messy
-                        // Better approach: recursive skip
-                        pos -= (h.tag >= 15 ? 2 : 1)
-                        if h.type == .structEnd { break }
-                        skipField()
-                    }
-                }
-                _ = start
-                // Simpler approach: use nested reader from begin to before end
-                // Actually redo with proper skipValue
-            }
-            // Fallback: whole remaining as nested until we can parse fields by tag skip
-            return nil
-        }
-
         /// Read until finding tag, skipping earlier fields.
         func seekTag(_ tag: Int) -> Bool {
             while let head = peekHead() {

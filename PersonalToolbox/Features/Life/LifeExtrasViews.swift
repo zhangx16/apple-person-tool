@@ -418,6 +418,7 @@ struct FastNoteHomeView: View {
     @State private var errorText: String?
     @State private var selectedPath: String?
     @State private var noteBody = ""
+    @State private var isNotePreview = false
     @State private var segment = 0 // 0 notes 1 files 2 tree 3 offline
     @State private var search = ""
     @State private var showCreate = false
@@ -573,11 +574,21 @@ struct FastNoteHomeView: View {
         }
         .sheet(item: Binding(
             get: { selectedPath.map { NotePathBox(id: $0) } },
-            set: { selectedPath = $0?.id }
+            set: {
+                selectedPath = $0?.id
+                isNotePreview = false
+            }
         )) { box in
             NavigationStack {
-                TextEditor(text: $noteBody)
-                    .padding()
+                Group {
+                    if isNotePreview {
+                        ScrollView { NoteMarkdownView(markdown: noteBody) }
+                    } else {
+                        TextEditor(text: $noteBody)
+                            .font(.system(.body, design: .monospaced))
+                            .padding()
+                    }
+                }
                     .navigationTitle((box.id as NSString).lastPathComponent)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
@@ -587,6 +598,14 @@ struct FastNoteHomeView: View {
                             Button("保存") {
                                 Task { await saveNote(path: box.id) }
                             }
+                        }
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button {
+                                isNotePreview.toggle()
+                            } label: {
+                                Image(systemName: isNotePreview ? "pencil" : "doc.richtext")
+                            }
+                            .accessibilityLabel(isNotePreview ? "编辑" : "预览 Markdown")
                         }
                         ToolbarItem(placement: .topBarTrailing) {
                             Button {

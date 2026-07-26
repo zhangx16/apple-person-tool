@@ -176,20 +176,39 @@ enum NovelBookService {
             throw NovelError.ruleUnsupported("该书源含 JS，暂无法拉取正文")
         }
         let base = URL(string: source.bookSourceUrl)
-        let html = try await NovelNetworkClient.fetchURL(chapter.url, base: base, source: source)
         let rule = source.ruleContent?.content
-        var text = LegadoRuleEngine.getString(rule: rule, in: html, baseURL: base)
-        if text.isEmpty {
-            // Fallback: common content containers
-            text = LegadoRuleEngine.getString(
-                rule: "#chaptercontent@text||#content@text||.content@text||.Readarea@text",
-                in: html,
-                baseURL: base
-            )
+        let nextRule = source.ruleContent?.nextContentUrl
+
+        // Many sites split one chapter across several pages (page 1/3, 2/3, …) linked via
+        // a "next page" rule. Follow it and concatenate, since a single-page fetch would
+        // silently truncate the chapter. Capped to guard against a misconfigured/looping rule.
+        var pages: [String] = []
+        var pageURL = chapter.url
+        var visited: Set<String> = [chapter.url]
+        for _ in 0..<20 {
+            let html = try await NovelNetworkClient.fetchURL(pageURL, base: base, source: source)
+            var pageText = LegadoRuleEngine.getString(rule: rule, in: html, baseURL: base)
+            if pageText.isEmpty {
+                // Fallback: common content containers
+                pageText = LegadoRuleEngine.getString(
+                    rule: "#chaptercontent@text||#content@text||.content@text||.Readarea@text",
+                    in: html,
+                    baseURL: base
+                )
+            }
+            if let rep = source.ruleContent?.replaceRegex, !rep.isEmpty {
+                pageText = applyLegadoReplaceRegex(rep, to: pageText)
+            }
+            if !pageText.isEmpty { pages.append(pageText) }
+
+            guard let nextRule, !nextRule.isEmpty else { break }
+            let next = LegadoRuleEngine.getString(rule: nextRule, in: html, baseURL: base)
+            guard !next.isEmpty, !visited.contains(next) else { break }
+            visited.insert(next)
+            pageURL = next
         }
-        if let rep = source.ruleContent?.replaceRegex, !rep.isEmpty {
-            text = applyLegadoReplaceRegex(rep, to: text)
-        }
+
+        var text = pages.joined(separator: "\n")
         text = text
             .replacingOccurrences(of: "\r\n", with: "\n")
             .replacingOccurrences(of: "\u{00a0}", with: " ")

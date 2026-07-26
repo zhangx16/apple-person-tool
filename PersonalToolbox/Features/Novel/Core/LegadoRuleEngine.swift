@@ -39,6 +39,14 @@ enum LegadoRuleEngine {
     /// List of item HTML/JSON fragments for a list rule (e.g. bookList / chapterList).
     static func getList(rule: String?, in document: String) -> [String] {
         guard let rule, !rule.isEmpty else { return [] }
+        // Or-list: first non-empty list wins (Legado `a||b`)
+        if rule.contains("||") {
+            for part in splitTopLevel(rule, separator: "||") {
+                let list = getList(rule: part, in: document)
+                if !list.isEmpty { return list }
+            }
+            return []
+        }
         if rule.trimmingCharacters(in: .whitespaces).hasPrefix("$") {
             return jsonList(path: rule, in: document)
         }
@@ -99,36 +107,76 @@ enum LegadoRuleEngine {
 
     // MARK: - Extract once
 
+    /// Legado “current node” field keywords (no CSS). Bare `text` / `href` mean the fragment itself.
+    private static let currentNodeFields: Set<String> = [
+        "text", "textnodes", "owntext", "html",
+        "href", "src", "content", "value",
+        "data-original", "data-echo", "data-src", "data-url"
+    ]
+
     private static func extractOnce(selector: String, in fragment: String, baseURL: URL?) -> String {
         let sel = selector.trimmingCharacters(in: .whitespaces)
+        if sel.isEmpty { return stripTags(fragment) }
         if sel.hasPrefix("$") {
             return jsonString(path: sel, in: fragment)
         }
-        // attr form: rule@href / rule@text / rule@textNodes / rule@ownText / rule@src
+
+        // Bare field on the current fragment: `text`, `href`, `@text`, `@href`
+        // (Must NOT treat as CSS tag names — that made every chapterName empty.)
+        if isCurrentNodeFieldRule(sel) {
+            let field = sel.hasPrefix("@") ? String(sel.dropFirst()) : sel
+            return value(ofField: field, in: fragment, baseURL: baseURL)
+        }
+
+        // attr form: css@href / css@text / …
         let attr: String
         let css: String
         if let at = sel.range(of: "@", options: .backwards) {
-            css = String(sel[..<at.lowerBound])
-            attr = String(sel[at.upperBound...])
+            css = String(sel[..<at.lowerBound]).trimmingCharacters(in: .whitespaces)
+            attr = String(sel[at.upperBound...]).trimmingCharacters(in: .whitespaces)
         } else {
             css = sel
             attr = "text"
         }
-        let nodes = htmlList(selector: css, in: fragment)
+        // Empty CSS + @attr → whole fragment
+        let nodes: [String] = css.isEmpty ? [fragment] : htmlList(selector: css, in: fragment)
         guard let first = nodes.first else { return "" }
+        return value(ofField: attr, in: first, baseURL: baseURL)
+    }
+
+    /// `text` / `href` / `@text` — Legado extractors on the list-item fragment itself.
+    private static func isCurrentNodeFieldRule(_ sel: String) -> Bool {
+        if sel.hasPrefix("@") {
+            let rest = String(sel.dropFirst())
+            // `@href` ok; `@css:.foo` is not a field
+            return currentNodeFields.contains(rest.lowercased())
+        }
+        // Bare keyword only (no CSS punctuation)
+        guard currentNodeFields.contains(sel.lowercased()) else { return false }
+        return !sel.contains(" ") && !sel.contains(">") && !sel.contains("[")
+            && !sel.contains("#") && !sel.contains(".")
+    }
+
+    private static func value(ofField attr: String, in element: String, baseURL: URL?) -> String {
         switch attr.lowercased() {
-        case "href", "src", "data-original", "data-echo", "data-src":
-            let v = attribute(attr, of: first)
+        case "href", "src", "data-original", "data-echo", "data-src", "data-url", "content", "value":
+            let v = attribute(attr, of: element)
+            // If fragment is the attribute host, also try first child <a>/<img>
+            if v.isEmpty, ["href", "src"].contains(attr.lowercased()) {
+                let child = htmlList(selector: attr.lowercased() == "href" ? "a" : "img", in: element).first ?? ""
+                let v2 = attribute(attr, of: child.isEmpty ? element : child)
+                return absolutize(v2, base: baseURL)
+            }
             return absolutize(v, base: baseURL)
         case "text", "textnodes":
-            return stripTags(first)
+            return stripTags(element)
         case "owntext":
-            return ownText(first)
+            return ownText(element)
         case "html":
-            return first
+            return element
         default:
-            let v = attribute(attr, of: first)
-            return v.isEmpty ? stripTags(first) : absolutize(v, base: baseURL)
+            let v = attribute(attr, of: element)
+            return v.isEmpty ? stripTags(element) : absolutize(v, base: baseURL)
         }
     }
 

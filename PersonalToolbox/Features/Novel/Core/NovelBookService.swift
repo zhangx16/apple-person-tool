@@ -91,29 +91,53 @@ enum NovelBookService {
         }
         let base = URL(string: source.bookSourceUrl)
         var tocURL = book.bookURL
-        // Optional bookInfo tocUrl
+        // Optional bookInfo tocUrl (e.g. …/all.html full catalog)
         if let info = source.ruleBookInfo, let tocRule = info.tocUrl, !tocRule.isEmpty {
             let page = try await NovelNetworkClient.fetchURL(book.bookURL, base: base, source: source)
             let resolved = LegadoRuleEngine.getString(rule: tocRule, in: page, baseURL: base)
             if !resolved.isEmpty { tocURL = resolved }
         }
-        let html = try await NovelNetworkClient.fetchURL(tocURL, base: base, source: source)
+        // Heuristic: many 笔趣阁-style sites put the full TOC on `…/all.html`
+        if tocURL == book.bookURL {
+            if let guessed = guessFullTocURL(from: book.bookURL) {
+                tocURL = guessed
+            }
+        }
+        var html = try await NovelNetworkClient.fetchURL(tocURL, base: base, source: source)
         guard let toc = source.ruleToc, let listRule = toc.chapterList, !listRule.isEmpty else {
             throw NovelError.noChapters
         }
-        let frags = LegadoRuleEngine.getList(rule: listRule, in: html)
+        var frags = LegadoRuleEngine.getList(rule: listRule, in: html)
+        // If catalog page yielded almost nothing, try …/all.html once
+        if frags.count < 5, let guessed = guessFullTocURL(from: book.bookURL), guessed != tocURL {
+            if let more = try? await NovelNetworkClient.fetchURL(guessed, base: base, source: source) {
+                let alt = LegadoRuleEngine.getList(rule: listRule, in: more)
+                if alt.count > frags.count {
+                    html = more
+                    tocURL = guessed
+                    frags = alt
+                }
+            }
+        }
         var chapters: [NovelChapter] = []
         chapters.reserveCapacity(frags.count)
         var seenIDs = Set<String>()
+        let nameRule = (toc.chapterName?.isEmpty == false) ? toc.chapterName : "text"
+        let urlRule = (toc.chapterUrl?.isEmpty == false) ? toc.chapterUrl : "href"
         for (idx, frag) in frags.enumerated() {
-            let name = LegadoRuleEngine.getString(rule: toc.chapterName, in: frag, baseURL: base)
-            var url = LegadoRuleEngine.getString(rule: toc.chapterUrl, in: frag, baseURL: base)
+            let name = LegadoRuleEngine.getString(rule: nameRule, in: frag, baseURL: base)
+            var url = LegadoRuleEngine.getString(rule: urlRule, in: frag, baseURL: base)
             guard !name.isEmpty else { continue }
             // Skip nav junk (page jump / empty anchors)
             if name.contains("↓") || name.contains("直达") || name.contains("顶部") { continue }
-            if url.hasPrefix("#") { continue }
-            if url.isEmpty { url = book.bookURL }
-            // Always unique — duplicate hrefs were crashing SwiftUI ForEach / fullScreenCover(item:).
+            if name.contains("查看更多") || name.contains("开始阅读") { continue }
+            if url.hasPrefix("#") || url.lowercased().hasPrefix("javascript:") { continue }
+            if url.isEmpty {
+                // Last resort: first href in fragment
+                url = LegadoRuleEngine.getString(rule: "a@href", in: frag, baseURL: base)
+            }
+            if url.isEmpty { continue }
+            // Always unique — duplicate hrefs were crashing SwiftUI ForEach.
             var cid = "\(idx)|\(url)"
             if seenIDs.contains(cid) {
                 cid = "\(idx)|\(url)|\(name)"
@@ -123,6 +147,19 @@ enum NovelBookService {
         }
         if chapters.isEmpty { throw NovelError.noChapters }
         return chapters
+    }
+
+    /// e.g. https://m.bgg99.cc/book/1011134345/ → …/all.html
+    private static func guessFullTocURL(from bookURL: String) -> String? {
+        let t = bookURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.isEmpty else { return nil }
+        if t.contains("all.html") { return nil }
+        if t.hasSuffix("/") { return t + "all.html" }
+        // …/book/123.html style — skip
+        if t.lowercased().hasSuffix(".html") || t.lowercased().hasSuffix(".htm") {
+            return nil
+        }
+        return t + (t.hasSuffix("/") ? "" : "/") + "all.html"
     }
 
     static func content(

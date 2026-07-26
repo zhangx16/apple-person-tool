@@ -75,6 +75,17 @@ final class AppSettings: ObservableObject {
         didSet { KeychainStore.set(checkinAPIToken, for: Keys.checkinAPIToken) }
     }
 
+    // MARK: - Telegram Channel API (tg-channel-api, plan A)
+
+    /// Base URL of self-hosted tg-channel-api (e.g. https://tg.996616.xyz).
+    @Published var tgChannelBaseURL: String {
+        didSet { UserDefaults.standard.set(tgChannelBaseURL, forKey: Keys.tgChannelBaseURL) }
+    }
+    /// Bearer / X-Api-Token matching server API_TOKEN.
+    @Published var tgChannelToken: String {
+        didSet { KeychainStore.set(tgChannelToken, for: Keys.tgChannelToken) }
+    }
+
     // MARK: - Fast Note Sync (haierkeys/fast-note-sync-service)
 
     @Published var fastNoteBaseURL: String {
@@ -247,6 +258,8 @@ final class AppSettings: ObservableObject {
         static let komariBaseURL = "komariBaseURL"
         static let checkinBaseURL = "checkinBaseURL"
         static let checkinAPIToken = "checkinAPIToken"
+        static let tgChannelBaseURL = "tgChannelBaseURL"
+        static let tgChannelToken = "tgChannelToken"
         static let fastNoteBaseURL = "fastNoteBaseURL"
         static let fastNoteUsername = "fastNoteUsername"
         static let fastNotePassword = "fastNotePassword"
@@ -326,6 +339,8 @@ final class AppSettings: ObservableObject {
         komariBaseURL = d.string(forKey: Keys.komariBaseURL) ?? "https://komari.996616.xyz"
         checkinBaseURL = d.string(forKey: Keys.checkinBaseURL) ?? "https://checkin.031216.xyz"
         checkinAPIToken = KeychainStore.get(Keys.checkinAPIToken) ?? ""
+        tgChannelBaseURL = d.string(forKey: Keys.tgChannelBaseURL) ?? "http://23.80.80.208:8765"
+        tgChannelToken = KeychainStore.get(Keys.tgChannelToken) ?? ""
         fastNoteBaseURL = d.string(forKey: Keys.fastNoteBaseURL) ?? "https://sync.996616.xyz"
         fastNoteUsername = d.string(forKey: Keys.fastNoteUsername) ?? ""
         fastNotePassword = KeychainStore.get(Keys.fastNotePassword) ?? ""
@@ -394,5 +409,10 @@ final class AppSettings: ObservableObject {
         !fastNoteBaseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !fastNoteUsername.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !fastNotePassword.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var isTGChannelConfigured: Bool {
+        !tgChannelBaseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !tgChannelToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 }

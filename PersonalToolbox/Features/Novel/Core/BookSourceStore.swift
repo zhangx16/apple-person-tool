@@ -10,7 +10,7 @@ final class BookSourceStore {
     private let defaultsKey = "novel.bookSources.v1"
     private let seedVersionKey = "novel.bookSources.seedVersion"
     /// Bump when bundled default sources are refreshed (merges into existing store).
-    private let currentSeedVersion = 3
+    private let currentSeedVersion = 4
 
     private init() {
         let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]

@@ -29,6 +29,7 @@ enum ServiceBrand: String, CaseIterable, Identifiable {
     case live
     case checkin
     case novel
+    case tgChannel
 
     var id: String { rawValue }
 
@@ -79,6 +80,7 @@ enum ServiceBrand: String, CaseIterable, Identifiable {
         case .live: return "play.tv.fill"
         case .checkin: return "checkmark.seal.fill"
         case .novel: return "book.fill"
+        case .tgChannel: return "play.rectangle.on.rectangle.fill"
         }
     }
 
@@ -110,6 +112,7 @@ enum ServiceBrand: String, CaseIterable, Identifiable {
         case .live: return Color(hex: 0xFF375F)
         case .checkin: return Color(hex: 0x00A89C)
         case .novel: return Color(hex: 0xAF52DE)
+        case .tgChannel: return Color(hex: 0x2AABEE)
         }
     }
 
@@ -140,6 +143,7 @@ enum ServiceBrand: String, CaseIterable, Identifiable {
         case .live: return "直播"
         case .checkin: return "签到中心"
         case .novel: return "小说阅读"
+        case .tgChannel: return "TG 片库"
         }
     }
 }

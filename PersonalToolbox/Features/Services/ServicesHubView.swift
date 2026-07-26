@@ -325,6 +325,9 @@ struct ServicesHubView: View {
                 item("novel", "小说阅读", "Legado 书源 · 搜索 · 本地 TXT · 阅读器", .novel) {
                     AnyView(NovelRootView())
                 },
+                item("tgChannel", "TG 片库", "频道视频 · 自建同步 · 油管/B站源", .tgChannel) {
+                    AnyView(TGChannelRootView().environmentObject(settings))
+                },
                 item("rss", "RSS 阅读器", "多源订阅 · 下拉刷新", .rss) {
                     AnyView(RSSHomeView())
                 },

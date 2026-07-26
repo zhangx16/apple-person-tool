@@ -75,6 +75,16 @@ struct SettingsView: View {
                         ) {
                             FastNoteSettingsPage()
                         }
+                        projectLink(
+                            brand: .tgChannel,
+                            title: "TG 片库",
+                            subtitle: settings.isTGChannelConfigured
+                                ? hostHint(settings.tgChannelBaseURL)
+                                : "tg-channel-api · 频道视频同步",
+                            configured: settings.isTGChannelConfigured
+                        ) {
+                            TGChannelSettingsPage()
+                        }
                         plainLink(
                             systemImage: "terminal",
                             title: "SSH / Next Terminal",
@@ -671,6 +681,67 @@ struct CheckinSettingsPage: View {
         .toolbar {
             ToolbarItem(placement: .principal) {
                 ServiceBrandTitle(brand: .checkin, title: "签到服务")
+            }
+        }
+    }
+}
+
+struct TGChannelSettingsPage: View {
+    @EnvironmentObject private var settings: AppSettings
+    @State private var probe: String?
+
+    var body: some View {
+        Form {
+            Section {
+                TextField("Base URL", text: $settings.tgChannelBaseURL)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.URL)
+                SecureField("API Token", text: $settings.tgChannelToken)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .privacySensitive()
+            } header: {
+                Text("tg-channel-api")
+            } footer: {
+                Text("对应 VPS 上 /root/tg-channel-api 的服务地址与 .env 中 API_TOKEN。默认频道 lihaiPan / lihaibili。")
+            }
+
+            Section {
+                if let probe {
+                    Text(probe)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Button("测试 /health") {
+                    Task {
+                        do {
+                            let client = try TGChannelClient.fromSettings(settings)
+                            let h = try await client.health()
+                            let auth = h.authorized == true ? "已登录 TG" : "未连接 TG"
+                            let ch = (h.channels ?? []).joined(separator: ", ")
+                            let err = h.lastError.map { "；错误：\($0)" } ?? ""
+                            probe = "OK · \(auth) · 频道 [\(ch)]\(err)"
+                        } catch {
+                            probe = error.localizedDescription
+                        }
+                    }
+                }
+            } header: {
+                Text("检测")
+            }
+
+            Section("说明") {
+                Text("方案 A：VPS 用 Telethon 同步频道 → App 拉列表并播放原生视频。详见 /root/tg-channel-api/README.md。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .navigationTitle("TG 片库")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                ServiceBrandTitle(brand: .tgChannel, title: "TG 片库")
             }
         }
     }

@@ -20,6 +20,10 @@
 		000000000000000000008239 /* NovelSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008238 /* NovelSearchView.swift */; };
 		00000000000000000000823B /* NovelShelfView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000823A /* NovelShelfView.swift */; };
 		00000000000000000000823D /* NovelSourceListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000823C /* NovelSourceListView.swift */; };
+		00000000000000000000008241 /* TGChannelModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000008240 /* TGChannelModels.swift */; };
+		00000000000000000000008243 /* TGChannelClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000008242 /* TGChannelClient.swift */; };
+		00000000000000000000008245 /* TGChannelPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000008244 /* TGChannelPlayerView.swift */; };
+		00000000000000000000008247 /* TGChannelRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000008246 /* TGChannelRootView.swift */; };
 		000000000000000000008223 /* NavidromeSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008222 /* NavidromeSettingsView.swift */; };
 		000000000000000000008221 /* NavidromeClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008220 /* NavidromeClient.swift */; };
 		000000000000000000008209 /* SongAccessBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008208 /* SongAccessBadge.swift */; };
@@ -331,6 +335,10 @@
 		000000000000000000008238 /* NovelSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovelSearchView.swift; sourceTree = "<group>"; };
 		00000000000000000000823A /* NovelShelfView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovelShelfView.swift; sourceTree = "<group>"; };
 		00000000000000000000823C /* NovelSourceListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NovelSourceListView.swift; sourceTree = "<group>"; };
+		00000000000000000000008240 /* TGChannelModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TGChannelModels.swift; sourceTree = "<group>"; };
+		00000000000000000000008242 /* TGChannelClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TGChannelClient.swift; sourceTree = "<group>"; };
+		00000000000000000000008244 /* TGChannelPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TGChannelPlayerView.swift; sourceTree = "<group>"; };
+		00000000000000000000008246 /* TGChannelRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TGChannelRootView.swift; sourceTree = "<group>"; };
 		000000000000000000008222 /* NavidromeSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Settings/NavidromeSettingsView.swift; sourceTree = "<group>"; };
 		000000000000000000008220 /* NavidromeClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Networking/NavidromeClient.swift; sourceTree = "<group>"; };
 		000000000000000000008208 /* SongAccessBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Models/SongAccessBadge.swift; sourceTree = "<group>"; };
@@ -1059,6 +1067,7 @@
 			isa = PBXGroup;
 			children = (
 				00000000000000000000823E /* Novel */,
+				00000000000000000000008248 /* TelegramChannel */,
 				000000000000000000008134 /* Music */,
 				000000000000000000000534 /* Live */,
 				000000000000000000000518 /* Tools */,
@@ -1180,6 +1189,18 @@
 			name = Novel;
 			sourceTree = "<group>";
 		};
+		00000000000000000000008248 /* TelegramChannel */ = {
+			isa = PBXGroup;
+			children = (
+				00000000000000000000008240 /* TGChannelModels.swift */,
+				00000000000000000000008242 /* TGChannelClient.swift */,
+				00000000000000000000008244 /* TGChannelPlayerView.swift */,
+				00000000000000000000008246 /* TGChannelRootView.swift */,
+			);
+			path = TelegramChannel;
+			name = TelegramChannel;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -1297,6 +1318,11 @@
 				000000000000000000008239 /* NovelSearchView.swift in Sources */,
 				00000000000000000000823B /* NovelShelfView.swift in Sources */,
 				00000000000000000000823D /* NovelSourceListView.swift in Sources */,
+				00000000000000000000008241 /* TGChannelModels.swift in Sources */,
+				00000000000000000000008243 /* TGChannelClient.swift in Sources */,
+				00000000000000000000008245 /* TGChannelPlayerView.swift in Sources */,
+				00000000000000000000008247 /* TGChannelRootView.swift in Sources */,
+
 
 				000000000000000000000551 /* LiveDanmakuService.swift in Sources */,
 				000000000000000000000563 /* LiveProtoWire.swift in Sources */,
@@ -1657,7 +1683,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 104;
+				CURRENT_PROJECT_VERSION = 105;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				CODE_SIGN_ENTITLEMENTS = PersonalToolbox/PersonalToolbox.entitlements;
@@ -1684,7 +1710,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 104;
+				CURRENT_PROJECT_VERSION = 105;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				ENABLE_PREVIEWS = YES;
 				CODE_SIGN_ENTITLEMENTS = PersonalToolbox/PersonalToolbox.entitlements;
@@ -1711,7 +1737,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 104;
+				CURRENT_PROJECT_VERSION = 105;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
@@ -1737,7 +1763,7 @@
 				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Distribution";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 104;
+				CURRENT_PROJECT_VERSION = 105;
 				DEVELOPMENT_TEAM = CTSQLK944L;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;

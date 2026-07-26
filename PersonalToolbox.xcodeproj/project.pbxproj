@@ -1177,7 +1177,7 @@
 				00000000000000000000051B /* ShareExtension.entitlements */,
 			);
 			path = ShareExtension;
-			sourceTree = "<group>";
+			sourceTree = SOURCE_ROOT;
 		};
 		000000000000000000000534 /* Live */ = {
 			isa = PBXGroup;

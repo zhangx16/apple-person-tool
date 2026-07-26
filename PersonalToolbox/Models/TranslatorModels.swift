@@ -68,11 +68,18 @@ struct TranslatorEngine: Identifiable, Codable, Hashable, Sendable {
     var label: String
     var systemImage: String
     var enabled: Bool
-    /// For ai_api / optional override on sub2api
-    var apiKey: String?
+    /// For ai_api / optional override on sub2api.
+    /// Not persisted with the rest of the struct — `TranslatorStore` stores this
+    /// in Keychain (keyed by engine id) and merges it back in after decoding,
+    /// so it never lands in the plaintext `translator_settings.json` file.
+    var apiKey: String? = nil
     var baseURL: String?
     var model: String?
     var compatibilityMode: TranslatorAiMode?
+
+    private enum CodingKeys: String, CodingKey {
+        case id, kind, label, systemImage, enabled, baseURL, model, compatibilityMode
+    }
 
     static func defaults(sub2Base: String, sub2Key: String, model: String) -> [TranslatorEngine] {
         // 产品决策：仅保留 Google 网页翻译（不再默认暴露 Grok / Sub2API 引擎）。

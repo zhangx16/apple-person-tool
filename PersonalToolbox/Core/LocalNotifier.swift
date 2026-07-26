@@ -9,6 +9,8 @@ enum LocalNotifier {
     private static let downloadPrefix = "download."
     /// In-memory de-dupe for same-id within a process.
     private static var recentIds = Set<String>()
+    /// Upper bound so a long-running process doesn't grow this unbounded.
+    private static let recentIdsLimit = 200
 
     // MARK: - Permission
 
@@ -55,6 +57,7 @@ enum LocalNotifier {
         collapseByDay: Bool = false
     ) {
         if collapseByDay, recentIds.contains(id) { return }
+        if recentIds.count >= recentIdsLimit { recentIds.removeAll(keepingCapacity: true) }
         recentIds.insert(id)
 
         let content = UNMutableNotificationContent()

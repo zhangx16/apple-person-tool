@@ -214,7 +214,7 @@ final class AppSettings: ObservableObject {
 
     /// 浏览器登录 live.kuaishou.com 后复制的 Cookie 全文。
     @Published var kuaishouCookie: String {
-        didSet { UserDefaults.standard.set(kuaishouCookie, forKey: Keys.kuaishouCookie) }
+        didSet { KeychainStore.set(kuaishouCookie, for: Keys.kuaishouCookie) }
     }
     /// 可选 Kww / kwfv1 派生值；多数情况下从 Cookie 的 kwfv1 自动解析。
     @Published var kuaishouKww: String {
@@ -225,14 +225,14 @@ final class AppSettings: ObservableObject {
 
     /// 浏览器登录 live.douyin.com 后复制的 Cookie（含 ttwid 等）。
     @Published var douyinLiveCookie: String {
-        didSet { UserDefaults.standard.set(douyinLiveCookie, forKey: Keys.douyinLiveCookie) }
+        didSet { KeychainStore.set(douyinLiveCookie, for: Keys.douyinLiveCookie) }
     }
 
     // MARK: - B 站下载（SESSDATA 等，高清/大会员）
 
     /// 浏览器登录 bilibili.com 后复制的 Cookie（建议含 SESSDATA、bili_jct）。
     @Published var bilibiliCookie: String {
-        didSet { UserDefaults.standard.set(bilibiliCookie, forKey: Keys.bilibiliCookie) }
+        didSet { KeychainStore.set(bilibiliCookie, for: Keys.bilibiliCookie) }
     }
 
     enum Appearance: String, CaseIterable, Identifiable {
@@ -381,10 +381,23 @@ final class AppSettings: ObservableObject {
         // 快递100：仅从本机 UserDefaults / Keychain 读取，不在仓库中预置密钥
         kuaidi100Customer = d.string(forKey: Keys.kuaidi100Customer) ?? ""
         kuaidi100Key = KeychainStore.get(Keys.kuaidi100Key) ?? ""
-        kuaishouCookie = d.string(forKey: Keys.kuaishouCookie) ?? ""
+        kuaishouCookie = Self.migrateCookieToKeychain(key: Keys.kuaishouCookie, defaults: d)
         kuaishouKww = d.string(forKey: Keys.kuaishouKww) ?? ""
-        douyinLiveCookie = d.string(forKey: Keys.douyinLiveCookie) ?? ""
-        bilibiliCookie = d.string(forKey: Keys.bilibiliCookie) ?? ""
+        douyinLiveCookie = Self.migrateCookieToKeychain(key: Keys.douyinLiveCookie, defaults: d)
+        bilibiliCookie = Self.migrateCookieToKeychain(key: Keys.bilibiliCookie, defaults: d)
+    }
+
+    /// Cookie fields used to live in `UserDefaults`; now stored in Keychain.
+    /// Reads Keychain first, and on first run after the upgrade migrates any
+    /// legacy plaintext value out of `UserDefaults` into Keychain.
+    private static func migrateCookieToKeychain(key: String, defaults: UserDefaults) -> String {
+        if let existing = KeychainStore.get(key), !existing.isEmpty {
+            return existing
+        }
+        guard let legacy = defaults.string(forKey: key), !legacy.isEmpty else { return "" }
+        KeychainStore.set(legacy, for: key)
+        defaults.removeObject(forKey: key)
+        return legacy
     }
 
     var isAIConfigured: Bool {

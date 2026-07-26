@@ -18,6 +18,19 @@ final class TranslatorStore: ObservableObject {
 
     private init() {}
 
+    /// Keychain key for a custom engine's API key. `apiKey` is intentionally excluded
+    /// from `TranslatorEngine`'s `Codable` conformance so it never lands in the
+    /// plaintext `translator_settings.json` file.
+    private func keychainKey(for engineID: String) -> String {
+        "translatorEngine.\(engineID).apiKey"
+    }
+
+    private func loadAPIKeysFromKeychain() {
+        for index in engines.indices {
+            engines[index].apiKey = KeychainStore.get(keychainKey(for: engines[index].id))
+        }
+    }
+
     func load(appSettings: AppSettings) {
         defer { isLoaded = true }
         guard FileManager.default.fileExists(atPath: fileURL.path) else {
@@ -30,6 +43,7 @@ final class TranslatorStore: ObservableObject {
             engines = decoded.engines
             sourceLanguageCode = decoded.sourceLanguageCode
             targetLanguageCode = decoded.targetLanguageCode
+            loadAPIKeysFromKeychain()
             // Ensure sub2api engine stays in sync with empty fields
             syncSub2Placeholders(from: appSettings)
         } catch {
@@ -99,6 +113,11 @@ final class TranslatorStore: ObservableObject {
     }
 
     func upsertEngine(_ engine: TranslatorEngine) {
+        if let key = engine.apiKey, !key.isEmpty {
+            KeychainStore.set(key, for: keychainKey(for: engine.id))
+        } else {
+            KeychainStore.delete(keychainKey(for: engine.id))
+        }
         if let idx = engines.firstIndex(where: { $0.id == engine.id }) {
             engines[idx] = engine
         } else {
@@ -112,6 +131,7 @@ final class TranslatorStore: ObservableObject {
         // Keep at least one engine
         guard engines.count > 1 else { return }
         engines.removeAll { $0.id == id }
+        KeychainStore.delete(keychainKey(for: id))
         persist()
         Haptics.light()
     }

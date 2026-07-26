@@ -76,7 +76,7 @@ final class SSHHostStore: ObservableObject {
     func delete(id: String) {
         hosts.removeAll { $0.id == id }
         persist()
-        KeychainStore.set("", for: Self.passwordKey(id))
+        KeychainStore.delete(Self.passwordKey(id))
     }
 
     // MARK: - Password (Keychain, not JSON)

@@ -73,15 +73,26 @@ struct AppActionPayload: Hashable {
 
 /// Detects actionable content from free text / clipboard / chat.
 enum ActionRouter {
+    // Precompiled once (regex patterns are static literals, so `try!` is safe here)
+    // instead of re-compiling on every call — this runs on hot paths like the
+    // clipboard smart bar and chat command parsing.
+    private static let urlRegex = try! NSRegularExpression(pattern: #"https?://[^\s<>"']+"#)
+    /// 4–8 digit codes not looking like phone numbers.
+    private static let verificationCodeRegex = try! NSRegularExpression(pattern: #"(?<!\d)(\d{4,8})(?!\d)"#)
+    /// Common CN express patterns (simplified).
+    private static let trackingNumberRegexes: [NSRegularExpression] = [
+        #"(?:SF|YT|YD|ZT|STO|YTO|ZTO|JT|JD|EMS)[A-Z0-9]{10,}"#,
+        #"(?<![A-Z0-9])([A-Z]{2}\d{9}[A-Z]{2})(?![A-Z0-9])"#,
+        #"(?<!\d)(\d{10,15})(?!\d)"#
+    ].map { try! NSRegularExpression(pattern: $0, options: .caseInsensitive) }
+
     static func extractFirstURL(from text: String) -> String? {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.lowercased().hasPrefix("http") {
             return trimmed.components(separatedBy: .whitespacesAndNewlines).first
         }
-        let pattern = #"https?://[^\s<>"']+"#
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
         let range = NSRange(trimmed.startIndex..<trimmed.endIndex, in: trimmed)
-        guard let match = regex.firstMatch(in: trimmed, range: range),
+        guard let match = urlRegex.firstMatch(in: trimmed, range: range),
               let r = Range(match.range, in: trimmed) else { return nil }
         var url = String(trimmed[r])
         while let last = url.last, ".,);]》」』".contains(last) { url.removeLast() }
@@ -89,11 +100,8 @@ enum ActionRouter {
     }
 
     static func extractVerificationCode(from text: String) -> String? {
-        // 4–8 digit codes not looking like phone numbers
-        let pattern = #"(?<!\d)(\d{4,8})(?!\d)"#
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
         let range = NSRange(text.startIndex..<text.endIndex, in: text)
-        let matches = regex.matches(in: text, range: range)
+        let matches = verificationCodeRegex.matches(in: text, range: range)
         for m in matches where m.numberOfRanges > 1 {
             if let r = Range(m.range(at: 1), in: text) {
                 let code = String(text[r])
@@ -106,15 +114,8 @@ enum ActionRouter {
     }
 
     static func extractTrackingNumber(from text: String) -> String? {
-        // Common CN express patterns (simplified)
-        let patterns = [
-            #"(?:SF|YT|YD|ZT|STO|YTO|ZTO|JT|JD|EMS)[A-Z0-9]{10,}"#,
-            #"(?<![A-Z0-9])([A-Z]{2}\d{9}[A-Z]{2})(?![A-Z0-9])"#,
-            #"(?<!\d)(\d{10,15})(?!\d)"#
-        ]
-        for p in patterns {
-            guard let regex = try? NSRegularExpression(pattern: p, options: .caseInsensitive) else { continue }
-            let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        for regex in trackingNumberRegexes {
             if let m = regex.firstMatch(in: text, range: range),
                let r = Range(m.range, in: text) {
                 return String(text[r]).uppercased()

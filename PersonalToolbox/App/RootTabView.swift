@@ -132,11 +132,8 @@ struct RootTabView: View {
             handleScenePhase(phase)
         }
         .onChange(of: settings.requireBiometricUnlock) { _, enabled in
-            if enabled {
-                isUnlocked = true
-            } else {
-                isUnlocked = true
-            }
+            // Enabling the lock must take effect immediately; disabling always unlocks.
+            isUnlocked = !enabled
         }
         .onChange(of: deepLink.requestedTab) { _, tab in
             guard let tab else { return }

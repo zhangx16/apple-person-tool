@@ -650,7 +650,11 @@ final class PlayerStore {
             self.progress = value
             self.lastProgressUpdateDate = Date()
             let second = Int(value)
-            if second != self.lastPersistedSecond {
+            // Full-queue snapshot encode/write is comparatively expensive; only
+            // do it every ~5s from the progress tick. Song/queue changes, pause,
+            // seek, and backgrounding all persist immediately via their own
+            // `persistSnapshot()` calls elsewhere, so resume points stay accurate.
+            if second < self.lastPersistedSecond || second - self.lastPersistedSecond >= 5 {
                 self.lastPersistedSecond = second
                 self.persistSnapshot()
             }

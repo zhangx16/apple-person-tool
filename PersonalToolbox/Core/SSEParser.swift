@@ -1,6 +1,8 @@
 import Foundation
 
 enum SSEParser {
+    private static let decoder = JSONDecoder()
+
     /// Parse OpenAI-compatible chat completion SSE stream lines into text deltas.
     static func deltas(from line: String) -> [String] {
         let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -10,12 +12,12 @@ enum SSEParser {
         guard let data = payload.data(using: .utf8) else { return [] }
 
         // Chat Completions stream
-        if let chunk = try? JSONDecoder().decode(ChatCompletionChunk.self, from: data) {
+        if let chunk = try? decoder.decode(ChatCompletionChunk.self, from: data) {
             return chunk.choices.compactMap { $0.delta?.content }.filter { !$0.isEmpty }
         }
 
         // Responses API stream (partial support)
-        if let event = try? JSONDecoder().decode(ResponsesStreamEvent.self, from: data) {
+        if let event = try? decoder.decode(ResponsesStreamEvent.self, from: data) {
             if let text = event.delta ?? event.text {
                 return [text]
             }

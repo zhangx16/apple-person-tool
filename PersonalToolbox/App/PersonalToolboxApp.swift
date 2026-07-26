@@ -5,9 +5,13 @@ struct PersonalToolboxApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     init() {
-        // Warm local tool stores so 服务 → 生活 tools open instantly.
-        AnniversaryStore.shared.load()
-        QRAssistantStore.shared.load()
+        // Warm local tool stores so 服务 → 生活 tools open instantly. Deferred to
+        // right after launch (instead of running synchronously here) so the
+        // first frame isn't blocked on disk I/O.
+        Task { @MainActor in
+            AnniversaryStore.shared.load()
+            QRAssistantStore.shared.load()
+        }
         LocalNotifier.installForegroundDelegate()
         // App chrome is portrait-first; live fullscreen temporarily locks landscape.
         OrientationHelper.lockPortrait()

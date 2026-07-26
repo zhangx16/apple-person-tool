@@ -39,7 +39,6 @@
 		000000000000000000000809 /* ClipboardSmartBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000808 /* ClipboardSmartBar.swift */; };
 		00000000000000000000080B /* ControlCenterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000080A /* ControlCenterView.swift */; };
 		00000000000000000000080D /* ProxyNodePackView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000080C /* ProxyNodePackView.swift */; };
-		000000000000000000008201 /* AudioEqualizerStubs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008200 /* AudioEqualizerStubs.swift */; };
 		000000000000000000008137 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 000000000000000000008136 /* GRDB */; };
 		000000000000000000008001 /* MusicRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008000 /* MusicRootView.swift */; };
 		000000000000000000008003 /* MeloXCompatibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008002 /* MeloXCompatibility.swift */; };
@@ -354,7 +353,6 @@
 		000000000000000000000808 /* ClipboardSmartBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardSmartBar.swift; sourceTree = "<group>"; };
 		00000000000000000000080A /* ControlCenterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlCenterView.swift; sourceTree = "<group>"; };
 		00000000000000000000080C /* ProxyNodePackView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProxyNodePackView.swift; sourceTree = "<group>"; };
-		000000000000000000008200 /* AudioEqualizerStubs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Core/Playback/AudioEqualizerStubs.swift; sourceTree = "<group>"; };
 		000000000000000000008000 /* MusicRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicRootView.swift; sourceTree = "<group>"; };
 		000000000000000000008002 /* MeloXCompatibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloXCompatibility.swift; sourceTree = "<group>"; };
 		000000000000000000008004 /* AppLaunchExperience.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/App/AppLaunchExperience.swift; sourceTree = "<group>"; };
@@ -642,7 +640,6 @@
 			isa = PBXGroup;
 			children = (
 				000000000000000000008000 /* MusicRootView.swift */,
-				000000000000000000008200 /* AudioEqualizerStubs.swift */,
 				000000000000000000008002 /* MeloXCompatibility.swift */,
 				000000000000000000008004 /* AppLaunchExperience.swift */,
 				000000000000000000008006 /* AppNavigation.swift */,

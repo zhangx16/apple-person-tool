@@ -69,7 +69,10 @@ final class ClipboardStore: ObservableObject {
     }
 
     private func persist() {
-        LocalJSONStore.save(items, to: fileName)
+        // Cookie-like entries can carry session tokens; keep them in-memory
+        // for this run only, never write them to disk.
+        let diskItems = items.filter { $0.kind != .cookie }
+        LocalJSONStore.save(diskItems, to: fileName)
     }
 
     /// Capture current system pasteboard if new.

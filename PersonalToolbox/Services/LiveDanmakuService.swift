@@ -122,6 +122,9 @@ final class LiveDanmakuService: ObservableObject {
                 if !Task.isCancelled {
                     statusText = "弹幕断开"
                 }
+                // Socket is dead — stop pinging it until the user reconnects.
+                heartbeat?.cancel()
+                heartbeat = nil
                 break
             }
         }
@@ -247,6 +250,8 @@ final class LiveDanmakuService: ObservableObject {
                 }
             } catch {
                 if !Task.isCancelled { statusText = "弹幕断开" }
+                heartbeat?.cancel()
+                heartbeat = nil
                 break
             }
         }
@@ -387,6 +392,8 @@ final class LiveDanmakuService: ObservableObject {
                 }
             } catch {
                 if !Task.isCancelled { statusText = "弹幕断开" }
+                heartbeat?.cancel()
+                heartbeat = nil
                 break
             }
         }
@@ -502,6 +509,8 @@ final class LiveDanmakuService: ObservableObject {
                 }
             } catch {
                 if !Task.isCancelled { statusText = "弹幕断开" }
+                heartbeat?.cancel()
+                heartbeat = nil
                 break
             }
         }
@@ -596,6 +605,8 @@ final class LiveDanmakuService: ObservableObject {
                 handleKuaishouPacket(data)
             } catch {
                 if !Task.isCancelled { statusText = "弹幕断开" }
+                heartbeat?.cancel()
+                heartbeat = nil
                 break
             }
         }

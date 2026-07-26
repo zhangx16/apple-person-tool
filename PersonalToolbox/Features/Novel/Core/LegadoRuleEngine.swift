@@ -4,6 +4,25 @@ import Foundation
 /// Full JS (`<js>` / `@js` / java.*) is not executed; callers should skip such sources.
 enum LegadoRuleEngine {
 
+    // MARK: - Regex cache
+
+    /// Rule strings repeat heavily across a book source's pages (same selectors on
+    /// every search result / chapter), so cache compiled regexes instead of
+    /// recompiling on every `getString`/`getList` call. Parsing can happen
+    /// concurrently across multiple book sources, so guard the cache with a lock.
+    private static let regexCacheLock = NSLock()
+    private static var regexCache: [String: NSRegularExpression] = [:]
+
+    private static func cachedRegex(_ pattern: String, options: NSRegularExpression.Options = []) -> NSRegularExpression? {
+        let key = "\(options.rawValue)|\(pattern)"
+        regexCacheLock.lock()
+        defer { regexCacheLock.unlock() }
+        if let cached = regexCache[key] { return cached }
+        guard let compiled = try? NSRegularExpression(pattern: pattern, options: options) else { return nil }
+        regexCache[key] = compiled
+        return compiled
+    }
+
     // MARK: - Public extract
 
     /// Apply a field rule against a fragment (HTML or JSON text).
@@ -91,14 +110,14 @@ enum LegadoRuleEngine {
             let pattern = parts[0]
             let repl = parts.count > 1 ? parts[1] : ""
             if pattern.isEmpty { return value }
-            if let regex = try? NSRegularExpression(pattern: pattern, options: []) {
+            if let regex = cachedRegex(pattern) {
                 let range = NSRange(value.startIndex..., in: value)
                 return regex.stringByReplacingMatches(in: value, range: range, withTemplate: repl)
             }
             return value.replacingOccurrences(of: pattern, with: repl)
         }
         // All-remove mode when only regex given
-        if let regex = try? NSRegularExpression(pattern: t, options: []) {
+        if let regex = cachedRegex(t) {
             let range = NSRange(value.startIndex..., in: value)
             return regex.stringByReplacingMatches(in: value, range: range, withTemplate: "")
         }
@@ -368,7 +387,7 @@ enum LegadoRuleEngine {
         }
         let tagPat = tag.map { NSRegularExpression.escapedPattern(for: $0) } ?? "[a-zA-Z0-9]+"
         let pattern = #"<(\#(tagPat))([^>]*)>([\s\S]*?)</\1>"#
-        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else {
+        guard let regex = cachedRegex(pattern, options: [.caseInsensitive]) else {
             return []
         }
         let ns = html as NSString
@@ -417,7 +436,7 @@ enum LegadoRuleEngine {
     }
 
     private static func matchBlocks(pattern: String, in html: String) -> [String] {
-        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else {
+        guard let regex = cachedRegex(pattern, options: [.caseInsensitive]) else {
             return []
         }
         // Cap work on pathological pages (very large HTML) to avoid UI freezes / memory spikes.
@@ -438,7 +457,7 @@ enum LegadoRuleEngine {
             #"\#(name)\s*=\s*([^\s>]+)"#
         ]
         for p in patterns {
-            if let regex = try? NSRegularExpression(pattern: p, options: [.caseInsensitive]),
+            if let regex = cachedRegex(p, options: [.caseInsensitive]),
                let m = regex.firstMatch(in: elementHTML, range: NSRange(elementHTML.startIndex..., in: elementHTML)),
                m.numberOfRanges > 1,
                let r = Range(m.range(at: 1), in: elementHTML) {
@@ -451,10 +470,10 @@ enum LegadoRuleEngine {
     private static func stripTags(_ html: String) -> String {
         var s = html
         // script/style
-        if let re = try? NSRegularExpression(pattern: #"<script[\s\S]*?</script>"#, options: .caseInsensitive) {
+        if let re = cachedRegex(#"<script[\s\S]*?</script>"#, options: .caseInsensitive) {
             s = re.stringByReplacingMatches(in: s, range: NSRange(s.startIndex..., in: s), withTemplate: "")
         }
-        if let re = try? NSRegularExpression(pattern: #"<style[\s\S]*?</style>"#, options: .caseInsensitive) {
+        if let re = cachedRegex(#"<style[\s\S]*?</style>"#, options: .caseInsensitive) {
             s = re.stringByReplacingMatches(in: s, range: NSRange(s.startIndex..., in: s), withTemplate: "")
         }
         // Preserve paragraph breaks
@@ -463,7 +482,7 @@ enum LegadoRuleEngine {
         s = s.replacingOccurrences(of: "<br />", with: "\n", options: .caseInsensitive)
         s = s.replacingOccurrences(of: "</p>", with: "\n", options: .caseInsensitive)
         s = s.replacingOccurrences(of: "</div>", with: "\n", options: .caseInsensitive)
-        if let re = try? NSRegularExpression(pattern: #"<[^>]+>"#, options: []) {
+        if let re = cachedRegex(#"<[^>]+>"#) {
             s = re.stringByReplacingMatches(in: s, range: NSRange(s.startIndex..., in: s), withTemplate: "")
         }
         return decodeEntities(s)

@@ -5,6 +5,7 @@ import SwiftUI
 struct KomariHomeView: View {
     @EnvironmentObject private var settings: AppSettings
     @StateObject private var viewModel = KomariViewModel()
+    @Environment(\.scenePhase) private var scenePhase
     @State private var selected: KomariNodeRow?
     @State private var importBanner: String?
     @State private var showImportSheet = false
@@ -54,6 +55,16 @@ struct KomariHomeView: View {
         }
         .onDisappear {
             viewModel.stopAutoRefresh()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            switch phase {
+            case .active:
+                if viewModel.autoRefresh { viewModel.startAutoRefresh(settings: settings) }
+            case .background, .inactive:
+                viewModel.stopAutoRefresh()
+            @unknown default:
+                break
+            }
         }
         .navigationDestination(item: $selected) { row in
             KomariNodeDetailView(row: row, viewModel: viewModel)

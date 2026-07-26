@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import AVFoundation
 
 /// 本机 B 站视频下载 · 接口思路参考 nICEnnnnnnnLee/BilibiliDown（view + playurl）。
@@ -495,7 +496,11 @@ final class BilibiliDownloadService {
                 return loc
             }
             if let final = resp.url?.absoluteString, final.hasPrefix("http") { return final }
-        } catch {}
+        } catch {
+            // 重定向解析失败退回原始短链，下载可能因此 404——留日志。
+            Logger(subsystem: Bundle.main.bundleIdentifier ?? "PersonalToolbox", category: "BiliDownload")
+                .error("redirect resolve failed for short link: \(error.localizedDescription)")
+        }
         return raw
     }
 

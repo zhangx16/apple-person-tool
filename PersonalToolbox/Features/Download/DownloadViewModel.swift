@@ -106,7 +106,7 @@ final class DownloadViewModel: ObservableObject {
         isTabVisible = visible
         if visible {
             if !wasVisible {
-                Task { await refreshNow() }
+                Task { [weak self] in await self?.refreshNow() }
             }
             startPollingIfNeeded()
         } else if !tasks.contains(where: \.isActive) {
@@ -117,7 +117,7 @@ final class DownloadViewModel: ObservableObject {
     func onScenePhase(_ phase: ScenePhase) {
         sceneActive = (phase == .active)
         if sceneActive {
-            Task { await refreshNow() }
+            Task { [weak self] in await self?.refreshNow() }
             startPollingIfNeeded()
         } else {
             stopPolling()

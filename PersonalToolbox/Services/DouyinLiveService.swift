@@ -2,19 +2,27 @@ import Foundation
 
 /// Douyin live APIs ported from SimpleLive `douyin_site.dart` v1.12.6.
 actor DouyinLiveService {
-    static let shared = DouyinLiveService()
+    static let shared = DouyinLiveService(
+        credentialProvider: { await MainActor.run { AppSettings.shared.douyinLiveCookie } }
+    )
 
     private let ua =
         "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.5845.97 Safari/537.36 Core/1.116.567.400 QQBrowser/19.7.6764.400"
     private let defaultCookie =
         "ttwid=1%7CB1qls3GdnZhUov9o2NxOMxxYS2ff6OSvEWbv0ytbES4%7C1680522049%7C280d802d6d478e3e78d0c807f7c487e7ffec0ae4e5fdd6a0fe74c3c6af149511"
     private var cookie: String = ""
+    /// How to fetch the user's Cookie. Injected instead of reaching into
+    /// `AppSettings.shared` directly, so this actor can be unit-tested in isolation
+    /// (and so the coupling to the settings singleton is explicit, not implicit).
+    private let credentialProvider: @Sendable () async -> String
+
+    init(credentialProvider: @escaping @Sendable () async -> String) {
+        self.credentialProvider = credentialProvider
+    }
 
     /// Pull Cookie from Settings → 抖音直播 (user-supplied preferred over default).
     private func syncUserCookie() async {
-        let user = await MainActor.run {
-            AppSettings.shared.douyinLiveCookie.trimmingCharacters(in: .whitespacesAndNewlines)
-        }
+        let user = await credentialProvider().trimmingCharacters(in: .whitespacesAndNewlines)
         if !user.isEmpty {
             cookie = user
         } else if cookie.isEmpty {
@@ -90,7 +98,7 @@ actor DouyinLiveService {
             URLQueryItem(name: "req_from", value: "2")
         ]
         guard let base = comps.url?.absoluteString else { throw NetworkError.invalidURL }
-        let signed = try LiveJSEngine.shared.douyinAbogusURL(url: base, userAgent: ua)
+        let signed = try await LiveJSEngine.shared.douyinAbogusURL(url: base, userAgent: ua)
         let json = try await getJSONURL(signed, headers: await requestHeaders())
         let rooms = resolveCategoryRooms(json)
         return rooms.compactMap { item in
@@ -331,7 +339,7 @@ actor DouyinLiveService {
             URLQueryItem(name: "msToken", value: "")
         ]
         guard let base = comps.url?.absoluteString else { throw NetworkError.invalidURL }
-        let signed = try LiveJSEngine.shared.douyinAbogusURL(url: base, userAgent: ua)
+        let signed = try await LiveJSEngine.shared.douyinAbogusURL(url: base, userAgent: ua)
         var headers = await requestHeaders()
         headers["Referer"] = "https://live.douyin.com/\(webRid)"
         let result = try await getJSONURL(signed, headers: headers)

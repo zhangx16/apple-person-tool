@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 
 /// Snapshot of CF credentials for actor-isolated API calls.
 struct CFCredentials: Sendable {
@@ -439,7 +440,11 @@ actor CloudflareService {
                 }
                 return (10_000_000, name.isEmpty ? "Workers Paid" : name)
             }
-        } catch {}
+        } catch {
+            // 解析失败会兜底返回 Free 配额，可能与真实套餐不符——留日志便于分辨。
+            Logger(subsystem: Bundle.main.bundleIdentifier ?? "PersonalToolbox", category: "Cloudflare")
+                .error("subscription lookup failed, assuming Workers Free: \(error.localizedDescription)")
+        }
         return (100_000, "Workers Free")
     }
 }

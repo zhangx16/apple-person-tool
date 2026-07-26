@@ -33,6 +33,7 @@ struct LiveHomeView: View {
     @State private var searchResults: [LiveRoomItem] = []
     @State private var isSearching = false
     @State private var searchError: String?
+    @State private var searchTask: Task<Void, Never>?
     @State private var path = NavigationPath()
     @FocusState private var searchFocused: Bool
     @State private var clipboardRoomHint: String?
@@ -292,7 +293,7 @@ struct LiveHomeView: View {
                     .autocorrectionDisabled()
                     .submitLabel(.search)
                     .focused($searchFocused)
-                    .onSubmit { Task { await runSearch() } }
+                    .onSubmit { startSearch() }
                 if !keyword.isEmpty {
                     Button {
                         keyword = ""
@@ -304,7 +305,7 @@ struct LiveHomeView: View {
                     .buttonStyle(.plain)
                 }
                 Button {
-                    Task { await runSearch() }
+                    startSearch()
                 } label: {
                     Text("搜索")
                         .font(.subheadline.weight(.bold))
@@ -430,7 +431,7 @@ struct LiveHomeView: View {
                 actionTitle: "重试",
                 brand: LiveUI.brand(platform)
             ) {
-                Task { await runSearch() }
+                startSearch()
             }
         } else if searchResults.isEmpty {
             LiveEmptyState(
@@ -486,6 +487,12 @@ struct LiveHomeView: View {
         path.append(RoomRoute(room: room))
     }
 
+    /// 连点搜索/回车时先取消上一次，避免旧请求的结果晚到覆盖新结果。
+    private func startSearch() {
+        searchTask?.cancel()
+        searchTask = Task { await runSearch() }
+    }
+
     private func runSearch() async {
         var kw = keyword.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !kw.isEmpty else {
@@ -499,7 +506,8 @@ struct LiveHomeView: View {
         searchFocused = false
         isSearching = true
         searchError = nil
-        defer { isSearching = false }
+        // 被取消说明有新搜索接管了 isSearching，别替它清掉。
+        defer { if !Task.isCancelled { isSearching = false } }
         do {
             // Isolate network work; hop back to MainActor for UI state only.
             let plat = platform

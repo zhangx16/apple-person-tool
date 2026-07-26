@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 
 /// 财联社电报 RSS 拉取 + 磁盘缓存（对齐 财联社.scripting）。
 actor CLSNewsService {
@@ -122,6 +123,9 @@ actor CLSNewsService {
         do {
             let data = try JSONEncoder().encode(cache)
             try data.write(to: cacheURL, options: [.atomic])
-        } catch {}
+        } catch {
+            Logger(subsystem: Bundle.main.bundleIdentifier ?? "PersonalToolbox", category: "CLSNews")
+                .error("cache write failed: \(error.localizedDescription)")
+        }
     }
 }

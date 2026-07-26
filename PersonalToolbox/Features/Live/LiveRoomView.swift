@@ -39,6 +39,7 @@ final class LiveRoomViewModel: ObservableObject {
     private var loadTask: Task<Void, Never>?
     private var failWatchTask: Task<Void, Never>?
     private var reconnectTask: Task<Void, Never>?
+    private var warmTask: Task<Void, Never>?
     private var headerLoader: LiveHeaderResourceLoader?
     private var avPlayer: AVPlayer?
 
@@ -106,6 +107,8 @@ final class LiveRoomViewModel: ObservableObject {
         failWatchTask = nil
         reconnectTask?.cancel()
         reconnectTask = nil
+        warmTask?.cancel()
+        warmTask = nil
         isControlsLocked = false
         isReconnecting = false
         clearStream()
@@ -299,7 +302,8 @@ final class LiveRoomViewModel: ObservableObject {
             if playMode == .web {
                 statusText = d.isLive ? "网页播放中" : "未开播 · 网页可试"
                 LivePlayPrefs.remember(.web, for: room.platform)
-                Task { await warmQualities(detail: d) }
+                warmTask?.cancel()
+                warmTask = Task { [weak self] in await self?.warmQualities(detail: d) }
                 return
             }
 

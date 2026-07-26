@@ -88,7 +88,8 @@
 	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>
-		<!-- Novel book sources often use cleartext HTTP; allow with per-site still preferred. -->
+		<!-- Must stay true: 小说书源为用户自配任意 HTTP 站点、直播 FLV/HLS 线路常为 HTTP、
+		     ip-api.com 免费版仅支持 HTTP，无法枚举为 NSExceptionDomains。 -->
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 		<key>NSExceptionDomains</key>

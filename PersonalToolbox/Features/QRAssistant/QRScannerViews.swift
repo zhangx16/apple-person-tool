@@ -1,4 +1,5 @@
 import SwiftUI
+import OSLog
 import AVFoundation
 import UIKit
 
@@ -229,7 +230,10 @@ final class QRScannerViewController: UIViewController, AVCaptureMetadataOutputOb
             try device.lockForConfiguration()
             device.torchMode = on ? .on : .off
             device.unlockForConfiguration()
-        } catch {}
+        } catch {
+            Logger(subsystem: Bundle.main.bundleIdentifier ?? "PersonalToolbox", category: "QRScanner")
+                .error("torch toggle failed: \(error.localizedDescription)")
+        }
     }
 
     func metadataOutput(

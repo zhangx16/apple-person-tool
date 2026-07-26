@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 
 @MainActor
 final class TranslatorStore: ObservableObject {
@@ -99,7 +100,11 @@ final class TranslatorStore: ObservableObject {
         do {
             let data = try JSONEncoder().encode(payload)
             try data.write(to: fileURL, options: [.atomic])
-        } catch {}
+        } catch {
+            // 写盘失败 = 用户的引擎/语言设置静默丢失，至少留下线索。
+            Logger(subsystem: Bundle.main.bundleIdentifier ?? "PersonalToolbox", category: "Translator")
+                .error("persist failed: \(error.localizedDescription)")
+        }
     }
 
     func saveLanguages() {

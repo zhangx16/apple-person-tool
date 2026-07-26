@@ -100,54 +100,49 @@ final class LiveDanmakuService: ObservableObject {
             }
         }
         task = Task { [weak self] in
-            await self?.receiveLoopBili()
+            await self?.receiveLoopBili(ws: ws)
         }
         statusText = "弹幕已连接"
     }
 
-    private func receiveLoopBili() async {
+    // 解压 + JSON 解析在后台执行（nonisolated），大主播弹幕洪峰不能卡主线程。
+    private nonisolated func receiveLoopBili(ws: URLSessionWebSocketTask) async {
         while !Task.isCancelled {
-            guard let ws = webSocket else { break }
             do {
                 let msg = try await ws.receive()
+                let data: Data
                 switch msg {
-                case .data(let data):
-                    handleBiliPacket(data)
-                case .string(let s):
-                    handleBiliPacket(Data(s.utf8))
-                @unknown default:
-                    break
+                case .data(let d): data = d
+                case .string(let s): data = Data(s.utf8)
+                @unknown default: continue
                 }
+                let chats = parseBiliPacket(data)
+                if !chats.isEmpty { await append(chats) }
             } catch {
-                if !Task.isCancelled {
-                    statusText = "弹幕断开"
-                }
-                // Socket is dead — stop pinging it until the user reconnects.
-                heartbeat?.cancel()
-                heartbeat = nil
+                await connectionDropped()
                 break
             }
         }
     }
 
-    private func handleBiliPacket(_ data: Data) {
-        guard data.count >= 16 else { return }
+    private nonisolated func parseBiliPacket(_ data: Data) -> [LiveChatMessage] {
+        guard data.count >= 16 else { return [] }
         let protocolVersion = readInt(data, offset: 6, length: 2)
         let operation = readInt(data, offset: 8, length: 4)
         var body = data.subdata(in: 16..<data.count)
-        if operation == 5 {
-            if protocolVersion == 2 {
-                body = zlibInflate(body) ?? body
-            } else if protocolVersion == 3 {
-                body = brotliDecompress(body) ?? body
-            }
-            // May contain multiple frames
-            parseBiliBodies(body)
+        guard operation == 5 else { return [] }
+        if protocolVersion == 2 {
+            body = zlibInflate(body) ?? body
+        } else if protocolVersion == 3 {
+            body = brotliDecompress(body) ?? body
         }
+        // May contain multiple frames
+        return parseBiliBodies(body)
     }
 
-    private func parseBiliBodies(_ data: Data) {
+    private nonisolated func parseBiliBodies(_ data: Data) -> [LiveChatMessage] {
         // Split concatenated packets or JSON fragments
+        var chats: [LiveChatMessage] = []
         var offset = 0
         if data.count >= 16 {
             while offset + 16 <= data.count {
@@ -161,19 +156,21 @@ final class LiveDanmakuService: ObservableObject {
                 if op == 5 {
                     if ver == 2 { body = zlibInflate(body) ?? body }
                     if ver == 3 { body = brotliDecompress(body) ?? body }
-                    emitBiliJSON(from: body)
+                    chats.append(contentsOf: parseBiliJSON(from: body))
                 }
                 offset += packetLen
             }
         }
         if offset == 0 {
-            emitBiliJSON(from: data)
+            chats.append(contentsOf: parseBiliJSON(from: data))
         }
+        return chats
     }
 
-    private func emitBiliJSON(from body: Data) {
-        guard let text = String(data: body, encoding: .utf8) else { return }
+    private nonisolated func parseBiliJSON(from body: Data) -> [LiveChatMessage] {
+        guard let text = String(data: body, encoding: .utf8) else { return [] }
         // Split on control chars between JSON objects
+        var chats: [LiveChatMessage] = []
         let parts = text.components(separatedBy: CharacterSet.controlCharacters)
         for part in parts where part.count > 2 && part.hasPrefix("{") {
             guard let d = part.data(using: .utf8),
@@ -192,11 +189,12 @@ final class LiveDanmakuService: ObservableObject {
             if let user = info[2] as? [Any], user.count > 1 {
                 username = LiveJSON.string(user[1])
             }
-            append(LiveChatMessage(userName: username, text: message, colorHex: color))
+            chats.append(LiveChatMessage(userName: username, text: message, colorHex: color))
         }
+        return chats
     }
 
-    private func encodeBiliPacket(body: Data, operation: Int) -> Data {
+    private nonisolated func encodeBiliPacket(body: Data, operation: Int) -> Data {
         var data = Data()
         let length = body.count + 16
         data.append(bigEndian32(length))
@@ -230,39 +228,35 @@ final class LiveDanmakuService: ObservableObject {
             }
         }
         task = Task { [weak self] in
-            await self?.receiveLoopDouyu()
+            await self?.receiveLoopDouyu(ws: ws)
         }
         statusText = "弹幕已连接"
     }
 
-    private func receiveLoopDouyu() async {
+    private nonisolated func receiveLoopDouyu(ws: URLSessionWebSocketTask) async {
         while !Task.isCancelled {
-            guard let ws = webSocket else { break }
             do {
                 let msg = try await ws.receive()
+                let data: Data
                 switch msg {
-                case .data(let data):
-                    handleDouyu(data)
-                case .string(let s):
-                    handleDouyu(Data(s.utf8))
-                @unknown default:
-                    break
+                case .data(let d): data = d
+                case .string(let s): data = Data(s.utf8)
+                @unknown default: continue
                 }
+                if let chat = parseDouyu(data) { await append([chat]) }
             } catch {
-                if !Task.isCancelled { statusText = "弹幕断开" }
-                heartbeat?.cancel()
-                heartbeat = nil
+                await connectionDropped()
                 break
             }
         }
     }
 
-    private func handleDouyu(_ data: Data) {
-        guard let body = deserializeDouyu(data) else { return }
+    private nonisolated func parseDouyu(_ data: Data) -> LiveChatMessage? {
+        guard let body = deserializeDouyu(data) else { return nil }
         let obj = sttToDict(body)
-        guard LiveJSON.string(obj["type"]) == "chatmsg" else { return }
+        guard LiveJSON.string(obj["type"]) == "chatmsg" else { return nil }
         // Filter weird empty dms
-        if obj["dms"] == nil { return }
+        if obj["dms"] == nil { return nil }
         let col = LiveJSON.int(obj["col"])
         let color: UInt32
         switch col {
@@ -274,14 +268,14 @@ final class LiveDanmakuService: ObservableObject {
         case 6: color = 0xFF69B4
         default: color = 0xFFFFFF
         }
-        append(LiveChatMessage(
+        return LiveChatMessage(
             userName: LiveJSON.string(obj["nn"]),
             text: LiveJSON.string(obj["txt"]),
             colorHex: color
-        ))
+        )
     }
 
-    private func serializeDouyu(_ body: String) -> Data {
+    private nonisolated func serializeDouyu(_ body: String) -> Data {
         let payload = Array(body.utf8)
         let len = 4 + 4 + payload.count + 1
         var data = Data()
@@ -295,7 +289,7 @@ final class LiveDanmakuService: ObservableObject {
         return data
     }
 
-    private func deserializeDouyu(_ buffer: Data) -> String? {
+    private nonisolated func deserializeDouyu(_ buffer: Data) -> String? {
         guard buffer.count >= 12 else { return nil }
         let full = buffer.withUnsafeBytes { $0.load(as: UInt32.self).littleEndian }
         let bodyLen = Int(full) - 9
@@ -304,7 +298,7 @@ final class LiveDanmakuService: ObservableObject {
         return String(data: body, encoding: .utf8)
     }
 
-    private func sttToDict(_ str: String) -> [String: Any] {
+    private nonisolated func sttToDict(_ str: String) -> [String: Any] {
         var result: [String: Any] = [:]
         for field in str.split(separator: "/") {
             if field.isEmpty { continue }
@@ -369,31 +363,27 @@ final class LiveDanmakuService: ObservableObject {
             }
         }
         task = Task { [weak self] in
-            await self?.receiveLoopHuya()
+            await self?.receiveLoopHuya(ws: ws)
         }
         statusText = "弹幕已连接"
     }
 
-    private func receiveLoopHuya() async {
+    private nonisolated func receiveLoopHuya(ws: URLSessionWebSocketTask) async {
         while !Task.isCancelled {
-            guard let ws = webSocket else { break }
             do {
                 let msg = try await ws.receive()
+                let data: Data
                 switch msg {
-                case .data(let data):
-                    for chat in LiveTars.parseHuyaPush(data) {
-                        append(LiveChatMessage(userName: chat.userName, text: chat.content, colorHex: chat.color))
-                    }
-                case .string(let s):
-                    for chat in LiveTars.parseHuyaPush(Data(s.utf8)) {
-                        append(LiveChatMessage(userName: chat.userName, text: chat.content, colorHex: chat.color))
-                    }
-                @unknown default: break
+                case .data(let d): data = d
+                case .string(let s): data = Data(s.utf8)
+                @unknown default: continue
                 }
+                let chats = LiveTars.parseHuyaPush(data).map {
+                    LiveChatMessage(userName: $0.userName, text: $0.content, colorHex: $0.color)
+                }
+                if !chats.isEmpty { await append(chats) }
             } catch {
-                if !Task.isCancelled { statusText = "弹幕断开" }
-                heartbeat?.cancel()
-                heartbeat = nil
+                await connectionDropped()
                 break
             }
         }
@@ -447,7 +437,7 @@ final class LiveDanmakuService: ObservableObject {
             URLQueryItem(name: "heartbeatDuration", value: "0")
         ]
         var urlString = comps.url?.absoluteString ?? ""
-        if let sig = try? LiveJSEngine.shared.douyinMSSDKSignature(roomId: roomId, userUniqueId: userId) {
+        if let sig = try? await LiveJSEngine.shared.douyinMSSDKSignature(roomId: roomId, userUniqueId: userId) {
             urlString += (urlString.contains("?") ? "&" : "?") + "signature=\(sig)"
         }
         guard let url = URL(string: urlString) else {
@@ -479,14 +469,13 @@ final class LiveDanmakuService: ObservableObject {
             }
         }
         task = Task { [weak self] in
-            await self?.receiveLoopDouyin()
+            await self?.receiveLoopDouyin(ws: ws)
         }
         statusText = "弹幕已连接"
     }
 
-    private func receiveLoopDouyin() async {
+    private nonisolated func receiveLoopDouyin(ws: URLSessionWebSocketTask) async {
         while !Task.isCancelled {
-            guard let ws = webSocket else { break }
             do {
                 let msg = try await ws.receive()
                 let data: Data
@@ -498,25 +487,24 @@ final class LiveDanmakuService: ObservableObject {
                 let decoded = LiveProtoWire.decodeDouyinChats(fromPushFrameData: data)
                 if decoded.needAck {
                     let ackPayload = Data(decoded.internalExt.utf8)
-                    sendBinary(LiveProtoWire.pushFrame(
+                    ws.send(.data(LiveProtoWire.pushFrame(
                         payloadType: "ack",
                         logId: decoded.logId,
                         payload: ackPayload
-                    ))
+                    ))) { _ in }
                 }
-                for chat in decoded.chats {
-                    append(LiveChatMessage(userName: chat.userName, text: chat.content, colorHex: 0xFFFFFF))
+                let chats = decoded.chats.map {
+                    LiveChatMessage(userName: $0.userName, text: $0.content, colorHex: 0xFFFFFF)
                 }
+                if !chats.isEmpty { await append(chats) }
             } catch {
-                if !Task.isCancelled { statusText = "弹幕断开" }
-                heartbeat?.cancel()
-                heartbeat = nil
+                await connectionDropped()
                 break
             }
         }
     }
 
-    private func randomDigits(_ n: Int) -> String {
+    private nonisolated func randomDigits(_ n: Int) -> String {
         String((0..<n).map { _ in String(Int.random(in: 0...9)) }.joined())
     }
 
@@ -579,21 +567,20 @@ final class LiveDanmakuService: ObservableObject {
             }
         }
         task = Task { [weak self] in
-            await self?.receiveLoopKuaishou()
+            await self?.receiveLoopKuaishou(ws: ws)
         }
         statusText = "弹幕已连接"
     }
 
-    private func ksSocketMessage(payloadType: Int, payload: Data) -> Data {
+    private nonisolated func ksSocketMessage(payloadType: Int, payload: Data) -> Data {
         var d = Data()
         d.append(LiveProtoWire.encodeVarintField(UInt64(payloadType), field: 1))
         d.append(LiveProtoWire.encodeBytes(payload, field: 3))
         return d
     }
 
-    private func receiveLoopKuaishou() async {
+    private nonisolated func receiveLoopKuaishou(ws: URLSessionWebSocketTask) async {
         while !Task.isCancelled {
-            guard let ws = webSocket else { break }
             do {
                 let msg = try await ws.receive()
                 let data: Data
@@ -602,25 +589,25 @@ final class LiveDanmakuService: ObservableObject {
                 case .string(let s): data = Data(s.utf8)
                 @unknown default: continue
                 }
-                handleKuaishouPacket(data)
+                let result = parseKuaishouPacket(data)
+                if let status = result.status { await setStatus(status) }
+                if !result.chats.isEmpty { await append(result.chats) }
             } catch {
-                if !Task.isCancelled { statusText = "弹幕断开" }
-                heartbeat?.cancel()
-                heartbeat = nil
+                await connectionDropped()
                 break
             }
         }
     }
 
-    private func handleKuaishouPacket(_ data: Data) {
+    private nonisolated func parseKuaishouPacket(_ data: Data) -> (status: String?, chats: [LiveChatMessage]) {
         let fields = LiveProtoWire.parseFields(data)
         let payloadType = Int(LiveProtoWire.varintField(fields, 1) ?? 0)
         let compressionType = Int(LiveProtoWire.varintField(fields, 2) ?? 0)
-        guard var payload = LiveProtoWire.bytesField(fields, 3), !payload.isEmpty else { return }
+        guard var payload = LiveProtoWire.bytesField(fields, 3), !payload.isEmpty else { return (nil, []) }
         if compressionType == 2 {
             payload = gunzipKS(payload) ?? payload
         } else if compressionType == 3 {
-            return // AES not supported
+            return (nil, []) // AES not supported
         }
         switch payloadType {
         case 103:
@@ -628,25 +615,28 @@ final class LiveDanmakuService: ObservableObject {
             let code = LiveProtoWire.varintField(errFields, 1) ?? 0
             let message = LiveProtoWire.stringField(errFields, 2) ?? ""
             if !message.isEmpty || code != 0 {
-                statusText = message.isEmpty ? "快手弹幕错误：\(code)" : "快手弹幕错误：\(message)"
+                return (message.isEmpty ? "快手弹幕错误：\(code)" : "快手弹幕错误：\(message)", [])
             }
+            return (nil, [])
         case 310:
-            decodeKSFeedPush(payload)
+            return (nil, decodeKSFeedPush(payload))
         default:
-            break
+            return (nil, [])
         }
     }
 
-    private func decodeKSFeedPush(_ payload: Data) {
+    private nonisolated func decodeKSFeedPush(_ payload: Data) -> [LiveChatMessage] {
         let fields = LiveProtoWire.parseFields(payload)
+        var chats: [LiveChatMessage] = []
         for f in fields where f.number == 5 && f.wire == 2 {
             if let chat = decodeKSComment(f.data) {
-                append(chat)
+                chats.append(chat)
             }
         }
+        return chats
     }
 
-    private func decodeKSComment(_ payload: Data) -> LiveChatMessage? {
+    private nonisolated func decodeKSComment(_ payload: Data) -> LiveChatMessage? {
         let fields = LiveProtoWire.parseFields(payload)
         var userName = ""
         var content = ""
@@ -675,7 +665,7 @@ final class LiveDanmakuService: ObservableObject {
         return LiveChatMessage(userName: userName, text: content, colorHex: color)
     }
 
-    private func gunzipKS(_ data: Data) -> Data? {
+    private nonisolated func gunzipKS(_ data: Data) -> Data? {
         // Reuse same approach as LiveProtoWire gzip inflate via Compression
         guard data.count > 10 else { return nil }
         return data.withUnsafeBytes { (src: UnsafeRawBufferPointer) -> Data? in
@@ -723,7 +713,7 @@ final class LiveDanmakuService: ObservableObject {
         }
     }
 
-    private func randomPageId() -> String {
+    private nonisolated func randomPageId() -> String {
         let chars = Array("useandom-26T198340PX75pxJACKVERYMINDBUSHWOLF_GQZbfghjklqvwyzrict")
         return String((0..<16).map { _ in chars.randomElement()! })
     }
@@ -737,11 +727,31 @@ final class LiveDanmakuService: ObservableObject {
         }
     }
 
+    private func append(_ msgs: [LiveChatMessage]) {
+        messages.append(contentsOf: msgs)
+        if messages.count > maxMessages {
+            messages.removeFirst(messages.count - maxMessages)
+        }
+    }
+
+    private func setStatus(_ text: String) {
+        statusText = text
+    }
+
+    /// Socket 已死时由接收循环调用。若循环所属 Task 已被取消，说明 stop() 已做过清理
+    /// （且可能已启动了新连接，新心跳不能被误杀）——此时什么都不做。
+    private func connectionDropped() {
+        guard !Task.isCancelled else { return }
+        statusText = "弹幕断开"
+        heartbeat?.cancel()
+        heartbeat = nil
+    }
+
     private func sendBinary(_ data: Data) {
         webSocket?.send(.data(data)) { _ in }
     }
 
-    private func readInt(_ data: Data, offset: Int, length: Int) -> Int {
+    private nonisolated func readInt(_ data: Data, offset: Int, length: Int) -> Int {
         guard offset + length <= data.count else { return 0 }
         var value = 0
         for i in 0..<length {
@@ -750,18 +760,18 @@ final class LiveDanmakuService: ObservableObject {
         return value
     }
 
-    private func bigEndian32(_ v: Int) -> Data {
+    private nonisolated func bigEndian32(_ v: Int) -> Data {
         // Clamp — UInt32(Int) traps on negative / overflow and can abort the process.
         var be = UInt32(clamping: v).bigEndian
         return Data(bytes: &be, count: 4)
     }
 
-    private func bigEndian16(_ v: Int) -> Data {
+    private nonisolated func bigEndian16(_ v: Int) -> Data {
         var be = UInt16(clamping: v).bigEndian
         return Data(bytes: &be, count: 2)
     }
 
-    private func zlibInflate(_ data: Data) -> Data? {
+    private nonisolated func zlibInflate(_ data: Data) -> Data? {
         // Strip zlib header if present and use Compression framework
         return data.withUnsafeBytes { (src: UnsafeRawBufferPointer) -> Data? in
             guard let base = src.baseAddress else { return nil }
@@ -784,7 +794,7 @@ final class LiveDanmakuService: ObservableObject {
         }
     }
 
-    private func brotliDecompress(_ data: Data) -> Data? {
+    private nonisolated func brotliDecompress(_ data: Data) -> Data? {
         // iOS Compression framework supports brotli from iOS 15+ as COMPRESSION_BROTLI
         return data.withUnsafeBytes { (src: UnsafeRawBufferPointer) -> Data? in
             guard let base = src.baseAddress else { return nil }

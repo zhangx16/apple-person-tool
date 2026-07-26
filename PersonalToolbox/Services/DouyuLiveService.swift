@@ -119,7 +119,7 @@ actor DouyuLiveService {
               let crptext = LiveJSON.object(encJSON["data"])?["room\(rid)"] as? String else {
             throw NetworkError.message("斗鱼签名脚本获取失败")
         }
-        let sign = try LiveJSEngine.shared.douyuSign(encryptedJS: crptext, roomId: rid)
+        let sign = try await LiveJSEngine.shared.douyuSign(encryptedJS: crptext, roomId: rid)
         let isLive = LiveJSON.int(room["show_status"]) == 1 && LiveJSON.int(room["videoLoop"]) != 1
         let hot = LiveJSON.int(LiveJSON.object(room["room_biz_all"])?["hot"])
         var category = LiveJSON.string(room["cate2_name"])

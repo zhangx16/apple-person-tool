@@ -86,6 +86,17 @@ struct SettingsView: View {
                             TGChannelSettingsPage()
                         }
                         plainLink(
+                            systemImage: "bell.badge.fill",
+                            title: "开播提醒",
+                            subtitle: settings.isLiveNotifyConfigured
+                                ? hostHint(settings.liveNotifyBaseURL)
+                                : "关注主播开播 → Telegram 推送",
+                            tint: .red,
+                            configured: settings.isLiveNotifyConfigured
+                        ) {
+                            LiveNotifySettingsPage()
+                        }
+                        plainLink(
                             systemImage: "terminal",
                             title: "SSH / Next Terminal",
                             subtitle: settings.nextTerminalURL.isEmpty ? "Web 终端 URL 可选" : hostHint(settings.nextTerminalURL),
@@ -763,6 +774,65 @@ struct TGChannelSettingsPage: View {
                 ServiceBrandTitle(brand: .tgChannel, title: "TG 片库")
             }
         }
+    }
+}
+
+struct LiveNotifySettingsPage: View {
+    @EnvironmentObject private var settings: AppSettings
+    @State private var syncResult: String?
+    @State private var isSyncing = false
+
+    var body: some View {
+        Form {
+            Section {
+                TextField("Base URL", text: $settings.liveNotifyBaseURL)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.URL)
+                SecureField("Token", text: $settings.liveNotifyToken)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .privacySensitive()
+            } header: {
+                Text("live-notify 服务")
+            } footer: {
+                Text("对应 VPS 上 /root/live-notify 的服务地址与 config.json 中 token。")
+            }
+
+            Section {
+                if let syncResult {
+                    Text(syncResult)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Button {
+                    isSyncing = true
+                    syncResult = nil
+                    Task {
+                        syncResult = await LiveFollowStore.shared.syncToNotifyServer()
+                        isSyncing = false
+                    }
+                } label: {
+                    HStack {
+                        if isSyncing { ProgressView().controlSize(.small) }
+                        Text(isSyncing ? "同步中…" : "立即同步关注列表")
+                    }
+                }
+                .disabled(isSyncing || !settings.isLiveNotifyConfigured)
+            } header: {
+                Text("关注同步")
+            } footer: {
+                Text("配置后关注/取关会自动同步；此按钮用于首次全量上报。")
+            }
+
+            Section("说明") {
+                Text("服务端每 2 分钟轮询关注主播的直播状态，开播时经 Telegram bot 推送（发 IPA 的那个 bot）。支持 B站 / 斗鱼 / 虎牙 / 抖音；快手需登录 Cookie 暂不支持。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .navigationTitle("开播提醒")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

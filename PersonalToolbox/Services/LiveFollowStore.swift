@@ -226,6 +226,66 @@ final class LiveFollowStore: ObservableObject {
     private func persist() {
         guard let data = try? JSONEncoder().encode(items) else { return }
         UserDefaults.standard.set(data, forKey: defaultsKey)
+        scheduleNotifySync()
+    }
+
+    // MARK: - 开播提醒同步（live-notify worker）
+
+    private static let notifySigKey = "liveNotify.lastSyncSignature"
+
+    /// 只看房间集合（平台+房间号），元数据刷新不触发重复同步。
+    private var roomSignature: String {
+        items.map { "\($0.platform.rawValue):\($0.roomId)" }.sorted().joined(separator: ",")
+    }
+
+    private var notifySyncTask: Task<Void, Never>?
+
+    private func scheduleNotifySync() {
+        guard AppSettings.shared.isLiveNotifyConfigured,
+              roomSignature != UserDefaults.standard.string(forKey: Self.notifySigKey) else { return }
+        notifySyncTask?.cancel()
+        notifySyncTask = Task { [weak self] in
+            // 连续关注/取关合并为一次上报
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            guard !Task.isCancelled else { return }
+            _ = await self?.syncToNotifyServer()
+        }
+    }
+
+    /// 上报关注列表到服务端。返回展示给用户的结果文本。
+    @discardableResult
+    func syncToNotifyServer() async -> String {
+        let settings = AppSettings.shared
+        let base = settings.liveNotifyBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let token = settings.liveNotifyToken.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !base.isEmpty, !token.isEmpty else { return "未配置开播提醒服务" }
+        guard let url = URL(string: "\(base)/follows") else { return "服务地址无效" }
+
+        let follows = items.map { item -> [String: String] in
+            ["platform": item.platform.rawValue, "roomId": item.roomId, "name": item.displayName]
+        }
+        let signature = roomSignature
+        var req = URLRequest(url: url)
+        req.httpMethod = "PUT"
+        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try? JSONSerialization.data(withJSONObject: ["follows": follows])
+        do {
+            let (data, resp) = try await URLSession.shared.data(for: req)
+            guard let http = resp as? HTTPURLResponse else { return "响应异常" }
+            guard http.statusCode == 200 else { return "同步失败：HTTP \(http.statusCode)" }
+            UserDefaults.standard.set(signature, forKey: Self.notifySigKey)
+            let obj = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+            let total = obj?["total"] as? Int ?? follows.count
+            let supported = obj?["supported"] as? Int ?? 0
+            if total == supported {
+                return "已同步 \(total) 个关注"
+            }
+            return "已同步 \(total) 个关注（\(supported) 个支持提醒，快手暂不支持）"
+        } catch {
+            return "同步失败：\(error.localizedDescription)"
+        }
     }
 }
 

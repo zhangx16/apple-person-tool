@@ -86,6 +86,17 @@ final class AppSettings: ObservableObject {
         didSet { KeychainStore.set(tgChannelToken, for: Keys.tgChannelToken) }
     }
 
+    // MARK: - 开播提醒 (live-notify)
+
+    /// live-notify worker 地址（nginx 反代路径，如 https://tg.996616.xyz/live-notify）。
+    @Published var liveNotifyBaseURL: String {
+        didSet { UserDefaults.standard.set(liveNotifyBaseURL, forKey: Keys.liveNotifyBaseURL) }
+    }
+    /// 服务端 config.json 里的 token。
+    @Published var liveNotifyToken: String {
+        didSet { KeychainStore.set(liveNotifyToken, for: Keys.liveNotifyToken) }
+    }
+
     // MARK: - Fast Note Sync (haierkeys/fast-note-sync-service)
 
     @Published var fastNoteBaseURL: String {
@@ -260,6 +271,8 @@ final class AppSettings: ObservableObject {
         static let checkinAPIToken = "checkinAPIToken"
         static let tgChannelBaseURL = "tgChannelBaseURL"
         static let tgChannelToken = "tgChannelToken"
+        static let liveNotifyBaseURL = "liveNotifyBaseURL"
+        static let liveNotifyToken = "liveNotifyToken"
         static let fastNoteBaseURL = "fastNoteBaseURL"
         static let fastNoteUsername = "fastNoteUsername"
         static let fastNotePassword = "fastNotePassword"
@@ -341,6 +354,8 @@ final class AppSettings: ObservableObject {
         checkinAPIToken = KeychainStore.get(Keys.checkinAPIToken) ?? ""
         tgChannelBaseURL = d.string(forKey: Keys.tgChannelBaseURL) ?? "https://tg.996616.xyz"
         tgChannelToken = KeychainStore.get(Keys.tgChannelToken) ?? ""
+        liveNotifyBaseURL = d.string(forKey: Keys.liveNotifyBaseURL) ?? "https://tg.996616.xyz/live-notify"
+        liveNotifyToken = KeychainStore.get(Keys.liveNotifyToken) ?? ""
         fastNoteBaseURL = d.string(forKey: Keys.fastNoteBaseURL) ?? "https://sync.996616.xyz"
         fastNoteUsername = d.string(forKey: Keys.fastNoteUsername) ?? ""
         fastNotePassword = KeychainStore.get(Keys.fastNotePassword) ?? ""
@@ -427,5 +442,10 @@ final class AppSettings: ObservableObject {
     var isTGChannelConfigured: Bool {
         !tgChannelBaseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !tgChannelToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var isLiveNotifyConfigured: Bool {
+        !liveNotifyBaseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !liveNotifyToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 }

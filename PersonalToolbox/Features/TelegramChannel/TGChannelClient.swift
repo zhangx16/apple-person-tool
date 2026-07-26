@@ -30,6 +30,7 @@ actor TGChannelClient {
         self.session = session
     }
 
+    @MainActor
     static func fromSettings(_ s: AppSettings) throws -> TGChannelClient {
         let base = s.tgChannelBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
         let token = s.tgChannelToken.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -65,7 +66,7 @@ actor TGChannelClient {
     }
 
     func triggerSync() async throws {
-        var req = try makeRequest(path: "/v1/sync", method: "POST")
+        let req = try makeRequest(path: "/v1/sync", method: "POST")
         let (data, resp) = try await session.data(for: req)
         try validate(resp, data: data)
     }
@@ -100,7 +101,7 @@ actor TGChannelClient {
     // MARK: - HTTP
 
     private func get<T: Decodable>(_ path: String, query: [URLQueryItem] = [], auth: Bool = true) async throws -> T {
-        var req = try makeRequest(path: path, method: "GET", query: query, auth: auth)
+        let req = try makeRequest(path: path, method: "GET", query: query, auth: auth)
         let (data, resp) = try await session.data(for: req)
         try validate(resp, data: data)
         do {

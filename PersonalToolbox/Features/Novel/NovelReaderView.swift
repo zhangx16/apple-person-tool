@@ -7,42 +7,54 @@ struct NovelReaderView: View {
 
     let book: NovelBook
     let chapters: [NovelChapter]
-    let initialChapter: NovelChapter
+    let initialIndex: Int
 
     @State private var chapterIndex: Int = 0
     @State private var content: String = ""
     @State private var isLoading = true
     @State private var error: String?
     @State private var fontSize: Double = UserDefaults.standard.object(forKey: "novel.reader.fontSize") as? Double ?? 19
-    @State private var theme: ReaderTheme = {
-        if let raw = UserDefaults.standard.string(forKey: "novel.reader.theme"),
-           let t = ReaderTheme(rawValue: raw) { return t }
-        return .sepia
-    }()
+    @State private var themeRaw: String = UserDefaults.standard.string(forKey: "novel.reader.theme") ?? ReaderTheme.sepia.rawValue
     @State private var showChrome = true
     @State private var showToc = false
 
+    private var theme: ReaderTheme {
+        ReaderTheme(rawValue: themeRaw) ?? .sepia
+    }
+
     private var source: BookSource? { sources.source(url: book.sourceURL) }
+
+    private var safeIndex: Int {
+        guard !chapters.isEmpty else { return 0 }
+        return min(max(0, chapterIndex), chapters.count - 1)
+    }
 
     var body: some View {
         NavigationStack {
             ZStack {
                 theme.background.ignoresSafeArea()
-                if isLoading {
+                if chapters.isEmpty {
+                    ContentUnavailableView("无章节", systemImage: "book.closed", description: Text("目录为空，无法阅读"))
+                } else if isLoading {
                     ProgressView("加载正文…")
                 } else if let error {
-                    ContentUnavailableView("加载失败", systemImage: "exclamationmark.triangle", description: Text(error))
+                    VStack(spacing: 12) {
+                        ContentUnavailableView("加载失败", systemImage: "exclamationmark.triangle", description: Text(error))
+                        Button("重试") { Task { await loadContent() } }
+                            .buttonStyle(.borderedProminent)
+                    }
                 } else {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 16) {
-                            Text(chapters[safe: chapterIndex]?.name ?? "")
+                            Text(chapters[safe: safeIndex]?.name ?? "")
                                 .font(.headline)
                                 .foregroundStyle(theme.secondary)
-                            Text(content)
+                            Text(content.isEmpty ? "（本章无正文）" : content)
                                 .font(.system(size: fontSize))
                                 .foregroundStyle(theme.foreground)
                                 .lineSpacing(fontSize * 0.45)
                                 .frame(maxWidth: .infinity, alignment: .leading)
+                                .textSelection(.enabled)
                         }
                         .padding(.horizontal, 20)
                         .padding(.vertical, 24)
@@ -51,7 +63,7 @@ struct NovelReaderView: View {
                 }
             }
             .safeAreaInset(edge: .bottom) {
-                if showChrome {
+                if showChrome, !chapters.isEmpty {
                     controlBar
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
@@ -75,22 +87,26 @@ struct NovelReaderView: View {
                     } label: {
                         Image(systemName: "list.bullet")
                     }
+                    .disabled(chapters.isEmpty)
                 }
             }
             .toolbar(showChrome ? .visible : .hidden, for: .navigationBar)
             .sheet(isPresented: $showToc) {
                 NavigationStack {
-                    List(Array(chapters.enumerated()), id: \.element.id) { i, ch in
-                        Button {
-                            chapterIndex = i
-                            showToc = false
-                            Task { await loadContent() }
-                        } label: {
-                            HStack {
-                                Text(ch.name)
-                                if i == chapterIndex {
-                                    Spacer()
-                                    Image(systemName: "checkmark")
+                    List {
+                        ForEach(Array(chapters.enumerated()), id: \.offset) { i, ch in
+                            Button {
+                                chapterIndex = i
+                                showToc = false
+                                Task { await loadContent() }
+                            } label: {
+                                HStack {
+                                    Text(ch.name)
+                                        .foregroundStyle(.primary)
+                                    if i == safeIndex {
+                                        Spacer()
+                                        Image(systemName: "checkmark")
+                                    }
                                 }
                             }
                         }
@@ -103,21 +119,24 @@ struct NovelReaderView: View {
                     }
                 }
                 .presentationDetents([.medium, .large])
+                .environment(sources)
+                .environment(shelf)
             }
         }
         .task {
-            if let i = chapters.firstIndex(where: { $0.id == initialChapter.id }) {
-                chapterIndex = i
-            } else {
-                chapterIndex = min(book.lastChapterIndex, max(0, chapters.count - 1))
+            if chapters.isEmpty {
+                isLoading = false
+                error = "目录为空"
+                return
             }
+            chapterIndex = min(max(0, initialIndex), chapters.count - 1)
             await loadContent()
         }
         .onChange(of: fontSize) { _, v in
             UserDefaults.standard.set(v, forKey: "novel.reader.fontSize")
         }
-        .onChange(of: theme) { _, v in
-            UserDefaults.standard.set(v.rawValue, forKey: "novel.reader.theme")
+        .onChange(of: themeRaw) { _, v in
+            UserDefaults.standard.set(v, forKey: "novel.reader.theme")
         }
     }
 
@@ -125,20 +144,20 @@ struct NovelReaderView: View {
         VStack(spacing: 10) {
             HStack {
                 Button {
-                    guard chapterIndex > 0 else { return }
-                    chapterIndex -= 1
+                    guard safeIndex > 0 else { return }
+                    chapterIndex = safeIndex - 1
                     Task { await loadContent() }
                 } label: {
                     Label("上一章", systemImage: "chevron.left")
                 }
-                .disabled(chapterIndex <= 0)
+                .disabled(safeIndex <= 0)
 
                 Spacer()
 
                 Menu {
-                    Picker("主题", selection: $theme) {
+                    Picker("主题", selection: $themeRaw) {
                         ForEach(ReaderTheme.allCases) { t in
-                            Text(t.title).tag(t)
+                            Text(t.title).tag(t.rawValue)
                         }
                     }
                     Slider(value: $fontSize, in: 14...30, step: 1) {
@@ -151,13 +170,13 @@ struct NovelReaderView: View {
                 Spacer()
 
                 Button {
-                    guard chapterIndex + 1 < chapters.count else { return }
-                    chapterIndex += 1
+                    guard safeIndex + 1 < chapters.count else { return }
+                    chapterIndex = safeIndex + 1
                     Task { await loadContent() }
                 } label: {
                     Label("下一章", systemImage: "chevron.right")
                 }
-                .disabled(chapterIndex + 1 >= chapters.count)
+                .disabled(safeIndex + 1 >= chapters.count)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
@@ -166,11 +185,15 @@ struct NovelReaderView: View {
     }
 
     private func loadContent() async {
-        guard chapters.indices.contains(chapterIndex) else { return }
+        guard chapters.indices.contains(safeIndex) else {
+            isLoading = false
+            error = "章节无效"
+            return
+        }
         isLoading = true
         error = nil
         defer { isLoading = false }
-        let ch = chapters[chapterIndex]
+        let ch = chapters[safeIndex]
         do {
             content = try await NovelBookService.content(
                 chapter: ch,
@@ -186,7 +209,8 @@ struct NovelReaderView: View {
     }
 
     private func persistProgress() {
-        shelf.updateProgress(bookID: book.id, chapterIndex: chapterIndex, offset: 0)
+        guard !chapters.isEmpty else { return }
+        shelf.updateProgress(bookID: book.id, chapterIndex: safeIndex, offset: 0)
     }
 }
 

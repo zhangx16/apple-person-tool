@@ -125,9 +125,22 @@ struct NovelBook: Codable, Identifiable, Hashable, Sendable {
 }
 
 struct NovelChapter: Identifiable, Hashable, Sendable {
-    var id: String { url.isEmpty ? name : url }
+    /// Stable unique id (must be unique within a TOC — empty href used to collide and crash ForEach).
+    var id: String
     var name: String
     var url: String
+
+    init(name: String, url: String, id: String? = nil) {
+        self.name = name
+        self.url = url
+        if let id, !id.isEmpty {
+            self.id = id
+        } else if !url.isEmpty {
+            self.id = url
+        } else {
+            self.id = "ch-\(name)"
+        }
+    }
 }
 
 struct NovelSearchHit: Identifiable, Hashable, Sendable {

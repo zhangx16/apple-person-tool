@@ -14,82 +14,80 @@ struct NovelSourceListView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    Toggle("仅显示可本地解析的源", isOn: $filterNativeOnly)
-                    Text("兼容开源阅读（Legado）JSON。含 JS 的源可导入但不会执行；默认已内置 XIU2 中可用的 CSS 源。")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                    LabeledContent("全部书源", value: "\(store.sources.count)")
-                    LabeledContent("可搜索（无 JS）", value: "\(store.nativeEnabledSources.count)")
-                }
+        List {
+            Section {
+                Toggle("仅显示可本地解析的源", isOn: $filterNativeOnly)
+                Text("兼容开源阅读（Legado）JSON。含 JS 的源可导入但不会执行；默认已内置可用 CSS 源。")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                LabeledContent("全部书源", value: "\(store.sources.count)")
+                LabeledContent("可搜索（无 JS）", value: "\(store.nativeEnabledSources.count)")
+            }
 
-                if display.isEmpty {
-                    ContentUnavailableView(
-                        "暂无可用书源",
-                        systemImage: "server.rack",
-                        description: Text("点右上角导入；或先关闭「仅显示可本地解析」查看已导入的 JS 源。")
-                    )
-                } else {
-                    Section("列表 \(display.count)") {
-                        ForEach(display) { source in
-                            HStack(alignment: .top, spacing: 10) {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(source.bookSourceName)
-                                        .font(.body.weight(.semibold))
-                                    Text(source.bookSourceUrl)
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                        .lineLimit(1)
-                                    HStack(spacing: 6) {
-                                        if source.supportsNativeEngine {
-                                            badge("CSS/JSON", .green)
-                                        } else {
-                                            badge("含 JS", .orange)
-                                        }
-                                        if let g = source.bookSourceGroup, !g.isEmpty {
-                                            badge(g, .secondary)
-                                        }
+            if display.isEmpty {
+                ContentUnavailableView(
+                    "暂无可用书源",
+                    systemImage: "server.rack",
+                    description: Text("点右上角导入；或先关闭「仅显示可本地解析」查看已导入的 JS 源。")
+                )
+            } else {
+                Section("列表 \(display.count)") {
+                    ForEach(display) { source in
+                        HStack(alignment: .top, spacing: 10) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(source.bookSourceName)
+                                    .font(.body.weight(.semibold))
+                                Text(source.bookSourceUrl)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                                HStack(spacing: 6) {
+                                    if source.supportsNativeEngine {
+                                        badge("CSS/JSON", .green)
+                                    } else {
+                                        badge("含 JS", .orange)
+                                    }
+                                    if let g = source.bookSourceGroup, !g.isEmpty {
+                                        badge(g, .secondary)
                                     }
                                 }
-                                Spacer()
-                                Toggle(
-                                    "",
-                                    isOn: Binding(
-                                        get: { source.enabled != false },
-                                        set: { store.setEnabled($0, for: source.bookSourceUrl) }
-                                    )
-                                )
-                                .labelsHidden()
                             }
-                            .swipeActions {
-                                Button(role: .destructive) {
-                                    store.delete(id: source.bookSourceUrl)
-                                } label: {
-                                    Label("删除", systemImage: "trash")
-                                }
+                            Spacer()
+                            Toggle(
+                                "",
+                                isOn: Binding(
+                                    get: { source.enabled != false },
+                                    set: { store.setEnabled($0, for: source.bookSourceUrl) }
+                                )
+                            )
+                            .labelsHidden()
+                        }
+                        .swipeActions {
+                            Button(role: .destructive) {
+                                store.delete(id: source.bookSourceUrl)
+                            } label: {
+                                Label("删除", systemImage: "trash")
                             }
                         }
                     }
                 }
             }
-            .navigationTitle("书源")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showImport = true
-                    } label: {
-                        Image(systemName: "plus.circle")
-                    }
-                    .accessibilityLabel("导入书源")
-                }
-            }
-            .sheet(isPresented: $showImport) {
-                NovelSourceImportView()
-            }
-            .onAppear { store.load() }
         }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showImport = true
+                } label: {
+                    Image(systemName: "plus.circle")
+                }
+                .accessibilityLabel("导入书源")
+            }
+        }
+        .sheet(isPresented: $showImport) {
+            NovelSourceImportView()
+                .environment(store)
+        }
+        .onAppear { store.load() }
     }
 
     private func badge(_ text: String, _ color: Color) -> some View {
@@ -194,7 +192,7 @@ struct NovelSourceImportView: View {
                 }
 
                 Section {
-                    Text("书源格式见 [开源阅读文档](https://gedoor.github.io/)。本引擎：CSS / JSONPath / `##` 替换；不执行 JS。")
+                    Text("书源格式见开源阅读文档。本引擎：CSS / JSONPath / `##` 替换；不执行 JS。")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

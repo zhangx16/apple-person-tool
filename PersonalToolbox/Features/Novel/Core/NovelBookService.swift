@@ -102,14 +102,24 @@ enum NovelBookService {
             throw NovelError.noChapters
         }
         let frags = LegadoRuleEngine.getList(rule: listRule, in: html)
-        let chapters: [NovelChapter] = frags.compactMap { frag in
+        var chapters: [NovelChapter] = []
+        chapters.reserveCapacity(frags.count)
+        var seenIDs = Set<String>()
+        for (idx, frag) in frags.enumerated() {
             let name = LegadoRuleEngine.getString(rule: toc.chapterName, in: frag, baseURL: base)
-            let url = LegadoRuleEngine.getString(rule: toc.chapterUrl, in: frag, baseURL: base)
-            guard !name.isEmpty else { return nil }
+            var url = LegadoRuleEngine.getString(rule: toc.chapterUrl, in: frag, baseURL: base)
+            guard !name.isEmpty else { continue }
             // Skip nav junk (page jump / empty anchors)
-            if name.contains("↓") || name.contains("直达") || name.contains("顶部") { return nil }
-            if url.hasPrefix("#") { return nil }
-            return NovelChapter(name: name, url: url.isEmpty ? book.bookURL : url)
+            if name.contains("↓") || name.contains("直达") || name.contains("顶部") { continue }
+            if url.hasPrefix("#") { continue }
+            if url.isEmpty { url = book.bookURL }
+            // Always unique — duplicate hrefs were crashing SwiftUI ForEach / fullScreenCover(item:).
+            var cid = "\(idx)|\(url)"
+            if seenIDs.contains(cid) {
+                cid = "\(idx)|\(url)|\(name)"
+            }
+            seenIDs.insert(cid)
+            chapters.append(NovelChapter(name: name, url: url, id: cid))
         }
         if chapters.isEmpty { throw NovelError.noChapters }
         return chapters
@@ -153,6 +163,7 @@ enum NovelBookService {
     }
 
     /// Legado `replaceRegex`: `##regex##replacement` chained pairs (replacement may be empty).
+    /// Invalid `$` templates can raise ObjC exceptions — always absorb.
     private static func applyLegadoReplaceRegex(_ rule: String, to text: String) -> String {
         var result = text
         var tokens = rule.components(separatedBy: "##")
@@ -160,11 +171,15 @@ enum NovelBookService {
         var i = 0
         while i < tokens.count {
             let pattern = tokens[i]
-            let repl = (i + 1 < tokens.count) ? tokens[i + 1] : ""
+            // Escape `$` in replacement so NSRegularExpression won't throw on bad templates.
+            let replRaw = (i + 1 < tokens.count) ? tokens[i + 1] : ""
+            let repl = replRaw.replacingOccurrences(of: "$", with: "$$")
             if !pattern.isEmpty,
                let regex = try? NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators]) {
                 let range = NSRange(result.startIndex..., in: result)
-                result = regex.stringByReplacingMatches(in: result, range: range, withTemplate: repl)
+                if range.location != NSNotFound, range.length <= (result as NSString).length {
+                    result = regex.stringByReplacingMatches(in: result, range: range, withTemplate: repl)
+                }
             }
             i += 2
         }
@@ -175,14 +190,14 @@ enum NovelBookService {
 
     static func localChapters(book: NovelBook) -> [NovelChapter] {
         guard let text = NovelShelfStore.shared.localText(for: book) else {
-            return [NovelChapter(name: "全文", url: "local:0")]
+            return [NovelChapter(name: "全文", url: "local:0", id: "local:0")]
         }
         let parts = splitChapters(text)
         if parts.count <= 1 {
-            return [NovelChapter(name: "全文", url: "local:0")]
+            return [NovelChapter(name: "全文", url: "local:0", id: "local:0")]
         }
         return parts.enumerated().map { i, part in
-            NovelChapter(name: part.title, url: "local:\(i)")
+            NovelChapter(name: part.title, url: "local:\(i)", id: "local:\(i)")
         }
     }
 

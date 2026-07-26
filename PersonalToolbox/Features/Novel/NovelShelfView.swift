@@ -2,58 +2,57 @@ import SwiftUI
 
 struct NovelShelfView: View {
     @Environment(NovelShelfStore.self) private var shelf
+    @Binding var path: NavigationPath
+    var onOpenSources: (() -> Void)?
+
     @State private var showLocalImport = false
-    @State private var path = NavigationPath()
 
     var body: some View {
-        NavigationStack(path: $path) {
-            Group {
-                if shelf.books.isEmpty {
-                    ContentUnavailableView {
-                        Label("书架是空的", systemImage: "books.vertical")
-                    } description: {
-                        Text("从「搜索」用书源找书，或导入本地 TXT。\n书源格式兼容开源阅读（Legado）。")
-                    } actions: {
-                        Button("导入本地 TXT") { showLocalImport = true }
-                        Button("去书源管理") { /* parent tab */ }
+        Group {
+            if shelf.books.isEmpty {
+                ContentUnavailableView {
+                    Label("书架是空的", systemImage: "books.vertical")
+                } description: {
+                    Text("从「搜索」用书源找书，或导入本地 TXT。\n书源格式兼容开源阅读（Legado）。")
+                } actions: {
+                    Button("导入本地 TXT") { showLocalImport = true }
+                    if let onOpenSources {
+                        Button("去书源管理", action: onOpenSources)
                     }
-                } else {
-                    List {
-                        ForEach(shelf.books) { book in
-                            NavigationLink(value: book) {
-                                NovelBookRow(book: book)
-                            }
-                        }
-                        .onDelete { indexSet in
-                            for i in indexSet {
-                                shelf.remove(bookID: shelf.books[i].id)
-                            }
+                }
+            } else {
+                List {
+                    ForEach(shelf.books) { book in
+                        NavigationLink(value: book) {
+                            NovelBookRow(book: book)
                         }
                     }
-                    .listStyle(.plain)
-                }
-            }
-            .navigationTitle("书架")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showLocalImport = true
-                    } label: {
-                        Image(systemName: "doc.badge.plus")
+                    .onDelete { indexSet in
+                        for i in indexSet {
+                            shelf.remove(bookID: shelf.books[i].id)
+                        }
                     }
-                    .accessibilityLabel("导入本地 TXT")
                 }
+                .listStyle(.plain)
             }
-            .navigationDestination(for: NovelBook.self) { book in
-                NovelDetailView(book: book)
-            }
-            .sheet(isPresented: $showLocalImport) {
-                NovelLocalImportView { book in
-                    path.append(book)
-                }
-            }
-            .onAppear { shelf.load() }
         }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showLocalImport = true
+                } label: {
+                    Image(systemName: "doc.badge.plus")
+                }
+                .accessibilityLabel("导入本地 TXT")
+            }
+        }
+        .sheet(isPresented: $showLocalImport) {
+            NovelLocalImportView { book in
+                path.append(book)
+            }
+            .environment(shelf)
+        }
+        .onAppear { shelf.load() }
     }
 }
 

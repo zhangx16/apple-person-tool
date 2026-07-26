@@ -372,9 +372,15 @@ enum LegadoRuleEngine {
         guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else {
             return []
         }
+        // Cap work on pathological pages (very large HTML) to avoid UI freezes / memory spikes.
         let ns = html as NSString
-        let matches = regex.matches(in: html, range: NSRange(location: 0, length: ns.length))
-        return matches.map { ns.substring(with: $0.range) }
+        let length = min(ns.length, 2_500_000)
+        let matches = regex.matches(in: html, range: NSRange(location: 0, length: length))
+        let limit = 8_000
+        if matches.count <= limit {
+            return matches.map { ns.substring(with: $0.range) }
+        }
+        return matches.prefix(limit).map { ns.substring(with: $0.range) }
     }
 
     private static func attribute(_ name: String, of elementHTML: String) -> String {

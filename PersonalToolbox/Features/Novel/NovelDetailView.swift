@@ -8,7 +8,8 @@ struct NovelDetailView: View {
     @State private var chapters: [NovelChapter] = []
     @State private var error: String?
     @State private var isLoading = true
-    @State private var readerChapter: NovelChapter?
+    @State private var showReader = false
+    @State private var readerStartIndex: Int = 0
 
     private var liveBook: NovelBook {
         shelf.books.first(where: { $0.id == book.id }) ?? book
@@ -20,7 +21,7 @@ struct NovelDetailView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(liveBook.name)
                         .font(.title3.weight(.bold))
-                    Text(liveBook.author)
+                    Text(liveBook.author.isEmpty ? "未知作者" : liveBook.author)
                         .foregroundStyle(.secondary)
                     if let intro = liveBook.intro, !intro.isEmpty {
                         Text(intro)
@@ -35,13 +36,9 @@ struct NovelDetailView: View {
 
                 if !chapters.isEmpty {
                     Button {
-                        let idx = min(liveBook.lastChapterIndex, max(0, chapters.count - 1))
-                        readerChapter = chapters[idx]
+                        openReader(at: clampedProgressIndex)
                     } label: {
-                        Label(
-                            liveBook.lastReadAt == nil ? "开始阅读" : "继续阅读 · \(chapters[safe: liveBook.lastChapterIndex]?.name ?? "")",
-                            systemImage: "book"
-                        )
+                        Label(continueLabel, systemImage: "book")
                     }
                 }
             }
@@ -61,12 +58,17 @@ struct NovelDetailView: View {
                         .foregroundStyle(.orange)
                     Button("重试") { Task { await loadChapters() } }
                 }
+            } else if chapters.isEmpty {
+                Section {
+                    Text("暂无章节")
+                        .foregroundStyle(.secondary)
+                }
             } else {
                 Section("目录 \(chapters.count) 章") {
-                    ForEach(Array(chapters.enumerated()), id: \.element.id) { index, ch in
+                    // Use index as identity — never rely on chapter.url uniqueness alone.
+                    ForEach(Array(chapters.enumerated()), id: \.offset) { index, ch in
                         Button {
-                            readerChapter = ch
-                            shelf.updateProgress(bookID: book.id, chapterIndex: index, offset: 0)
+                            openReader(at: index)
                         } label: {
                             HStack {
                                 Text(ch.name)
@@ -87,13 +89,36 @@ struct NovelDetailView: View {
         .navigationTitle("详情")
         .navigationBarTitleDisplayMode(.inline)
         .task { await loadChapters() }
-        .fullScreenCover(item: $readerChapter) { ch in
+        .fullScreenCover(isPresented: $showReader) {
+            // Re-inject environment: fullScreenCover can drop @Observable environments.
             NovelReaderView(
                 book: liveBook,
                 chapters: chapters,
-                initialChapter: ch
+                initialIndex: readerStartIndex
             )
+            .environment(sources)
+            .environment(shelf)
         }
+    }
+
+    private var clampedProgressIndex: Int {
+        guard !chapters.isEmpty else { return 0 }
+        return min(max(0, liveBook.lastChapterIndex), chapters.count - 1)
+    }
+
+    private var continueLabel: String {
+        if liveBook.lastReadAt == nil {
+            return "开始阅读"
+        }
+        let name = chapters[safe: clampedProgressIndex]?.name ?? ""
+        return name.isEmpty ? "继续阅读" : "继续阅读 · \(name)"
+    }
+
+    private func openReader(at index: Int) {
+        guard chapters.indices.contains(index) else { return }
+        readerStartIndex = index
+        shelf.updateProgress(bookID: book.id, chapterIndex: index, offset: 0)
+        showReader = true
     }
 
     private func loadChapters() async {
@@ -102,7 +127,8 @@ struct NovelDetailView: View {
         defer { isLoading = false }
         do {
             let source = sources.source(url: book.sourceURL)
-            chapters = try await NovelBookService.chapters(for: book, source: source)
+            let list = try await NovelBookService.chapters(for: book, source: source)
+            chapters = list
         } catch {
             self.error = error.localizedDescription
             chapters = []

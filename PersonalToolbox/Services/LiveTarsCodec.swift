@@ -111,6 +111,10 @@ enum LiveTars {
 
         var isEOF: Bool { pos >= data.count }
 
+        /// Bounds check before any fixed-width read — untrusted network data must never
+        /// be able to drive `pos` past `data.count` and trap `subdata(in:)`.
+        private func hasRemaining(_ n: Int) -> Bool { n >= 0 && pos + n <= data.count }
+
         func peekHead() -> (tag: Int, type: TagType)? {
             guard pos < data.count else { return nil }
             let b = data[pos]
@@ -156,7 +160,8 @@ enum LiveTars {
                 guard pos < data.count else { return }
                 let len = Int(data[pos]); pos += 1 + len
             case .string4:
-                let len = Int(readUInt32BE()); pos += len
+                guard let len = readUInt32BE() else { pos = data.count; return }
+                pos = min(pos + Int(len), data.count)
             case .structBegin:
                 while let h = peekHead() {
                     if h.type == .structEnd {
@@ -186,14 +191,18 @@ enum LiveTars {
             switch head.type {
             case .zero: return 0
             case .int1:
+                guard hasRemaining(1) else { return nil }
                 let v = Int8(bitPattern: data[pos]); pos += 1; return Int64(v)
             case .int2:
+                guard hasRemaining(2) else { return nil }
                 let v = Int16(bigEndian: data.subdata(in: pos..<(pos+2)).withUnsafeBytes { $0.load(as: Int16.self) })
                 pos += 2; return Int64(v)
             case .int4:
+                guard hasRemaining(4) else { return nil }
                 let v = Int32(bigEndian: data.subdata(in: pos..<(pos+4)).withUnsafeBytes { $0.load(as: Int32.self) })
                 pos += 4; return Int64(v)
             case .int8:
+                guard hasRemaining(8) else { return nil }
                 let v = Int64(bigEndian: data.subdata(in: pos..<(pos+8)).withUnsafeBytes { $0.load(as: Int64.self) })
                 pos += 8; return v
             default:
@@ -211,14 +220,18 @@ enum LiveTars {
             switch head.type {
             case .zero: return 0
             case .int1:
+                guard hasRemaining(1) else { return required ? 0 : nil }
                 let v = Int8(bitPattern: data[pos]); pos += 1; return Int64(v)
             case .int2:
+                guard hasRemaining(2) else { return required ? 0 : nil }
                 let v = Int16(bigEndian: data.subdata(in: pos..<(pos+2)).withUnsafeBytes { $0.load(as: Int16.self) })
                 pos += 2; return Int64(v)
             case .int4:
+                guard hasRemaining(4) else { return required ? 0 : nil }
                 let v = Int32(bigEndian: data.subdata(in: pos..<(pos+4)).withUnsafeBytes { $0.load(as: Int32.self) })
                 pos += 4; return Int64(v)
             case .int8:
+                guard hasRemaining(8) else { return required ? 0 : nil }
                 let v = Int64(bigEndian: data.subdata(in: pos..<(pos+8)).withUnsafeBytes { $0.load(as: Int64.self) })
                 pos += 8; return v
             default:
@@ -232,12 +245,15 @@ enum LiveTars {
             _ = skipHead()
             switch head.type {
             case .string1:
+                guard hasRemaining(1) else { pos = data.count; return nil }
                 let len = Int(data[pos]); pos += 1
+                guard hasRemaining(len) else { pos = data.count; return nil }
                 let s = String(data: data.subdata(in: pos..<(pos+len)), encoding: .utf8)
                 pos += len
                 return s
             case .string4:
-                let len = Int(readUInt32BE())
+                guard let len32 = readUInt32BE(), hasRemaining(Int(len32)) else { pos = data.count; return nil }
+                let len = Int(len32)
                 let s = String(data: data.subdata(in: pos..<(pos+len)), encoding: .utf8)
                 pos += len
                 return s
@@ -255,7 +271,7 @@ enum LiveTars {
             if head.type == .simpleList {
                 _ = skipHead() // elem type
                 let len = Int(readInt(tag: 0) ?? 0)
-                guard pos + len <= data.count else { return nil }
+                guard hasRemaining(len) else { return nil }
                 let d = data.subdata(in: pos..<(pos+len))
                 pos += len
                 return d
@@ -309,7 +325,8 @@ enum LiveTars {
             return false
         }
 
-        private func readUInt32BE() -> UInt32 {
+        private func readUInt32BE() -> UInt32? {
+            guard hasRemaining(4) else { return nil }
             let v = data.subdata(in: pos..<(pos+4)).withUnsafeBytes { $0.load(as: UInt32.self) }.bigEndian
             pos += 4
             return v
@@ -422,7 +439,9 @@ enum LiveTars {
                 break
             }
             if head.tag == 0 {
-                color = UInt32(msg.readInt(tag: 0) ?? 0xFFFFFF)
+                // Color arrives as a signed Tars int; reinterpret bits rather than
+                // convert, since negative values (high bit set) would trap UInt32.init.
+                color = UInt32(bitPattern: Int32(truncatingIfNeeded: msg.readInt(tag: 0) ?? 0xFFFFFF))
             } else {
                 msg.skipField()
             }

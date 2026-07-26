@@ -1034,7 +1034,7 @@ struct KuaishouLiveSettingsPage: View {
                 .buttonStyle(PressableButtonStyle())
                 .disabled(viewModel.kuaishouCookieProbe.isProbing)
             } footer: {
-                Text("快手没有独立的登录态查询接口，此检测用当前 Cookie 拉取推荐房间列表，确认未被风控拒绝。")
+                Text("取一个正在直播的房间，走与实际连接弹幕完全相同的 token 获取路径——比单纯拉列表更准确，能反映 Cookie 是否真的能建立弹幕连接。")
             }
             Section("说明") {
                 Text("不配置 Cookie 也可看直播；仅弹幕连接可能提示凭证无效。")

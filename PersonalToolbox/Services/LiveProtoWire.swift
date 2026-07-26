@@ -83,6 +83,9 @@ enum LiveProtoWire {
             case 2:
                 guard let (len64, lenLen) = readVarint(data, at: i) else { return fields }
                 i += lenLen
+                // A corrupted/adversarial varint can encode a value beyond Int.max —
+                // Int(len64) would trap before the bounds check below runs.
+                guard len64 <= UInt64(Int.max) else { return fields }
                 let len = Int(len64)
                 guard i + len <= data.count else { return fields }
                 fields.append(Field(number: field, wire: wire, data: data.subdata(in: i..<(i+len)), varint: 0))

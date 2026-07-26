@@ -320,10 +320,10 @@ final class SettingsViewModel: ObservableObject {
         kuaishouCookieProbe = .probing
         let start = ContinuousClock.now
         do {
-            let rooms = try await kuaishouLive.getRecommendRooms(page: 1)
+            let detail = try await kuaishouLive.probeDanmakuAccess()
             kuaishouCookieProbe = .success(
                 latencyMs: elapsedMs(since: start),
-                detail: "Cookie 未被拒绝 · 拉到 \(rooms.count) 个房间"
+                detail: detail
             )
             Haptics.success()
         } catch {

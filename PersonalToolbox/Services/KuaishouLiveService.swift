@@ -202,6 +202,24 @@ actor KuaishouLiveService {
         return items
     }
 
+    /// Cookie 弹幕可用性探测：取一个当前真实开播的房间，走与 `connectKuaishou`
+    /// 完全相同的 token 获取路径。房间列表本身多数匿名可拉，不能反映 Cookie
+    /// 是否有效——真正门槛在 `danmakuJSON` 里的 token/websocketUrls 是否非空。
+    func probeDanmakuAccess() async throws -> String {
+        let rooms = try await getRecommendRooms(page: 1)
+        guard let room = rooms.first else {
+            throw NetworkError.message("暂无正在直播的房间可测试")
+        }
+        let detail = try await getRoomDetail(roomId: room.roomId)
+        let ctx = LiveJSON.decodeObject(detail.danmakuJSON)
+        let token = LiveJSON.string(ctx["token"])
+        let urls = (ctx["websocketUrls"] as? [Any])?.compactMap { LiveJSON.string($0) }.filter { !$0.isEmpty } ?? []
+        guard !token.isEmpty, !urls.isEmpty else {
+            throw NetworkError.message("未获取到弹幕 token，Cookie 可能已过期或未生效")
+        }
+        return "弹幕 token 获取成功 · \(room.title)"
+    }
+
     private func hotList() async throws -> [LiveRoomItem] {
         let json = try await getJSON(
             "https://live.kuaishou.com/live_api/hot/list?page=1",

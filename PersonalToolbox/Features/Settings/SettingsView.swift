@@ -324,6 +324,25 @@ struct SettingsView: View {
                     .frame(maxWidth: .infinity)
                 }
             }
+            Divider()
+            Button {
+                Task { await viewModel.runAllChecks() }
+            } label: {
+                HStack {
+                    if viewModel.isRunningAllChecks {
+                        ProgressView().controlSize(.small)
+                    }
+                    Text(viewModel.isRunningAllChecks ? "体检中…" : "全部体检")
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(PressableButtonStyle())
+            .disabled(viewModel.isRunningAllChecks)
+            if let summary = viewModel.allChecksSummary {
+                Text(summary)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .appCardV2()
     }

@@ -2,7 +2,11 @@ import Foundation
 
 /// 快手直播 — 移植自 SimpleLive master `kuaishou_site.dart`（晚于 v1.12.6 合入）。
 actor KuaishouLiveService {
-    static let shared = KuaishouLiveService()
+    static let shared = KuaishouLiveService(
+        credentialProvider: {
+            await MainActor.run { (AppSettings.shared.kuaishouCookie, AppSettings.shared.kuaishouKww) }
+        }
+    )
 
     private let ua =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -14,17 +18,23 @@ actor KuaishouLiveService {
     private var bootstrapped = false
     /// roomId → playContextJSON 缓存（列表页常自带 playUrls，进房可秒开）
     private var playCache: [String: String] = [:]
+    /// How to fetch the user's cookie/Kww. Injected instead of reaching into
+    /// `AppSettings.shared` directly, so this actor can be unit-tested in isolation
+    /// (and so the coupling to the settings singleton is explicit, not implicit).
+    private let credentialProvider: @Sendable () async -> (cookie: String, kww: String)
 
     private static let imageExts: Set<String> = [
         "png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "avif", "ico", "tif", "tiff"
     ]
 
+    init(credentialProvider: @escaping @Sendable () async -> (cookie: String, kww: String)) {
+        self.credentialProvider = credentialProvider
+    }
+
     private func syncUserCredentials() async {
-        let pair = await MainActor.run {
-            (AppSettings.shared.kuaishouCookie, AppSettings.shared.kuaishouKww)
-        }
-        customCookie = pair.0.trimmingCharacters(in: .whitespacesAndNewlines)
-        customKww = pair.1.trimmingCharacters(in: .whitespacesAndNewlines)
+        let pair = await credentialProvider()
+        customCookie = pair.cookie.trimmingCharacters(in: .whitespacesAndNewlines)
+        customKww = pair.kww.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func ensureSession() async {

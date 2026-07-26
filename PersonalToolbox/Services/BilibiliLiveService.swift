@@ -38,7 +38,18 @@ enum LiveBilibiliIDs {
 /// - Play URLs: format=0,2 codec=**0 only** (AVC/H.264) — HEVC (codec=1) crashes many LibVLC builds
 /// - Stream headers: Referer + User-Agent only (no Cookie on CDN)
 actor BilibiliLiveService {
-    static let shared = BilibiliLiveService()
+    static let shared = BilibiliLiveService(
+        credentialProvider: { await MainActor.run { AppSettings.shared.bilibiliCookie } }
+    )
+
+    /// How to fetch the user's Cookie. Injected instead of reaching into
+    /// `AppSettings.shared` directly, so this actor can be unit-tested in isolation
+    /// (and so the coupling to the settings singleton is explicit, not implicit).
+    private let credentialProvider: @Sendable () async -> String
+
+    init(credentialProvider: @escaping @Sendable () async -> String) {
+        self.credentialProvider = credentialProvider
+    }
 
     private let ua =
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 Edg/126.0.0.0"
@@ -62,8 +73,7 @@ actor BilibiliLiveService {
     /// 用户设置的 Cookie（App 设置 → B站下载）。Cookie 存 Keychain，经 AppSettings 读取。
     private var userCookie: String {
         get async {
-            await MainActor.run { AppSettings.shared.bilibiliCookie }
-                .trimmingCharacters(in: .whitespacesAndNewlines)
+            await credentialProvider().trimmingCharacters(in: .whitespacesAndNewlines)
         }
     }
 

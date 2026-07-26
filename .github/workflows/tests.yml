@@ -1,0 +1,134 @@
+name: Unit Tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "DESIGN*"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Run unit tests
+    runs-on: macos-15
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select newest Xcode
+        run: |
+          set -euo pipefail
+          echo "Available Xcode apps:"
+          ls /Applications | grep -i xcode || true
+          SELECTED=""
+          for app in \
+            /Applications/Xcode_26.6.app \
+            /Applications/Xcode_26.5.app \
+            /Applications/Xcode_26.4.app \
+            /Applications/Xcode_26.3.app \
+            /Applications/Xcode_26.2.app \
+            /Applications/Xcode_26.1.app \
+            /Applications/Xcode_26.0.app \
+            /Applications/Xcode_26.app \
+            /Applications/Xcode_16.4.app \
+            /Applications/Xcode_16.3.app \
+            /Applications/Xcode_16.2.app \
+            /Applications/Xcode_16.1.app \
+            /Applications/Xcode_16.0.app \
+            /Applications/Xcode_16.app \
+            /Applications/Xcode_15.4.app \
+            /Applications/Xcode.app
+          do
+            if [ -d "$app/Contents/Developer" ]; then
+              SELECTED="$app"
+              break
+            fi
+          done
+          if [ -z "$SELECTED" ]; then
+            echo "::error::No Xcode.app found"
+            exit 1
+          fi
+          sudo xcode-select -s "$SELECTED/Contents/Developer"
+          echo "Selected $SELECTED"
+          xcodebuild -version
+
+      - name: Pick an available iPhone simulator
+        id: sim
+        run: |
+          set -euo pipefail
+          NAME=$(xcrun simctl list devices available --json | python3 -c '
+import json, sys
+data = json.load(sys.stdin)
+best = None
+for runtime, devices in data.get("devices", {}).items():
+    if "iOS" not in runtime:
+        continue
+    for dev in devices:
+        if dev.get("isAvailable") and "iPhone" in dev.get("name", ""):
+            best = dev["name"]
+print(best or "")
+')
+          if [ -z "$NAME" ]; then
+            echo "::error::No available iPhone simulator found on this runner"
+            xcrun simctl list devices available
+            exit 1
+          fi
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "Using simulator: $NAME"
+
+      - name: Run unit tests
+        run: |
+          set -euo pipefail
+          set -o pipefail
+          set +e
+          # This project's main app target uses Manual code signing (needed for the
+          # archive/IPA workflow), but simulator test runs don't need real signing —
+          # disable it entirely so this job needs no certificates/profiles at all.
+          xcodebuild test \
+            -project PersonalToolbox.xcodeproj \
+            -scheme PersonalToolbox \
+            -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.name }}" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
+            2>&1 | tee "$RUNNER_TEMP/xcodebuild-test.log"
+          STATUS=${PIPESTATUS[0]}
+          set -e
+          if [ "$STATUS" -ne 0 ]; then
+            {
+              echo "### ❌ Unit tests failed"
+              echo
+              echo "#### Grep errors / failures"
+              echo '```'
+              grep -E 'error:|fatal error|\*\* TEST FAILED \*\*|failed \(' "$RUNNER_TEMP/xcodebuild-test.log" | tail -n 150 || echo "(no grep hits)"
+              echo '```'
+              echo
+              echo "#### Tail (150 lines)"
+              echo '```'
+              tail -n 150 "$RUNNER_TEMP/xcodebuild-test.log" || true
+              echo '```'
+            } | tee -a "$GITHUB_STEP_SUMMARY"
+            while IFS= read -r line; do
+              if [[ "$line" =~ ([^[:space:]]+\.swift):([0-9]+):([0-9]+):\ error:\ (.*) ]]; then
+                echo "::error file=${BASH_REMATCH[1]},line=${BASH_REMATCH[2]},col=${BASH_REMATCH[3]}::${BASH_REMATCH[4]}"
+              else
+                echo "::error::${line}"
+              fi
+            done < <(grep -E 'error:|fatal error' "$RUNNER_TEMP/xcodebuild-test.log" | tail -n 80 || true)
+            exit "$STATUS"
+          fi
+          echo "### ✅ Unit tests passed" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload test log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs
+          path: ${{ runner.temp }}/xcodebuild-test.log
+          if-no-files-found: ignore

@@ -14,6 +14,8 @@ final class SettingsViewModel: ObservableObject {
     @Published private(set) var douyinCookieProbe: ServiceProbeState = .unknown
     @Published private(set) var kuaishouCookieProbe: ServiceProbeState = .unknown
     @Published private(set) var discoveredModels: [String] = []
+    @Published private(set) var isRunningAllChecks = false
+    @Published private(set) var allChecksSummary: String?
     @Published var logoutNotice: String?
 
     private let settings: AppSettings
@@ -330,6 +332,44 @@ final class SettingsViewModel: ObservableObject {
             kuaishouCookieProbe = .failure(Self.chineseError(error))
             Haptics.error()
         }
+    }
+
+    /// Runs every existing connectivity probe concurrently and summarizes pass/fail.
+    /// Deliberately excludes `fetchCloudflareAccounts()` — that call has a side effect
+    /// (overwrites the selected Cloudflare account), which isn't appropriate to trigger
+    /// silently as part of a bulk health check.
+    func runAllChecks() async {
+        guard !isRunningAllChecks else { return }
+        isRunningAllChecks = true
+        allChecksSummary = nil
+        defer { isRunningAllChecks = false }
+
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask { await self.testSub2API() }
+            group.addTask { await self.testAdmin() }
+            group.addTask { await self.testYT() }
+            group.addTask { await self.testSublink() }
+            group.addTask { await self.testKomari() }
+            group.addTask { await self.testCheckin() }
+            group.addTask { await self.testCloudflare() }
+            group.addTask { await self.testBilibiliCookie() }
+            group.addTask { await self.testDouyinCookie() }
+            group.addTask { await self.testKuaishouCookie() }
+        }
+
+        let results: [(name: String, state: ServiceProbeState)] = [
+            ("Sub2API", sub2Probe), ("Admin", adminProbe), ("YT下载", ytProbe),
+            ("Sublink", sublinkProbe), ("Komari", komariProbe), ("签到", checkinProbe),
+            ("Cloudflare", cloudflareProbe), ("B站Cookie", bilibiliCookieProbe),
+            ("抖音Cookie", douyinCookieProbe), ("快手Cookie", kuaishouCookieProbe)
+        ]
+        let failed = results.filter {
+            if case .success = $0.state { return false }
+            return true
+        }
+        allChecksSummary = failed.isEmpty
+            ? "\(results.count)/\(results.count) 全部通过"
+            : "\(results.count - failed.count)/\(results.count) 通过 · 未过：\(failed.map(\.name).joined(separator: "、"))"
     }
 
     func logoutAllSessions() async {

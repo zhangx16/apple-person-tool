@@ -4,6 +4,8 @@ struct NovelSourceListView: View {
     @Environment(BookSourceStore.self) private var store
     @State private var showImport = false
     @State private var filterNativeOnly = true
+    @State private var probes: [String: ServiceProbeState] = [:]
+    @State private var isVerifyingAll = false
 
     private var display: [BookSource] {
         let list = store.sources
@@ -22,6 +24,12 @@ struct NovelSourceListView: View {
                     .foregroundStyle(.secondary)
                 LabeledContent("全部书源", value: "\(store.sources.count)")
                 LabeledContent("可搜索（无 JS）", value: "\(store.nativeEnabledSources.count)")
+                Button {
+                    Task { await verifyAll() }
+                } label: {
+                    Label(isVerifyingAll ? "验证中…" : "全部验证", systemImage: "checkmark.seal")
+                }
+                .disabled(isVerifyingAll || display.isEmpty)
             }
 
             if display.isEmpty {
@@ -33,34 +41,48 @@ struct NovelSourceListView: View {
             } else {
                 Section("列表 \(display.count)") {
                     ForEach(display) { source in
-                        HStack(alignment: .top, spacing: 10) {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(source.bookSourceName)
-                                    .font(.body.weight(.semibold))
-                                Text(source.bookSourceUrl)
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(1)
-                                HStack(spacing: 6) {
-                                    if source.supportsNativeEngine {
-                                        badge("CSS/JSON", .green)
-                                    } else {
-                                        badge("含 JS", .orange)
-                                    }
-                                    if let g = source.bookSourceGroup, !g.isEmpty {
-                                        badge(g, .secondary)
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack(alignment: .top, spacing: 10) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(source.bookSourceName)
+                                        .font(.body.weight(.semibold))
+                                    Text(source.bookSourceUrl)
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(1)
+                                    HStack(spacing: 6) {
+                                        if source.supportsNativeEngine {
+                                            badge("CSS/JSON", .green)
+                                        } else {
+                                            badge("含 JS", .orange)
+                                        }
+                                        if let g = source.bookSourceGroup, !g.isEmpty {
+                                            badge(g, .secondary)
+                                        }
                                     }
                                 }
-                            }
-                            Spacer()
-                            Toggle(
-                                "",
-                                isOn: Binding(
-                                    get: { source.enabled != false },
-                                    set: { store.setEnabled($0, for: source.bookSourceUrl) }
+                                Spacer()
+                                Toggle(
+                                    "",
+                                    isOn: Binding(
+                                        get: { source.enabled != false },
+                                        set: { store.setEnabled($0, for: source.bookSourceUrl) }
+                                    )
                                 )
-                            )
-                            .labelsHidden()
+                                .labelsHidden()
+                            }
+                            if let state = probes[source.bookSourceUrl] {
+                                ServiceProbeRow(state: state)
+                            }
+                            Button {
+                                Task { await verify(source) }
+                            } label: {
+                                Label("验证", systemImage: "bolt.fill")
+                            }
+                            .font(.caption)
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                            .disabled(!source.supportsNativeEngine || (probes[source.bookSourceUrl]?.isProbing ?? false))
                         }
                         .swipeActions {
                             Button(role: .destructive) {
@@ -97,6 +119,84 @@ struct NovelSourceListView: View {
             .padding(.vertical, 2)
             .foregroundStyle(color == .secondary ? Color.secondary : color)
             .background(color.opacity(0.15), in: Capsule())
+    }
+
+    /// End-to-end check: search → open first hit → list chapters → fetch first chapter's
+    /// content. Exercises the exact same call chain the reading flow uses, so a pass here
+    /// means the source genuinely works, not just that its domain is reachable.
+    @MainActor
+    private func verify(_ source: BookSource) async {
+        probes[source.bookSourceUrl] = .probing
+        let start = ContinuousClock.now
+        do {
+            let keyword = (source.ruleSearch?.checkKeyWord ?? "")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            let hits = try await NovelBookService.searchOne(
+                source: source,
+                key: keyword.isEmpty ? "斗破苍穹" : keyword,
+                page: 1
+            )
+            guard let hit = hits.first else {
+                probes[source.bookSourceUrl] = .failure("搜索无结果")
+                return
+            }
+            let book = NovelBook(
+                id: NovelBook.makeID(sourceURL: hit.sourceURL, bookURL: hit.bookURL),
+                name: hit.name,
+                author: hit.author,
+                coverURL: hit.coverURL,
+                intro: hit.intro,
+                kind: hit.kind,
+                lastChapter: hit.lastChapter,
+                wordCount: nil,
+                bookURL: hit.bookURL,
+                sourceURL: hit.sourceURL,
+                sourceName: hit.sourceName,
+                isLocal: false,
+                localFileName: nil,
+                addedAt: Date(),
+                lastReadAt: nil,
+                lastChapterIndex: 0,
+                lastReadOffset: 0
+            )
+            let chapters = try await NovelBookService.chapters(for: book, source: source)
+            guard let firstChapter = chapters.first else {
+                probes[source.bookSourceUrl] = .failure("目录为空")
+                return
+            }
+            let text = try await NovelBookService.content(chapter: firstChapter, book: book, source: source)
+            guard !text.isEmpty else {
+                probes[source.bookSourceUrl] = .failure("正文为空")
+                return
+            }
+            probes[source.bookSourceUrl] = .success(
+                latencyMs: Int(start.duration(to: .now) / .milliseconds(1)),
+                detail: "\(chapters.count) 章 · 首章 \(text.count) 字"
+            )
+        } catch {
+            probes[source.bookSourceUrl] = .failure(
+                (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            )
+        }
+    }
+
+    @MainActor
+    private func verifyAll() async {
+        isVerifyingAll = true
+        defer { isVerifyingAll = false }
+        let targets = display.filter(\.supportsNativeEngine)
+        await withTaskGroup(of: Void.self) { group in
+            var started = 0
+            for source in targets {
+                group.addTask { await verify(source) }
+                started += 1
+                // Stagger slightly and cap concurrency so we don't fire a burst of
+                // requests at several different domains all at once.
+                if started % 3 == 0 {
+                    await group.next()
+                }
+            }
+        }
     }
 }
 

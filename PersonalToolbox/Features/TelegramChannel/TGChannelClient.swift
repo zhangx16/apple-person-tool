@@ -52,7 +52,8 @@ actor TGChannelClient {
         limit: Int = 40,
         offset: Int = 0,
         videoOnly: Bool = false,
-        query: String? = nil
+        query: String? = nil,
+        creator: String? = nil
     ) async throws -> TGPostListResponse {
         var q = [
             URLQueryItem(name: "limit", value: "\(limit)"),
@@ -61,6 +62,9 @@ actor TGChannelClient {
         ]
         if let query, !query.isEmpty {
             q.append(URLQueryItem(name: "q", value: query))
+        }
+        if let creator, !creator.isEmpty, creator != "全部" {
+            q.append(URLQueryItem(name: "creator", value: creator))
         }
         return try await get("/v1/channels/\(username)/posts", query: q)
     }

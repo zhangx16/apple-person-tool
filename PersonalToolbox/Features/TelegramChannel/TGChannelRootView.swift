@@ -1,12 +1,14 @@
 import SwiftUI
 
-/// 频道片库：连接自建 tg-channel-api，浏览并播放 Telegram 频道视频。
+/// 频道片库：连接自建 tg-channel-api，按博主分类浏览，边播边缓存。
 struct TGChannelRootView: View {
     @EnvironmentObject private var settings: AppSettings
 
     @State private var channels: [TGChannelInfo] = []
     @State private var selectedUsername: String = "lihaibili"
     @State private var posts: [TGPost] = []
+    @State private var creators: [TGCreatorInfo] = []
+    @State private var selectedCreator: String = "全部"
     @State private var total = 0
     @State private var videoOnly = true
     @State private var query = ""
@@ -24,116 +26,38 @@ struct TGChannelRootView: View {
         let title: String
         let streamURL: URL
         let fileSize: Int64?
+        let wasCached: Bool
     }
 
     private let defaultChannels = ["lihaibili", "lihaiPan"]
+    private let allCreatorsLabel = "全部"
 
     var body: some View {
         List {
-            Section {
-                if !settings.isTGChannelConfigured {
-                    Text("请先在「设置」填写 TG 片库地址与 Token（对应 VPS 上 tg-channel-api）。")
-                        .font(.footnote)
-                        .foregroundStyle(.orange)
-                }
-                Picker("频道", selection: $selectedUsername) {
-                    ForEach(channelUsernames, id: \.self) { u in
-                        Text(titleFor(u)).tag(u)
-                    }
-                }
-                Toggle("仅视频", isOn: $videoOnly)
-                HStack {
-                    TextField("搜索文案", text: $query)
-                        .textInputAutocapitalization(.never)
-                        .submitLabel(.search)
-                        .onSubmit { Task { await reload(reset: true) } }
-                    Button("搜索") { Task { await reload(reset: true) } }
-                }
-            }
-
-            Section {
-                Button {
-                    Task { await reload(reset: true) }
-                } label: {
-                    Label(isLoading ? "加载中…" : "刷新列表", systemImage: "arrow.clockwise")
-                }
-                .disabled(isLoading || !settings.isTGChannelConfigured)
-
-                Button {
-                    Task { await sync() }
-                } label: {
-                    Label("服务端同步频道", systemImage: "arrow.triangle.2.circlepath")
-                }
-                .disabled(isLoading || !settings.isTGChannelConfigured)
-
-                if cacheFileCount > 0 || cacheTotalBytes > 0 {
-                    HStack {
-                        Label(
-                            "服务器缓存 \(cacheFileCount) 个 · \(TGPost.formatBytes(cacheTotalBytes) ?? "0")",
-                            systemImage: "internaldrive"
-                        )
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        Spacer()
-                        Button("清空", role: .destructive) {
-                            confirmClearAll = true
-                        }
-                        .font(.caption.weight(.semibold))
-                        .disabled(isLoading)
-                    }
-                } else {
-                    Text("播放时会把视频缓存到 VPS 硬盘，便于 Range 流式播放；可点条目「删缓存」释放空间。")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                }
-
-                if !status.isEmpty {
-                    Text(status)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-                if let error {
-                    Text(error)
-                        .font(.caption)
-                        .foregroundStyle(.orange)
-                }
-            }
-
-            Section("内容 \(posts.count)\(total > 0 ? " / \(total)" : "")") {
-                if posts.isEmpty, !isLoading {
-                    ContentUnavailableView(
-                        "暂无内容",
-                        systemImage: "play.rectangle.on.rectangle",
-                        description: Text("确认服务已 login 并完成同步。油管频道若只有公告，点「服务端同步」会展开私有存储里的视频。")
-                    )
-                }
-                ForEach(posts) { post in
-                    postRow(post)
-                }
-                if posts.count < total {
-                    Button("加载更多") {
-                        Task { await reload(reset: false) }
-                    }
-                    .disabled(isLoading)
-                }
-            }
+            filterSection
+            actionsSection
+            contentSection
         }
+        .listStyle(.insetGrouped)
         .navigationTitle("TG 片库")
         .navigationBarTitleDisplayMode(.inline)
-        .task {
-            await bootstrap()
-        }
+        .task { await bootstrap() }
         .onChange(of: selectedUsername) { _, _ in
+            selectedCreator = allCreatorsLabel
             Task { await reload(reset: true) }
         }
         .onChange(of: videoOnly) { _, _ in
+            Task { await reload(reset: true) }
+        }
+        .onChange(of: selectedCreator) { _, _ in
             Task { await reload(reset: true) }
         }
         .fullScreenCover(item: $playPayload) { payload in
             TGChannelPlayerView(
                 title: payload.title,
                 streamURL: payload.streamURL,
-                fileSizeHint: payload.fileSize
+                fileSizeHint: payload.fileSize,
+                wasCached: payload.wasCached
             )
         }
         .confirmationDialog(
@@ -146,12 +70,326 @@ struct TGChannelRootView: View {
             }
             Button("取消", role: .cancel) {}
         } message: {
-            Text("只删 VPS 上已下载的文件，列表仍在。下次播放会重新从 Telegram 拉到服务器。当前约 \(TGPost.formatBytes(cacheTotalBytes) ?? "0")。")
+            Text("只删 VPS 已下载文件，列表仍在。再播放会边下边播并重新缓存。当前约 \(TGPost.formatBytes(cacheTotalBytes) ?? "0")。")
         }
     }
 
+    // MARK: - Sections
+
+    private var filterSection: some View {
+        Section {
+            if !settings.isTGChannelConfigured {
+                Text("请先在「设置」填写 TG 片库地址与 Token。")
+                    .font(.footnote)
+                    .foregroundStyle(.orange)
+            }
+
+            Picker("频道", selection: $selectedUsername) {
+                ForEach(channelUsernames, id: \.self) { u in
+                    Text(titleFor(u)).tag(u)
+                }
+            }
+
+            if !creatorChips.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("博主")
+                        .font(.subheadline.weight(.semibold))
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(creatorChips, id: \.self) { name in
+                                creatorChip(name)
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
+            }
+
+            Toggle("仅视频", isOn: $videoOnly)
+
+            HStack {
+                TextField("搜索文案", text: $query)
+                    .textInputAutocapitalization(.never)
+                    .submitLabel(.search)
+                    .onSubmit { Task { await reload(reset: true) } }
+                Button("搜索") { Task { await reload(reset: true) } }
+                    .disabled(isLoading || !settings.isTGChannelConfigured)
+            }
+        }
+    }
+
+    private var actionsSection: some View {
+        Section {
+            Button {
+                Task { await reload(reset: true) }
+            } label: {
+                Label(isLoading ? "加载中…" : "刷新列表", systemImage: "arrow.clockwise")
+            }
+            .disabled(isLoading || !settings.isTGChannelConfigured)
+
+            Button {
+                Task { await sync() }
+            } label: {
+                Label("服务端同步频道", systemImage: "arrow.triangle.2.circlepath")
+            }
+            .disabled(isLoading || !settings.isTGChannelConfigured)
+
+            if cacheFileCount > 0 || cacheTotalBytes > 0 {
+                HStack(alignment: .center) {
+                    Label(
+                        "缓存 \(cacheFileCount) 个 · \(TGPost.formatBytes(cacheTotalBytes) ?? "0")",
+                        systemImage: "internaldrive"
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("清空缓存", role: .destructive) {
+                        confirmClearAll = true
+                    }
+                    .font(.caption.weight(.semibold))
+                    .disabled(isLoading)
+                }
+            } else {
+                Text("首次播放会边下边播并缓存到服务器；左滑条目可删缓存。")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+
+            if !status.isEmpty {
+                Text(status)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            if let error {
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
+        }
+    }
+
+    private var contentSection: some View {
+        Section {
+            if posts.isEmpty, !isLoading {
+                ContentUnavailableView(
+                    "暂无内容",
+                    systemImage: "play.rectangle.on.rectangle",
+                    description: Text(
+                        selectedCreator == allCreatorsLabel
+                            ? "确认服务已同步。油管频道可点「服务端同步」展开私有视频。"
+                            : "该博主下暂无条目，试试「全部」或其他博主。"
+                    )
+                )
+            }
+            ForEach(posts) { post in
+                postRow(post)
+            }
+            if posts.count < total {
+                Button("加载更多") {
+                    Task { await reload(reset: false) }
+                }
+                .disabled(isLoading)
+                .frame(maxWidth: .infinity)
+            }
+        } header: {
+            HStack {
+                Text(contentHeader)
+                Spacer()
+                if isLoading {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+            }
+        }
+    }
+
+    private var contentHeader: String {
+        var parts: [String] = []
+        if selectedCreator != allCreatorsLabel {
+            parts.append(selectedCreator)
+        }
+        parts.append("\(posts.count)\(total > 0 ? "/\(total)" : "")")
+        return parts.joined(separator: " · ")
+    }
+
+    private var creatorChips: [String] {
+        var names = [allCreatorsLabel]
+        for c in creators {
+            let n = c.name.trimmingCharacters(in: .whitespaces)
+            guard !n.isEmpty, n != allCreatorsLabel else { continue }
+            if !names.contains(n) { names.append(n) }
+        }
+        // Also include creators seen in current page (API older / filter mismatch).
+        for p in posts {
+            let n = p.creatorName
+            if !names.contains(n) { names.append(n) }
+        }
+        return names
+    }
+
+    @ViewBuilder
+    private func creatorChip(_ name: String) -> some View {
+        let on = selectedCreator == name
+        let count: Int? = {
+            if name == allCreatorsLabel { return nil }
+            return creators.first(where: { $0.name == name })?.count
+        }()
+        Button {
+            selectedCreator = name
+        } label: {
+            HStack(spacing: 4) {
+                Text(name)
+                    .font(.caption.weight(.semibold))
+                if let count, count > 0 {
+                    Text("\(count)")
+                        .font(.caption2.weight(.bold))
+                        .opacity(0.75)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .foregroundStyle(on ? Color.white : Color.primary)
+            .background {
+                if on {
+                    Capsule().fill(Color.accentColor)
+                } else {
+                    Capsule().fill(Color(.tertiarySystemFill))
+                }
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Row
+
+    @ViewBuilder
+    private func postRow(_ post: TGPost) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            // Leading play control (centered vertically in the row).
+            if post.hasVideo {
+                Button {
+                    Task { await play(post) }
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(Color.accentColor.opacity(0.15))
+                            .frame(width: 52, height: 52)
+                        Image(systemName: "play.fill")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(Color.accentColor)
+                            .offset(x: 1) // optical center for play glyph
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("全屏播放")
+            } else {
+                Image(systemName: "doc.text")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 52, height: 52)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(post.displayTitle)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(3)
+                    .multilineTextAlignment(.leading)
+
+                HStack(spacing: 6) {
+                    Text(post.creatorName)
+                        .font(.caption2.weight(.semibold))
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
+                        .background(Color.accentColor.opacity(0.12), in: Capsule())
+                        .foregroundStyle(Color.accentColor)
+
+                    if post.hasVideo {
+                        if let d = post.durationText {
+                            Label(d, systemImage: "clock")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        if let size = post.fileSizeText {
+                            Text(size)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        if post.cached {
+                            Label("已缓存", systemImage: "internaldrive.fill")
+                                .font(.caption2)
+                                .foregroundStyle(.blue)
+                        }
+                    }
+                }
+
+                if !post.dateText.isEmpty {
+                    Text(post.dateText)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+
+            Spacer(minLength: 4)
+
+            if post.hasVideo {
+                Image(systemName: "arrow.up.left.and.arrow.down.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .padding(.vertical, 6)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            guard post.hasVideo else { return }
+            Task { await play(post) }
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            if post.hasVideo, post.cached {
+                Button(role: .destructive) {
+                    Task { await deleteCache(post) }
+                } label: {
+                    if deletingId == post.id {
+                        Label("…", systemImage: "hourglass")
+                    } else {
+                        Label("删缓存", systemImage: "trash")
+                    }
+                }
+                .disabled(deletingId != nil)
+            }
+        }
+        .contextMenu {
+            if post.hasVideo {
+                Button {
+                    Task { await play(post) }
+                } label: {
+                    Label("全屏播放", systemImage: "play.rectangle.fill")
+                }
+                if post.cached {
+                    Button(role: .destructive) {
+                        Task { await deleteCache(post) }
+                    } label: {
+                        Label("删除服务器缓存", systemImage: "trash")
+                    }
+                }
+                Button {
+                    selectedCreator = post.creatorName
+                } label: {
+                    Label("只看 \(post.creatorName)", systemImage: "person.crop.circle")
+                }
+            }
+            if let link = post.tgLink, let url = URL(string: link) {
+                Link(destination: url) {
+                    Label("在 Telegram 打开", systemImage: "paperplane")
+                }
+            }
+        }
+    }
+
+    // MARK: - Data
+
     private var channelUsernames: [String] {
-        let fromAPI = channels.map(\.username).filter { !$0.hasPrefix("c") || $0.count < 6 }
+        let fromAPI = channels.map(\.username)
         var set: [String] = []
         for d in defaultChannels where !set.contains(where: { $0.caseInsensitiveCompare(d) == .orderedSame }) {
             set.append(d)
@@ -171,95 +409,6 @@ struct TGChannelRootView: View {
         case "lihaibili": return "B站 · @lihaibili"
         case "lihaipan": return "油管 · @lihaiPan"
         default: return "@\(username)"
-        }
-    }
-
-    @ViewBuilder
-    private func postRow(_ post: TGPost) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(post.titleLine)
-                .font(.subheadline.weight(.semibold))
-                .lineLimit(3)
-            HStack(spacing: 8) {
-                if post.hasVideo {
-                    Label(post.durationText ?? "视频", systemImage: "play.circle.fill")
-                        .font(.caption2)
-                        .foregroundStyle(.green)
-                    if let size = post.fileSizeText {
-                        Text(size)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                    if post.cached {
-                        Label(post.cacheSizeText.map { "已缓存 \($0)" } ?? "已缓存", systemImage: "internaldrive.fill")
-                            .font(.caption2)
-                            .foregroundStyle(.blue)
-                    }
-                } else if !post.externalUrls.isEmpty {
-                    Label("外链", systemImage: "link")
-                        .font(.caption2)
-                        .foregroundStyle(.orange)
-                } else {
-                    Label(post.mediaType ?? "文本", systemImage: "doc.text")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-                if !post.dateText.isEmpty {
-                    Text(post.dateText)
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                }
-            }
-            HStack(spacing: 12) {
-                if post.hasVideo {
-                    Button {
-                        Task { await play(post) }
-                    } label: {
-                        Label("全屏播放", systemImage: "arrow.up.left.and.arrow.down.right")
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-
-                    if post.cached {
-                        Button(role: .destructive) {
-                            Task { await deleteCache(post) }
-                        } label: {
-                            if deletingId == post.id {
-                                ProgressView()
-                                    .controlSize(.small)
-                            } else {
-                                Label("删缓存", systemImage: "trash")
-                            }
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                        .disabled(deletingId != nil)
-                    }
-                }
-                if let link = post.tgLink, let url = URL(string: link) {
-                    Link("Telegram", destination: url)
-                        .font(.caption)
-                }
-                if let first = post.externalUrls.first, let url = URL(string: first) {
-                    Link("打开链接", destination: url)
-                        .font(.caption)
-                }
-            }
-        }
-        .padding(.vertical, 4)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            guard post.hasVideo else { return }
-            Task { await play(post) }
-        }
-        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-            if post.hasVideo, post.cached {
-                Button(role: .destructive) {
-                    Task { await deleteCache(post) }
-                } label: {
-                    Label("删缓存", systemImage: "trash")
-                }
-            }
         }
     }
 
@@ -290,12 +439,14 @@ struct TGChannelRootView: View {
         do {
             let client = try TGChannelClient.fromSettings(settings)
             let offset = reset ? 0 : posts.count
+            let creatorFilter = selectedCreator == allCreatorsLabel ? nil : selectedCreator
             let res = try await client.posts(
                 username: selectedUsername,
                 limit: 40,
                 offset: offset,
                 videoOnly: videoOnly,
-                query: query.trimmingCharacters(in: .whitespacesAndNewlines)
+                query: query.trimmingCharacters(in: .whitespacesAndNewlines),
+                creator: creatorFilter
             )
             if reset {
                 posts = res.items
@@ -304,10 +455,12 @@ struct TGChannelRootView: View {
                 posts.append(contentsOf: res.items.filter { !existing.contains($0.id) })
             }
             total = res.total ?? posts.count
+            if let list = res.creators, !list.isEmpty {
+                creators = list
+            }
             if let t = res.cacheTotalBytes { cacheTotalBytes = t }
             if let c = res.cacheFileCount { cacheFileCount = c }
             status = "已加载 \(posts.count) 条"
-            // Refresh aggregate cache even when list page has no cached items.
             if let stats = try? await client.cacheStats() {
                 cacheTotalBytes = stats.totalBytes ?? cacheTotalBytes
                 cacheFileCount = stats.fileCount ?? cacheFileCount
@@ -324,8 +477,8 @@ struct TGChannelRootView: View {
         do {
             let client = try TGChannelClient.fromSettings(settings)
             try await client.triggerSync()
-            status = "同步已触发（含油管私有链接展开），正在刷新…"
-            try await Task.sleep(nanoseconds: 4_000_000_000)
+            status = "同步已触发，正在刷新…"
+            try await Task.sleep(nanoseconds: 3_000_000_000)
             await reload(reset: true)
         } catch {
             self.error = error.localizedDescription
@@ -337,11 +490,11 @@ struct TGChannelRootView: View {
             let client = try TGChannelClient.fromSettings(settings)
             let url = try client.playURL(for: post)
             playPayload = PlayPayload(
-                title: String(post.titleLine.prefix(40)),
+                title: String(post.displayTitle.prefix(48)),
                 streamURL: url,
-                fileSize: post.fileSize.map { Int64($0) }
+                fileSize: post.fileSize.map { Int64($0) },
+                wasCached: post.cached
             )
-            // After play starts, server may begin/finish caching — soft refresh later is optional.
         } catch {
             self.error = error.localizedDescription
         }
@@ -355,12 +508,9 @@ struct TGChannelRootView: View {
             let client = try TGChannelClient.fromSettings(settings)
             let res = try await client.deleteCache(postId: post.id)
             let freed = TGPost.formatBytes(res.freedBytes) ?? "0"
-            status = res.deleted == true ? "已删除缓存，释放 \(freed)" : "该条目本无服务器缓存"
-            // Update local row + totals without full reload.
+            status = res.deleted == true ? "已删缓存，释放 \(freed)" : "该条目本无服务器缓存"
             if let idx = posts.firstIndex(where: { $0.id == post.id }) {
-                var updated = posts[idx]
-                // TGPost is a struct; re-decode path: patch via reload item fields we can mutate if var
-                posts[idx] = patched(post: updated, cached: false, cacheBytes: 0)
+                posts[idx] = patched(post: posts[idx], cached: false, cacheBytes: 0)
             }
             if let stats = try? await client.cacheStats() {
                 cacheTotalBytes = stats.totalBytes ?? 0
@@ -391,20 +541,15 @@ struct TGChannelRootView: View {
         }
     }
 
-    /// TGPost has no memberwise init with all fields; rebuild via JSON round-trip for cache flags.
     private func patched(post: TGPost, cached: Bool, cacheBytes: Int64) -> TGPost {
-        // Encode minimal patch by reusing decoder path from a synthetic dictionary is heavy;
-        // simplest: mutate via Mirror-free approach — re-fetch list is fine, but for snappy UI
-        // we encode/decode with JSONSerialization.
-        guard var obj = try? JSONEncoder().encode(TGPostCachePatch(from: post, cached: cached, cacheBytes: cacheBytes)),
-              let decoded = try? JSONDecoder().decode(TGPost.self, from: obj) else {
+        guard let data = try? JSONEncoder().encode(TGPostCachePatch(from: post, cached: cached, cacheBytes: cacheBytes)),
+              let decoded = try? JSONDecoder().decode(TGPost.self, from: data) else {
             return post
         }
         return decoded
     }
 }
 
-/// Helper to re-encode a post with updated cache fields (TGPost only has decoder).
 private struct TGPostCachePatch: Encodable {
     let id: String
     let channel_id: String
@@ -425,6 +570,7 @@ private struct TGPostCachePatch: Encodable {
     let tg_link: String?
     let cached: Bool
     let cache_bytes: Int64
+    let creator: String?
 
     init(from post: TGPost, cached: Bool, cacheBytes: Int64) {
         id = post.id
@@ -446,5 +592,6 @@ private struct TGPostCachePatch: Encodable {
         tg_link = post.tgLink
         self.cached = cached
         self.cache_bytes = cacheBytes
+        creator = post.creator ?? post.creatorName
     }
 }

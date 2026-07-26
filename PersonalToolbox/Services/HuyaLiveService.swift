@@ -236,42 +236,21 @@ actor HuyaLiveService {
         let uid = LiveJSON.string(ctx["uid"]).isEmpty ? randomUid(length: 13) : LiveJSON.string(ctx["uid"])
         let lines = LiveJSON.array(ctx["lines"]) ?? []
         let bitRate = quality.bitRate ?? quality.qn
-        var hlsURLs: [String] = []
+        // 虎牙应用内只走 FLV（VLC）。HLS/m3u8 在多数线路不可用或鉴权失败，不再生成。
         var flvURLs: [String] = []
         for line in lines {
             let base = LiveJSON.string(line["line"])
             let stream = LiveJSON.string(line["streamName"])
             let flvAnti = LiveJSON.string(line["flvAntiCode"])
-            let hlsAnti = LiveJSON.string(line["hlsAntiCode"])
-            let hlsBase = LiveJSON.string(line["hlsLine"])
-            guard !stream.isEmpty else { continue }
+            guard !stream.isEmpty, !base.isEmpty, !flvAnti.isEmpty else { continue }
 
-            // Prefer true HLS when anticode/base present (AVPlayer-friendly).
-            let hlsRoot = hlsBase.isEmpty ? base : hlsBase
-            if !hlsRoot.isEmpty, !hlsAnti.isEmpty {
-                let params = processAnticode(anticode: hlsAnti, uid: uid, streamName: stream)
-                var url = "\(hlsRoot)/\(stream).m3u8?\(params)"
-                if bitRate > 0 { url += "&ratio=\(bitRate)" }
-                hlsURLs.append(url)
-            } else if !base.isEmpty, !flvAnti.isEmpty {
-                // Some CDNs accept m3u8 with flv anticode.
-                let params = processAnticode(anticode: flvAnti, uid: uid, streamName: stream)
-                var url = "\(base)/\(stream).m3u8?\(params)&codec=264"
-                if bitRate > 0 { url += "&ratio=\(bitRate)" }
-                hlsURLs.append(url)
-            }
-
-            if !base.isEmpty, !flvAnti.isEmpty {
-                let params = processAnticode(anticode: flvAnti, uid: uid, streamName: stream)
-                var url = "\(base)/\(stream).flv?\(params)&codec=264"
-                if bitRate > 0 { url += "&ratio=\(bitRate)" }
-                flvURLs.append(url)
-            }
+            let params = processAnticode(anticode: flvAnti, uid: uid, streamName: stream)
+            var url = "\(base)/\(stream).flv?\(params)&codec=264"
+            if bitRate > 0 { url += "&ratio=\(bitRate)" }
+            flvURLs.append(url)
         }
-        // Put HLS first; FLV kept for completeness (client filters for AVPlayer).
-        let urls = hlsURLs + flvURLs
-        guard !urls.isEmpty else { throw NetworkError.message("虎牙无可用播放地址") }
-        return LivePlayResult(urls: urls, headers: [
+        guard !flvURLs.isEmpty else { throw NetworkError.message("虎牙无可用 FLV 播放地址") }
+        return LivePlayResult(urls: flvURLs, headers: [
             "User-Agent": playUA,
             "Referer": "https://www.huya.com/"
         ])

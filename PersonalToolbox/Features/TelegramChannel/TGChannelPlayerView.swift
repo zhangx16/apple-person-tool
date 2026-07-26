@@ -4,7 +4,7 @@ import SwiftUI
 import UIKit
 
 /// Full-screen landscape player for tg-channel-api `/play` streams.
-/// Progressive HTTP (Range) + token query — does **not** download the whole multi‑GB file first.
+/// Progressive HTTP: server streams from Telegram while caching (no full wait on first play).
 struct TGChannelPlayerView: View {
     @Environment(\.dismiss) private var dismiss
     let title: String
@@ -12,6 +12,8 @@ struct TGChannelPlayerView: View {
     let streamURL: URL
     /// Optional size hint for status text.
     var fileSizeHint: Int64? = nil
+    /// When false, server is still pulling from Telegram (edge-play).
+    var wasCached: Bool = false
 
     @State private var player: AVPlayer?
     @State private var statusText = "连接中…"
@@ -21,7 +23,7 @@ struct TGChannelPlayerView: View {
     @State private var statusObserver: NSKeyValueObservation?
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
+        ZStack {
             Color.black.ignoresSafeArea()
 
             if let player {
@@ -30,45 +32,57 @@ struct TGChannelPlayerView: View {
             }
 
             if !isReady {
-                VStack(spacing: 12) {
+                VStack(spacing: 14) {
                     if errorText == nil {
                         ProgressView()
                             .tint(.white)
-                            .scaleEffect(1.15)
+                            .scaleEffect(1.2)
                     } else {
                         Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.largeTitle)
+                            .font(.system(size: 36))
                             .foregroundStyle(.orange)
                     }
                     Text(errorText ?? statusText)
-                        .font(.subheadline)
+                        .font(.subheadline.weight(.medium))
                         .foregroundStyle(.white.opacity(0.95))
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal, 28)
-                    if let errorText {
+                        .padding(.horizontal, 32)
+                    if errorText == nil, !wasCached {
+                        Text("边下边播 · 服务器从 Telegram 拉取并缓存")
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.55))
+                    }
+                    if errorText != nil {
                         Button("重试") {
                             self.errorText = nil
                             Task { await load() }
                         }
                         .buttonStyle(.borderedProminent)
-                        .tint(.white.opacity(0.25))
+                        .tint(.white.opacity(0.22))
                         .foregroundStyle(.white)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
 
-            Button {
-                tearDown()
-                dismiss()
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.title2)
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(.white.opacity(0.95), .black.opacity(0.35))
-                    .padding(16)
+            // Close — top leading, safe for landscape notch.
+            VStack {
+                HStack {
+                    Button {
+                        tearDown()
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title2)
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(.white.opacity(0.95), .black.opacity(0.4))
+                            .padding(16)
+                    }
+                    .accessibilityLabel("关闭播放")
+                    Spacer()
+                }
+                Spacer()
             }
-            .accessibilityLabel("关闭播放")
         }
         .background(Color.black.ignoresSafeArea())
         .statusBarHidden(true)
@@ -88,17 +102,18 @@ struct TGChannelPlayerView: View {
     }
 
     private func load() async {
-        statusText = sizeStatusPrefix() + "缓冲首段…"
+        statusText = wasCached
+            ? (sizeStatusPrefix() + "缓冲首段…")
+            : (sizeStatusPrefix() + "边下边播，连接中…")
         errorText = nil
         isReady = false
         tearDownPlayerOnly()
 
         _ = DownloadPlaybackAudio.activate()
 
-        // Prefer progressive streaming. Server supports Range + inline disposition.
         let asset = AVURLAsset(url: streamURL)
         let item = AVPlayerItem(asset: asset)
-        item.preferredForwardBufferDuration = 8
+        item.preferredForwardBufferDuration = 6
         let p = AVPlayer(playerItem: item)
         p.automaticallyWaitsToMinimizeStalling = true
         player = p
@@ -117,7 +132,9 @@ struct TGChannelPlayerView: View {
                     isReady = false
                     statusText = "加载失败"
                 case .unknown:
-                    statusText = sizeStatusPrefix() + "解析中…"
+                    statusText = wasCached
+                        ? (sizeStatusPrefix() + "解析中…")
+                        : (sizeStatusPrefix() + "服务器拉取中…")
                 @unknown default:
                     break
                 }
@@ -136,15 +153,16 @@ struct TGChannelPlayerView: View {
             }
         }
 
-        // Safety timeout so UI never spins forever on dead endpoints.
-        // First-hit uncached multi-GB files may still take a while server-side.
-        let deadline = Date().addingTimeInterval(90)
+        // Progressive first-byte can take longer for large TG media.
+        let deadline = Date().addingTimeInterval(wasCached ? 60 : 180)
         while Date() < deadline {
             if isReady || errorText != nil { return }
-            try? await Task.sleep(nanoseconds: 500_000_000)
+            try? await Task.sleep(nanoseconds: 400_000_000)
         }
         if !isReady, errorText == nil {
-            errorText = "加载超时（大文件首次会先从 Telegram 拉到服务器缓存，可稍后重试）"
+            errorText = wasCached
+                ? "加载超时，请检查网络后重试"
+                : "加载超时：服务器仍在从 Telegram 拉流，可稍后重试（已下部分会保留为缓存）"
         }
     }
 
@@ -172,7 +190,7 @@ struct TGChannelPlayerView: View {
     }
 }
 
-// MARK: - AVPlayerViewController host (system chrome, PiP-ready)
+// MARK: - AVPlayerViewController host
 
 private struct TGStreamPlayerRepresentable: UIViewControllerRepresentable {
     let player: AVPlayer

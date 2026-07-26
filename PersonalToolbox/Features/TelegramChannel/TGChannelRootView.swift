@@ -5,7 +5,7 @@ struct TGChannelRootView: View {
     @EnvironmentObject private var settings: AppSettings
 
     @State private var channels: [TGChannelInfo] = []
-    @State private var selectedUsername: String = "lihaiPan"
+    @State private var selectedUsername: String = "lihaibili"
     @State private var posts: [TGPost] = []
     @State private var total = 0
     @State private var videoOnly = true
@@ -13,15 +13,16 @@ struct TGChannelRootView: View {
     @State private var isLoading = false
     @State private var error: String?
     @State private var status = ""
-    @State private var playRequest: PlayPayload?
+    @State private var playPayload: PlayPayload?
 
     private struct PlayPayload: Identifiable {
         let id = UUID()
         let title: String
-        let request: URLRequest
+        let streamURL: URL
+        let fileSize: Int64?
     }
 
-    private let defaultChannels = ["lihaiPan", "lihaibili"]
+    private let defaultChannels = ["lihaibili", "lihaiPan"]
 
     var body: some View {
         List {
@@ -78,7 +79,7 @@ struct TGChannelRootView: View {
                     ContentUnavailableView(
                         "暂无内容",
                         systemImage: "play.rectangle.on.rectangle",
-                        description: Text("确认服务已 login 并完成同步；若频道只有外链，列表会显示但无法 App 内播。")
+                        description: Text("确认服务已 login 并完成同步。油管频道若只有公告，点「服务端同步」会展开私有存储里的视频。")
                     )
                 }
                 ForEach(posts) { post in
@@ -103,26 +104,40 @@ struct TGChannelRootView: View {
         .onChange(of: videoOnly) { _, _ in
             Task { await reload(reset: true) }
         }
-        .fullScreenCover(item: $playRequest) { payload in
-            TGChannelPlayerView(title: payload.title, request: payload.request)
+        .fullScreenCover(item: $playPayload) { payload in
+            TGChannelPlayerView(
+                title: payload.title,
+                streamURL: payload.streamURL,
+                fileSizeHint: payload.fileSize
+            )
         }
     }
 
     private var channelUsernames: [String] {
-        let fromAPI = channels.map(\.username)
-        if fromAPI.isEmpty { return defaultChannels }
-        var set = fromAPI
+        let fromAPI = channels.map(\.username).filter { !$0.hasPrefix("c") || $0.count < 6 }
+        // Prefer configured defaults first, then API extras (skip pure storage aliases if noisy).
+        var set: [String] = []
         for d in defaultChannels where !set.contains(where: { $0.caseInsensitiveCompare(d) == .orderedSame }) {
             set.append(d)
         }
-        return set
+        for u in fromAPI where !set.contains(where: { $0.caseInsensitiveCompare(u) == .orderedSame }) {
+            // Hide linked-storage pseudo channels (c2078075230)
+            if u.range(of: #"^c\d+$"#, options: .regularExpression) != nil { continue }
+            set.append(u)
+        }
+        return set.isEmpty ? defaultChannels : set
     }
 
     private func titleFor(_ username: String) -> String {
         if let c = channels.first(where: { $0.username.caseInsensitiveCompare(username) == .orderedSame }) {
             return c.displayTitle
         }
-        return "@\(username)"
+        // Friendly labels for known channels
+        switch username.lowercased() {
+        case "lihaibili": return "B站 · @lihaibili"
+        case "lihaipan": return "油管 · @lihaiPan"
+        default: return "@\(username)"
+        }
     }
 
     @ViewBuilder
@@ -136,6 +151,11 @@ struct TGChannelRootView: View {
                     Label(post.durationText ?? "视频", systemImage: "play.circle.fill")
                         .font(.caption2)
                         .foregroundStyle(.green)
+                    if let size = post.fileSizeText {
+                        Text(size)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
                 } else if !post.externalUrls.isEmpty {
                     Label("外链", systemImage: "link")
                         .font(.caption2)
@@ -153,8 +173,10 @@ struct TGChannelRootView: View {
             }
             HStack(spacing: 12) {
                 if post.hasVideo {
-                    Button("播放") {
+                    Button {
                         Task { await play(post) }
+                    } label: {
+                        Label("全屏播放", systemImage: "arrow.up.left.and.arrow.down.right")
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
@@ -170,6 +192,11 @@ struct TGChannelRootView: View {
             }
         }
         .padding(.vertical, 4)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            guard post.hasVideo else { return }
+            Task { await play(post) }
+        }
     }
 
     private func bootstrap() async {
@@ -177,8 +204,11 @@ struct TGChannelRootView: View {
         do {
             let client = try TGChannelClient.fromSettings(settings)
             channels = try await client.channels()
-            if let first = channels.first {
-                selectedUsername = first.username
+            // Prefer B站 if present; keep current selection if still valid.
+            let names = channelUsernames
+            if !names.contains(where: { $0.caseInsensitiveCompare(selectedUsername) == .orderedSame }),
+               let first = names.first {
+                selectedUsername = first
             }
             await reload(reset: true)
         } catch {
@@ -224,8 +254,9 @@ struct TGChannelRootView: View {
         do {
             let client = try TGChannelClient.fromSettings(settings)
             try await client.triggerSync()
-            status = "同步已触发，正在刷新…"
-            try await Task.sleep(nanoseconds: 1_500_000_000)
+            status = "同步已触发（含油管私有链接展开），正在刷新…"
+            // Linked-video resolve may take longer than a simple list sync.
+            try await Task.sleep(nanoseconds: 4_000_000_000)
             await reload(reset: true)
         } catch {
             self.error = error.localizedDescription
@@ -235,8 +266,13 @@ struct TGChannelRootView: View {
     private func play(_ post: TGPost) async {
         do {
             let client = try TGChannelClient.fromSettings(settings)
-            let req = try await client.playRequest(for: post)
-            playRequest = PlayPayload(title: String(post.titleLine.prefix(40)), request: req)
+            // Progressive stream URL with token query — AVPlayer Range requests.
+            let url = try client.playURL(for: post)
+            playPayload = PlayPayload(
+                title: String(post.titleLine.prefix(40)),
+                streamURL: url,
+                fileSize: post.fileSize.map { Int64($0) }
+            )
         } catch {
             self.error = error.localizedDescription
         }

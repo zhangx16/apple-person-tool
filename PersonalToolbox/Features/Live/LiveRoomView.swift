@@ -258,7 +258,7 @@ final class LiveRoomViewModel: ObservableObject {
         }
 
         statusText = "直播中断"
-        errorMessage = "多次重连失败，可切换线路或切网页"
+        errorMessage = "多次重连失败，可刷新或切网页"
         isReconnecting = false
         fallbackToWeb(reason: "长时间断流，已切网页")
     }
@@ -715,7 +715,7 @@ struct LiveRoomView: View {
                     danmakuSection
                     if vm.playMode == .native {
                         qualitySection
-                        playLineSection
+                        // 线路：自动切换（卡顿/断流时 ViewModel 自动换 CDN），不展示手动选线。
                     }
                     engineSection
                     if let err = vm.errorMessage, !err.isEmpty {
@@ -2205,31 +2205,7 @@ struct LiveRoomFullscreenView: View {
                 .padding(.bottom, 8)
             }
 
-            // SimpleLive: 线路选择 (CDN candidates for current quality)
-            if vm.playMode == .native, vm.playCandidates.count > 1 {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(Array(vm.playCandidates.enumerated()), id: \.offset) { index, _ in
-                            let on = index == vm.playCandidateIndex
-                            let title = vm.playLineLabels.indices.contains(index)
-                                ? "线\(index + 1)"
-                                : "线\(index + 1)"
-                            Button { vm.selectPlayLine(index) } label: {
-                                Text(title)
-                                    .font(.caption.weight(.semibold))
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 7)
-                                    .foregroundStyle(on ? Color.black : Color.white)
-                                    .background(on ? Color.white : Color.white.opacity(0.2), in: Capsule())
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel(vm.playLineLabels.indices.contains(index) ? vm.playLineLabels[index] : title)
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                }
-                .padding(.bottom, 10)
-            }
+            // 线路自动切换（卡顿 → 下一 CDN），全屏不再提供手动选线芯片。
 
             HStack {
                 Text(vm.statusText)
@@ -2237,12 +2213,6 @@ struct LiveRoomFullscreenView: View {
                     .foregroundStyle(.white.opacity(0.85))
                     .lineLimit(1)
                 Spacer()
-                if vm.playCandidates.count > 1 {
-                    Text(vm.currentLineInfo)
-                        .font(.caption2)
-                        .foregroundStyle(.white.opacity(0.7))
-                        .lineLimit(1)
-                }
                 Button {
                     if vm.playMode == .native { vm.switchToWeb() }
                     else { vm.retryNative() }

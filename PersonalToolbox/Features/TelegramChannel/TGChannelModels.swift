@@ -104,6 +104,18 @@ struct TGPost: Codable, Identifiable, Hashable, Sendable {
         let s = total % 60
         return String(format: "%d:%02d", m, s)
     }
+
+    var fileSizeText: String? {
+        guard let fileSize, fileSize > 0 else { return nil }
+        let mb = Double(fileSize) / 1_048_576
+        if mb >= 1024 {
+            return String(format: "%.1f GB", mb / 1024)
+        }
+        if mb >= 1 {
+            return String(format: "%.0f MB", mb)
+        }
+        return String(format: "%.0f KB", Double(fileSize) / 1024)
+    }
 }
 
 struct TGPostListResponse: Codable, Sendable {

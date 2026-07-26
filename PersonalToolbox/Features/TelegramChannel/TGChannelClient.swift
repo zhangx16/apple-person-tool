@@ -95,7 +95,12 @@ actor TGChannelClient {
         guard post.hasVideo, let path = post.playPath, !path.isEmpty else {
             throw TGChannelClientError.noPlayable
         }
-        return try makeRequest(path: path, method: "GET")
+        var req = try makeRequest(path: path, method: "GET")
+        // Play may wait for Telegram→server cache on first hit (multi‑GB).
+        req.timeoutInterval = 600
+        req.setValue("bytes=0-", forHTTPHeaderField: "Range")
+        req.setValue("video/*,*/*", forHTTPHeaderField: "Accept")
+        return req
     }
 
     // MARK: - HTTP

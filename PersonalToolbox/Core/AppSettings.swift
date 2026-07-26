@@ -339,7 +339,7 @@ final class AppSettings: ObservableObject {
         komariBaseURL = d.string(forKey: Keys.komariBaseURL) ?? "https://komari.996616.xyz"
         checkinBaseURL = d.string(forKey: Keys.checkinBaseURL) ?? "https://checkin.031216.xyz"
         checkinAPIToken = KeychainStore.get(Keys.checkinAPIToken) ?? ""
-        tgChannelBaseURL = d.string(forKey: Keys.tgChannelBaseURL) ?? "http://23.80.80.208:8765"
+        tgChannelBaseURL = d.string(forKey: Keys.tgChannelBaseURL) ?? "https://tg.996616.xyz"
         tgChannelToken = KeychainStore.get(Keys.tgChannelToken) ?? ""
         fastNoteBaseURL = d.string(forKey: Keys.fastNoteBaseURL) ?? "https://sync.996616.xyz"
         fastNoteUsername = d.string(forKey: Keys.fastNoteUsername) ?? ""

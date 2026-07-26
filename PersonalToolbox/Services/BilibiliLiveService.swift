@@ -59,23 +59,28 @@ actor BilibiliLiveService {
         26, 17, 0, 1, 60, 51, 30, 4, 22, 25, 54, 21, 56, 59, 6, 63, 57, 62, 11, 36, 20, 34, 44, 52
     ]
 
+    /// 用户设置的 Cookie（App 设置 → B站下载）。Cookie 存 Keychain，经 AppSettings 读取。
     private var userCookie: String {
-        (UserDefaults.standard.string(forKey: "bilibiliCookie") ?? "")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        get async {
+            await MainActor.run { AppSettings.shared.bilibiliCookie }
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        }
     }
 
     private var userIdFromCookie: Int {
-        let c = userCookie
-        guard !c.isEmpty else { return 0 }
-        for part in c.split(separator: ";") {
-            let kv = part.split(separator: "=", maxSplits: 1).map {
-                $0.trimmingCharacters(in: .whitespaces)
+        get async {
+            let c = await userCookie
+            guard !c.isEmpty else { return 0 }
+            for part in c.split(separator: ";") {
+                let kv = part.split(separator: "=", maxSplits: 1).map {
+                    $0.trimmingCharacters(in: .whitespaces)
+                }
+                if kv.count == 2, kv[0] == "DedeUserID", let n = Int(kv[1]) {
+                    return n
+                }
             }
-            if kv.count == 2, kv[0] == "DedeUserID", let n = Int(kv[1]) {
-                return n
-            }
+            return 0
         }
-        return 0
     }
 
     // MARK: - Helpers
@@ -402,9 +407,28 @@ actor BilibiliLiveService {
             "token": str(data["token"]),
             "serverHost": hosts.first ?? "broadcastlv.chat.bilibili.com",
             "buvid": buvid3,
-            "uid": userIdFromCookie,
+            "uid": await userIdFromCookie,
             "cookie": cookie
         ]
+    }
+
+    /// Cookie 可用性检测：`x-web-interface/nav` 官方接口，`data.isLogin` 判定登录态。
+    func checkLoginStatus() async throws -> (isLogin: Bool, username: String) {
+        let cookie = await userCookie
+        guard !cookie.isEmpty else {
+            throw NetworkError.message("未填写 Cookie")
+        }
+        let json = try await getJSON(
+            "https://api.bilibili.com/x/web-interface/nav",
+            query: [:],
+            signed: false,
+            allowBusinessError: true
+        )
+        guard let data = dict(json["data"]) else {
+            throw NetworkError.message("接口返回异常")
+        }
+        let isLogin = (data["isLogin"] as? Bool) ?? false
+        return (isLogin, str(data["uname"]))
     }
 
     // MARK: - Play (SimpleLive getPlayQualites / getPlayUrls)
@@ -638,7 +662,7 @@ actor BilibiliLiveService {
         if buvid3.isEmpty {
             await refreshBuvid()
         }
-        let custom = sanitizeHeader(userCookie)
+        let custom = sanitizeHeader(await userCookie)
         if custom.isEmpty {
             return "buvid3=\(buvid3);buvid4=\(buvid4);"
         }
@@ -658,7 +682,7 @@ actor BilibiliLiveService {
 
     private func refreshBuvid() async {
         // Prefer buvid from user cookie if present (SimpleLive getBuvid).
-        let c = userCookie
+        let c = await userCookie
         if c.contains("buvid3") {
             if let m = c.range(of: #"buvid3=([^;]+)"#, options: .regularExpression) {
                 let cap = String(c[m]).replacingOccurrences(of: "buvid3=", with: "")

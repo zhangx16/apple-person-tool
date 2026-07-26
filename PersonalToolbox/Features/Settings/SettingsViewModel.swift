@@ -10,6 +10,9 @@ final class SettingsViewModel: ObservableObject {
     @Published private(set) var komariProbe: ServiceProbeState = .unknown
     @Published private(set) var checkinProbe: ServiceProbeState = .unknown
     @Published private(set) var cloudflareProbe: ServiceProbeState = .unknown
+    @Published private(set) var bilibiliCookieProbe: ServiceProbeState = .unknown
+    @Published private(set) var douyinCookieProbe: ServiceProbeState = .unknown
+    @Published private(set) var kuaishouCookieProbe: ServiceProbeState = .unknown
     @Published private(set) var discoveredModels: [String] = []
     @Published var logoutNotice: String?
 
@@ -22,6 +25,9 @@ final class SettingsViewModel: ObservableObject {
     private let checkin = CheckinService.shared
     private let cloudflare = CloudflareService.shared
     private let network = NetworkClient.shared
+    private let bilibiliLive = BilibiliLiveService.shared
+    private let douyinLive = DouyinLiveService.shared
+    private let kuaishouLive = KuaishouLiveService.shared
 
     init(settings: AppSettings = .shared) {
         self.settings = settings
@@ -251,6 +257,77 @@ final class SettingsViewModel: ObservableObject {
             Haptics.success()
         } catch {
             cloudflareProbe = .failure(Self.chineseError(error))
+            Haptics.error()
+        }
+    }
+
+    func testBilibiliCookie() async {
+        guard !bilibiliCookieProbe.isProbing else { return }
+        guard !settings.bilibiliCookie.isEmpty else {
+            bilibiliCookieProbe = .failure("请先填写 Cookie")
+            Haptics.error()
+            return
+        }
+        bilibiliCookieProbe = .probing
+        let start = ContinuousClock.now
+        do {
+            let result = try await bilibiliLive.checkLoginStatus()
+            if result.isLogin {
+                bilibiliCookieProbe = .success(
+                    latencyMs: elapsedMs(since: start),
+                    detail: "已登录 · \(result.username)"
+                )
+                Haptics.success()
+            } else {
+                bilibiliCookieProbe = .failure("Cookie 已失效或未登录")
+                Haptics.error()
+            }
+        } catch {
+            bilibiliCookieProbe = .failure(Self.chineseError(error))
+            Haptics.error()
+        }
+    }
+
+    func testDouyinCookie() async {
+        guard !douyinCookieProbe.isProbing else { return }
+        guard !settings.douyinLiveCookie.isEmpty else {
+            douyinCookieProbe = .failure("请先填写 Cookie")
+            Haptics.error()
+            return
+        }
+        douyinCookieProbe = .probing
+        let start = ContinuousClock.now
+        do {
+            let rooms = try await douyinLive.getRecommendRooms(page: 1)
+            douyinCookieProbe = .success(
+                latencyMs: elapsedMs(since: start),
+                detail: "Cookie 未被拒绝 · 拉到 \(rooms.count) 个房间"
+            )
+            Haptics.success()
+        } catch {
+            douyinCookieProbe = .failure(Self.chineseError(error))
+            Haptics.error()
+        }
+    }
+
+    func testKuaishouCookie() async {
+        guard !kuaishouCookieProbe.isProbing else { return }
+        guard !settings.kuaishouCookie.isEmpty else {
+            kuaishouCookieProbe = .failure("请先填写 Cookie")
+            Haptics.error()
+            return
+        }
+        kuaishouCookieProbe = .probing
+        let start = ContinuousClock.now
+        do {
+            let rooms = try await kuaishouLive.getRecommendRooms(page: 1)
+            kuaishouCookieProbe = .success(
+                latencyMs: elapsedMs(since: start),
+                detail: "Cookie 未被拒绝 · 拉到 \(rooms.count) 个房间"
+            )
+            Haptics.success()
+        } catch {
+            kuaishouCookieProbe = .failure(Self.chineseError(error))
             Haptics.error()
         }
     }

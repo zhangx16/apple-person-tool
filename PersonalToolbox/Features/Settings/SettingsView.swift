@@ -123,7 +123,7 @@ struct SettingsView: View {
                             tint: Color(hex: 0x111111),
                             configured: !settings.douyinLiveCookie.isEmpty
                         ) {
-                            DouyinLiveSettingsPage()
+                            DouyinLiveSettingsPage(viewModel: viewModel)
                         }
                         plainLink(
                             systemImage: "video.fill",
@@ -132,7 +132,7 @@ struct SettingsView: View {
                             tint: ServiceBrand.live.tint,
                             configured: !settings.kuaishouCookie.isEmpty
                         ) {
-                            KuaishouLiveSettingsPage()
+                            KuaishouLiveSettingsPage(viewModel: viewModel)
                         }
                         plainLink(
                             systemImage: "play.rectangle.on.rectangle.fill",
@@ -141,7 +141,7 @@ struct SettingsView: View {
                             tint: ServiceBrand.bilibili.tint,
                             configured: !settings.bilibiliCookie.isEmpty
                         ) {
-                            BilibiliDownloadSettingsPage()
+                            BilibiliDownloadSettingsPage(viewModel: viewModel)
                         }
                     }
 
@@ -914,6 +914,7 @@ struct Kuaidi100SettingsPage: View {
 
 struct BilibiliDownloadSettingsPage: View {
     @EnvironmentObject private var settings: AppSettings
+    @ObservedObject var viewModel: SettingsViewModel
 
     var body: some View {
         Form {
@@ -926,6 +927,18 @@ struct BilibiliDownloadSettingsPage: View {
                 Text("登录 Cookie（BilibiliDown 同思路）")
             } footer: {
                 Text("浏览器登录 bilibili.com 后，复制 Cookie（建议含 SESSDATA、bili_jct、DedeUserID）。用于：① 下载 Tab「B站」本机解析高清；② 直播 Tab「B站」拉流 / 弹幕。不填也可试用公开清晰度。")
+            }
+            Section {
+                ServiceProbeRow(state: viewModel.bilibiliCookieProbe)
+                Button {
+                    Task { await viewModel.testBilibiliCookie() }
+                } label: {
+                    Label("检测 Cookie 可用性", systemImage: "bolt.fill")
+                }
+                .buttonStyle(PressableButtonStyle())
+                .disabled(viewModel.bilibiliCookieProbe.isProbing)
+            } footer: {
+                Text("调用 B 站官方 nav 接口验证登录态，可准确判断 Cookie 是否已过期。")
             }
             Section("说明") {
                 Text("参考 nICEnnnnnnnLee/BilibiliDown 的 Cookie 登录与 playurl 拉流；App 内优先单文件流，无需桌面 ffmpeg。")
@@ -945,6 +958,7 @@ struct BilibiliDownloadSettingsPage: View {
 
 struct DouyinLiveSettingsPage: View {
     @EnvironmentObject private var settings: AppSettings
+    @ObservedObject var viewModel: SettingsViewModel
 
     var body: some View {
         Form {
@@ -957,6 +971,18 @@ struct DouyinLiveSettingsPage: View {
                 Text("登录 Cookie")
             } footer: {
                 Text("在电脑浏览器打开 live.douyin.com 并登录后，F12 → Network 任选请求，复制 Request Headers 里的 Cookie（建议含 ttwid、sessionid、__ac_nonce 等）。用于搜索与部分房间拉流，降低风控。")
+            }
+            Section {
+                ServiceProbeRow(state: viewModel.douyinCookieProbe)
+                Button {
+                    Task { await viewModel.testDouyinCookie() }
+                } label: {
+                    Label("检测 Cookie 可用性", systemImage: "bolt.fill")
+                }
+                .buttonStyle(PressableButtonStyle())
+                .disabled(viewModel.douyinCookieProbe.isProbing)
+            } footer: {
+                Text("抖音没有独立的登录态查询接口，此检测用当前 Cookie 拉取推荐房间列表，确认未被风控拒绝。")
             }
             Section("获取步骤") {
                 Text("1. 浏览器登录 live.douyin.com\n2. 打开开发者工具 → Network\n3. 刷新页面，点任意 live.douyin.com 请求\n4. 复制 Cookie 字段全文粘贴到上方")
@@ -981,6 +1007,7 @@ struct DouyinLiveSettingsPage: View {
 
 struct KuaishouLiveSettingsPage: View {
     @EnvironmentObject private var settings: AppSettings
+    @ObservedObject var viewModel: SettingsViewModel
 
     var body: some View {
         Form {
@@ -996,6 +1023,18 @@ struct KuaishouLiveSettingsPage: View {
                 Text("登录凭证（弹幕）")
             } footer: {
                 Text("列表与播放多数可匿名。弹幕需在浏览器登录 live.kuaishou.com 后复制 Cookie；若 Cookie 含 kwfv1= 会自动生成 Kww。与 SimpleLive「快手账号」一致。")
+            }
+            Section {
+                ServiceProbeRow(state: viewModel.kuaishouCookieProbe)
+                Button {
+                    Task { await viewModel.testKuaishouCookie() }
+                } label: {
+                    Label("检测 Cookie 可用性", systemImage: "bolt.fill")
+                }
+                .buttonStyle(PressableButtonStyle())
+                .disabled(viewModel.kuaishouCookieProbe.isProbing)
+            } footer: {
+                Text("快手没有独立的登录态查询接口，此检测用当前 Cookie 拉取推荐房间列表，确认未被风控拒绝。")
             }
             Section("说明") {
                 Text("不配置 Cookie 也可看直播；仅弹幕连接可能提示凭证无效。")

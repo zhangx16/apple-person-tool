@@ -62,18 +62,8 @@ jobs:
         id: sim
         run: |
           set -euo pipefail
-          NAME=$(xcrun simctl list devices available --json | python3 -c '
-import json, sys
-data = json.load(sys.stdin)
-best = None
-for runtime, devices in data.get("devices", {}).items():
-    if "iOS" not in runtime:
-        continue
-    for dev in devices:
-        if dev.get("isAvailable") and "iPhone" in dev.get("name", ""):
-            best = dev["name"]
-print(best or "")
-')
+          # 单行 python：YAML 块标量里不能有顶格行，多行脚本会截断 run 块。
+          NAME=$(xcrun simctl list devices available --json | python3 -c 'import json,sys; d=json.load(sys.stdin); names=[dev["name"] for rt,ds in d.get("devices",{}).items() if "iOS" in rt for dev in ds if dev.get("isAvailable") and "iPhone" in dev.get("name","")]; print(names[-1] if names else "")')
           if [ -z "$NAME" ]; then
             echo "::error::No available iPhone simulator found on this runner"
             xcrun simctl list devices available

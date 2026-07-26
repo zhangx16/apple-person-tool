@@ -150,7 +150,7 @@ struct TGChannelRootView: View {
                     .disabled(isLoading)
                 }
             } else {
-                Text("首次播放会边下边播并缓存到服务器；左滑条目可删缓存。")
+                Text("首次播放会边下边播并缓存到服务器；长按条目可删除单条缓存。")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }
@@ -277,7 +277,6 @@ struct TGChannelRootView: View {
                         Image(systemName: "play.fill")
                             .font(.title3.weight(.semibold))
                             .foregroundStyle(Color.accentColor)
-                            .offset(x: 1) // optical center for play glyph
                     }
                 }
                 .buttonStyle(.plain)
@@ -343,20 +342,6 @@ struct TGChannelRootView: View {
         .onTapGesture {
             guard post.hasVideo else { return }
             Task { await play(post) }
-        }
-        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            if post.hasVideo, post.cached {
-                Button(role: .destructive) {
-                    Task { await deleteCache(post) }
-                } label: {
-                    if deletingId == post.id {
-                        Label("…", systemImage: "hourglass")
-                    } else {
-                        Label("删缓存", systemImage: "trash")
-                    }
-                }
-                .disabled(deletingId != nil)
-            }
         }
         .contextMenu {
             if post.hasVideo {

@@ -25,7 +25,9 @@ enum AdaptiveLayout {
         spacing: CGFloat = 12,
         maxColumns: Int = 6
     ) -> [GridItem] {
-        [GridItem(.adaptive(minimum: minimum, maximum: 480), spacing: spacing)]
+        // `maxColumns` reserved for future fixed-count layouts; adaptive fills width.
+        _ = maxColumns
+        return [GridItem(.adaptive(minimum: minimum, maximum: 480), spacing: spacing)]
     }
 
     /// Fixed flexible columns (phone 2-up style that grows on pad).
@@ -33,14 +35,19 @@ enum AdaptiveLayout {
         count: Int,
         spacing: CGFloat = 12
     ) -> [GridItem] {
-        Array(repeating: GridItem(.flexible(), spacing: spacing), count: max(1, count))
+        Array(repeating: GridItem(.flexible(), spacing: spacing), count: Swift.max(1, count))
     }
 
     /// Column count from container width.
-    static func columnCount(width: CGFloat, minimum: CGFloat, spacing: CGFloat = 12, max: Int = 6) -> Int {
+    static func columnCount(
+        width: CGFloat,
+        minimum: CGFloat,
+        spacing: CGFloat = 12,
+        maxColumns: Int = 6
+    ) -> Int {
         guard width > 0, minimum > 0 else { return 1 }
         let n = Int((width + spacing) / (minimum + spacing))
-        return min(max, max(1, n))
+        return Swift.min(maxColumns, Swift.max(1, n))
     }
 }
 

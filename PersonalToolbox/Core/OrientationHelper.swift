@@ -1,23 +1,44 @@
 import UIKit
 
-/// Runtime orientation lock for fullscreen live player.
-/// App chrome defaults to portrait; fullscreen live forces landscape.
+/// Runtime orientation policy.
+/// - iPhone chrome: portrait; live/video fullscreen may lock landscape.
+/// - iPad: free rotation by default (all orientations); fullscreen still prefers landscape.
 enum OrientationHelper {
     /// Current allowed orientations (read by `AppDelegate`).
     /// `nonisolated(unsafe)` so UIKit orientation callbacks can read it without hopping actors.
-    nonisolated(unsafe) private(set) static var mask: UIInterfaceOrientationMask = .portrait
+    nonisolated(unsafe) private(set) static var mask: UIInterfaceOrientationMask = OrientationHelper.defaultMask
 
-    /// Prefer landscape for live fullscreen.
+    /// Device-appropriate chrome orientations.
+    nonisolated static var defaultMask: UIInterfaceOrientationMask {
+        UIDevice.current.userInterfaceIdiom == .pad ? .all : .portrait
+    }
+
+    nonisolated static var isPad: Bool {
+        UIDevice.current.userInterfaceIdiom == .pad
+    }
+
+    /// Prefer landscape for live / video fullscreen.
     @MainActor
     static func lockLandscape() {
         mask = .landscape
         apply(preferred: .landscapeRight)
     }
 
-    /// Restore portrait after leaving fullscreen.
+    /// Restore app-chrome orientations after leaving fullscreen.
+    /// On iPhone this is portrait; on iPad all orientations (no forced spin).
     @MainActor
     static func lockPortrait() {
-        mask = .portrait
+        restoreDefault()
+    }
+
+    /// Explicit restore to device default (same as `lockPortrait`, clearer call site).
+    @MainActor
+    static func restoreDefault() {
+        mask = defaultMask
+        if isPad {
+            // Update allowed mask only — don't yank the user into portrait.
+            return
+        }
         apply(preferred: .portrait)
     }
 

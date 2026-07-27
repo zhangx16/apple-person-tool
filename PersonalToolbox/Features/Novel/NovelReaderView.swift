@@ -58,6 +58,9 @@ struct NovelReaderView: View {
                         }
                         .padding(.horizontal, 20)
                         .padding(.vertical, 24)
+                        // iPad：限制行宽，避免超长行难读
+                        .frame(maxWidth: AdaptiveLayout.readerMaxWidth, alignment: .leading)
+                        .frame(maxWidth: .infinity, alignment: .center)
                     }
                     .onTapGesture { withAnimation { showChrome.toggle() } }
                 }

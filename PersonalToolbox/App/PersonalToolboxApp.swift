@@ -13,8 +13,9 @@ struct PersonalToolboxApp: App {
             QRAssistantStore.shared.load()
         }
         LocalNotifier.installForegroundDelegate()
-        // App chrome is portrait-first; live fullscreen temporarily locks landscape.
-        OrientationHelper.lockPortrait()
+        // iPhone chrome is portrait-first; iPad allows free rotation.
+        // Live / video fullscreen temporarily locks landscape on both.
+        OrientationHelper.restoreDefault()
     }
 
     var body: some Scene {

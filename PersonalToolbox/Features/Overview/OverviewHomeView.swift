@@ -304,10 +304,15 @@ final class OverviewViewModel: ObservableObject {
 struct OverviewHomeView: View {
     @Binding var selectedTab: AppTab
     @EnvironmentObject private var settings: AppSettings
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @StateObject private var viewModel = OverviewViewModel()
     @State private var path = NavigationPath()
 
     private var accent: Color { Color.accentColor }
+
+    private var isRegularWidth: Bool {
+        horizontalSizeClass == .regular || AdaptiveLayout.isPad
+    }
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -330,6 +335,7 @@ struct OverviewHomeView: View {
                 }
                 .padding(16)
                 .padding(.bottom, 28)
+                .adaptiveReadableWidth(AdaptiveLayout.contentMaxWidth)
             }
             .background(AppSurfaceBackground(accent: accent))
             .navigationTitle("总览")
@@ -667,7 +673,7 @@ struct OverviewHomeView: View {
         VStack(alignment: .leading, spacing: 10) {
             AppSectionTitle(title: "服务速览", systemImage: "square.grid.2x2.fill")
             LazyVGrid(
-                columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)],
+                columns: AdaptiveLayout.columns(minimum: AdaptiveLayout.metricMinTile, spacing: 12),
                 spacing: 12
             ) {
                 metricCard(
@@ -768,11 +774,10 @@ struct OverviewHomeView: View {
         VStack(alignment: .leading, spacing: 10) {
             AppSectionTitle(title: "常用服务", systemImage: "star.fill")
             LazyVGrid(
-                columns: [
-                    GridItem(.flexible(), spacing: 12),
-                    GridItem(.flexible(), spacing: 12),
-                    GridItem(.flexible(), spacing: 12)
-                ],
+                columns: AdaptiveLayout.columns(
+                    minimum: isRegularWidth ? 120 : AdaptiveLayout.quickTileMin,
+                    spacing: 12
+                ),
                 spacing: 12
             ) {
                 quickTile(brand: .checkin, title: "签到中心") { navigate(.checkin) }

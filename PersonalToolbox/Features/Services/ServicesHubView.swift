@@ -18,10 +18,9 @@ struct ServicesHubView: View {
         let open: () -> AnyView
     }
 
-    private let columns = [
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12)
-    ]
+    private var columns: [GridItem] {
+        AdaptiveLayout.columns(minimum: AdaptiveLayout.gridMinTile, spacing: 12)
+    }
 
     var body: some View {
         NavigationStack {
@@ -50,6 +49,7 @@ struct ServicesHubView: View {
                     }
                 }
                 .padding(.bottom, AppleTheme.space8)
+                .adaptiveReadableWidth(AdaptiveLayout.contentMaxWidth + 80)
             }
             .background(AppSurfaceBackground(accent: Color.accentColor))
             .navigationTitle("服务")

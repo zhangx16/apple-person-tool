@@ -700,6 +700,7 @@ struct LiveRoomView: View {
     @State private var showPlayerChrome = true
     @State private var showDanmaku = LiveDanmakuPrefs.shared.enabled
     @State private var showDanmakuSettings = false
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     init(room: LiveRoomItem) {
         self.room = room
@@ -709,27 +710,39 @@ struct LiveRoomView: View {
     private var platform: LivePlatform { vm.detail?.platform ?? room.platform }
     private var brand: Color { LiveUI.brand(platform) }
 
+    private var isRegularWidth: Bool {
+        horizontalSizeClass == .regular || AdaptiveLayout.isPad
+    }
+
     var body: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                playerHero
-                VStack(spacing: 12) {
-                    anchorCard
-                    titleBlock
-                    danmakuSection
-                    if vm.playMode == .native {
-                        qualitySection
-                        // 线路：自动切换（卡顿/断流时 ViewModel 自动换 CDN），不展示手动选线。
+        Group {
+            if isRegularWidth {
+                // iPad / regular: player left, meta right — better use of landscape width.
+                GeometryReader { geo in
+                    let playerWidth = min(geo.size.width * 0.58, geo.size.height * 16 / 9)
+                    HStack(alignment: .top, spacing: 0) {
+                        playerHero
+                            .frame(width: playerWidth)
+                            .frame(maxHeight: .infinity, alignment: .top)
+                        ScrollView {
+                            roomMetaStack
+                                .padding(.horizontal, 16)
+                                .padding(.top, 16)
+                                .padding(.bottom, 32)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
-                    engineSection
-                    if let err = vm.errorMessage, !err.isEmpty {
-                        errorBanner(err)
-                    }
-                    tipsCard
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 16)
-                .padding(.bottom, 32)
+            } else {
+                ScrollView {
+                    VStack(spacing: 0) {
+                        playerHero
+                        roomMetaStack
+                            .padding(.horizontal, 16)
+                            .padding(.top, 16)
+                            .padding(.bottom, 32)
+                    }
+                }
             }
         }
         .background {
@@ -811,8 +824,26 @@ struct LiveRoomView: View {
             if fullscreen {
                 OrientationHelper.lockLandscape()
             } else {
-                OrientationHelper.lockPortrait()
+                OrientationHelper.restoreDefault()
             }
+        }
+    }
+
+    @ViewBuilder
+    private var roomMetaStack: some View {
+        VStack(spacing: 12) {
+            anchorCard
+            titleBlock
+            danmakuSection
+            if vm.playMode == .native {
+                qualitySection
+                // 线路：自动切换（卡顿/断流时 ViewModel 自动换 CDN），不展示手动选线。
+            }
+            engineSection
+            if let err = vm.errorMessage, !err.isEmpty {
+                errorBanner(err)
+            }
+            tipsCard
         }
     }
 

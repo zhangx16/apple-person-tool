@@ -38,7 +38,19 @@ struct LiveHomeView: View {
     @FocusState private var searchFocused: Bool
     @State private var clipboardRoomHint: String?
     @EnvironmentObject private var settings: AppSettings
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @ObservedObject private var deepLink = AppDeepLinkStore.shared
+
+    private var isRegularWidth: Bool {
+        horizontalSizeClass == .regular || AdaptiveLayout.isPad
+    }
+
+    private var followColumns: [GridItem] {
+        if isRegularWidth {
+            return AdaptiveLayout.columns(minimum: 280, spacing: 12)
+        }
+        return [GridItem(.flexible(), spacing: 12)]
+    }
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -369,7 +381,7 @@ struct LiveHomeView: View {
             }
         } else {
             ScrollView {
-                LazyVStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 12) {
                     if follows.isRefreshingStatus {
                         HStack(spacing: 8) {
                             ProgressView()
@@ -381,20 +393,22 @@ struct LiveHomeView: View {
                         }
                         .padding(.horizontal, 4)
                     }
-                    ForEach(filtered) { item in
-                        // 关注卡：主播名 → 平台标注 → 房间号 / 分区
-                        LiveFollowCard(
-                            item: item,
-                            brand: LiveUI.brand(item.platform),
-                            showPlatformBadge: true
-                        ) {
-                            openRoom(follows.asRoomItem(item))
-                        }
-                        .contextMenu {
-                            Button(role: .destructive) {
-                                follows.unfollow(item)
-                            } label: {
-                                Label("取消关注", systemImage: "heart.slash")
+                    LazyVGrid(columns: followColumns, spacing: 12) {
+                        ForEach(filtered) { item in
+                            // 关注卡：主播名 → 平台标注 → 房间号 / 分区
+                            LiveFollowCard(
+                                item: item,
+                                brand: LiveUI.brand(item.platform),
+                                showPlatformBadge: true
+                            ) {
+                                openRoom(follows.asRoomItem(item))
+                            }
+                            .contextMenu {
+                                Button(role: .destructive) {
+                                    follows.unfollow(item)
+                                } label: {
+                                    Label("取消关注", systemImage: "heart.slash")
+                                }
                             }
                         }
                     }
@@ -444,7 +458,7 @@ struct LiveHomeView: View {
             )
         } else {
             ScrollView {
-                LazyVStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 12) {
                     if let searchError {
                         Text(searchError)
                             .font(.caption)
@@ -452,19 +466,21 @@ struct LiveHomeView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 4)
                     }
-                    ForEach(Array(searchResults.enumerated()), id: \.element.id) { _, room in
-                        let followed = follows.isFollowing(platform: room.platform, roomId: room.roomId)
-                        LiveStreamerCard(
-                            title: room.title.isEmpty ? room.userName : room.title,
-                            subtitle: room.userName.isEmpty ? "主播" : room.userName,
-                            meta: room.online > 0 ? "\(Self.formatOnline(room.online)) 人气" : "房间 \(room.roomId)",
-                            avatarURL: room.displayAvatar,
-                            brand: LiveUI.brand(platform),
-                            trailing: .follow(isOn: followed) {
-                                toggleFollow(room)
+                    LazyVGrid(columns: followColumns, spacing: 12) {
+                        ForEach(Array(searchResults.enumerated()), id: \.element.id) { _, room in
+                            let followed = follows.isFollowing(platform: room.platform, roomId: room.roomId)
+                            LiveStreamerCard(
+                                title: room.title.isEmpty ? room.userName : room.title,
+                                subtitle: room.userName.isEmpty ? "主播" : room.userName,
+                                meta: room.online > 0 ? "\(Self.formatOnline(room.online)) 人气" : "房间 \(room.roomId)",
+                                avatarURL: room.displayAvatar,
+                                brand: LiveUI.brand(platform),
+                                trailing: .follow(isOn: followed) {
+                                    toggleFollow(room)
+                                }
+                            ) {
+                                openRoom(room)
                             }
-                        ) {
-                            openRoom(room)
                         }
                     }
                 }

@@ -252,6 +252,7 @@ struct SettingsView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
                 .padding(.bottom, 32)
+                .adaptiveReadableWidth(AdaptiveLayout.formMaxWidth)
             }
             .background(AppSurfaceBackground(accent: Color.accentColor))
             .navigationTitle("设置")

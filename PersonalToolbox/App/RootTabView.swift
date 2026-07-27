@@ -6,50 +6,83 @@ enum AppTab: Hashable {
     case music
     case services
     case settings
+
+    var title: String {
+        switch self {
+        case .overview: return "总览"
+        case .live: return "直播"
+        case .music: return "音乐"
+        case .services: return "服务"
+        case .settings: return "设置"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .overview: return "square.grid.2x2"
+        case .live: return "play.tv"
+        case .music: return "music.note"
+        case .services: return "shippingbox"
+        case .settings: return "gearshape"
+        }
+    }
 }
 
 struct RootTabView: View {
     @EnvironmentObject private var settings: AppSettings
     @EnvironmentObject private var shareInbox: ShareInbox
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @ObservedObject private var deepLink = AppDeepLinkStore.shared
 
     @State private var selectedTab: AppTab = .overview
     @State private var isUnlocked = false
     @State private var hideForSwitcher = false
     /// When true (default on Music tab), system tab bar is hidden so music section bar owns the bottom.
+    /// Only applied on compact width (iPhone); iPad keeps the adaptable sidebar visible.
     @State private var musicHidesAppTabBar = true
+
+    private var isRegularWidth: Bool {
+        horizontalSizeClass == .regular || AdaptiveLayout.isPad
+    }
+
+    private var shouldHideTabBarForMusic: Bool {
+        selectedTab == .music && musicHidesAppTabBar && !isRegularWidth
+    }
 
     var body: some View {
         ZStack {
             TabView(selection: $selectedTab) {
                 OverviewHomeView(selectedTab: $selectedTab)
-                    .tabItem { Label("总览", systemImage: "square.grid.2x2") }
+                    .tabItem { Label(AppTab.overview.title, systemImage: AppTab.overview.systemImage) }
                     .tag(AppTab.overview)
-                    .accessibilityLabel("总览")
+                    .accessibilityLabel(AppTab.overview.title)
 
                 LiveHomeView()
-                    .tabItem { Label("直播", systemImage: "play.tv") }
+                    .tabItem { Label(AppTab.live.title, systemImage: AppTab.live.systemImage) }
                     .tag(AppTab.live)
-                    .accessibilityLabel("直播")
+                    .accessibilityLabel(AppTab.live.title)
 
                 MusicRootView(appTabBarHidden: $musicHidesAppTabBar)
-                    .tabItem { Label("音乐", systemImage: "music.note") }
+                    .tabItem { Label(AppTab.music.title, systemImage: AppTab.music.systemImage) }
                     .tag(AppTab.music)
-                    .accessibilityLabel("音乐")
-                    // Hide app tab bar while in Music so MeloX bottom bar can sit flush.
-                    .toolbar(musicHidesAppTabBar ? .hidden : .visible, for: .tabBar)
+                    .accessibilityLabel(AppTab.music.title)
+                    // Hide app tab bar while in Music on iPhone so MeloX bottom bar can sit flush.
+                    // On iPad (sidebarAdaptable) keep chrome so the sidebar remains available.
+                    .toolbar(shouldHideTabBarForMusic ? .hidden : .visible, for: .tabBar)
 
                 ServicesHubView(selectedTab: $selectedTab)
-                    .tabItem { Label("服务", systemImage: "shippingbox") }
+                    .tabItem { Label(AppTab.services.title, systemImage: AppTab.services.systemImage) }
                     .tag(AppTab.services)
-                    .accessibilityLabel("服务")
+                    .accessibilityLabel(AppTab.services.title)
 
                 SettingsView()
-                    .tabItem { Label("设置", systemImage: "gearshape") }
+                    .tabItem { Label(AppTab.settings.title, systemImage: AppTab.settings.systemImage) }
                     .tag(AppTab.settings)
-                    .accessibilityLabel("设置")
+                    .accessibilityLabel(AppTab.settings.title)
             }
+            // iOS 18+: bottom tabs on iPhone; sidebar (collapsible) on iPad / regular width.
+            .tabViewStyle(.sidebarAdaptable)
             .tint(Color.accentColor)
             .onAppear {
                 let appearance = UITabBarAppearance()
@@ -59,7 +92,7 @@ struct RootTabView: View {
                 UITabBar.appearance().scrollEdgeAppearance = appearance
             }
             .onChange(of: selectedTab) { _, tab in
-                // Entering Music: reclaim bottom; leaving: always restore app tabs.
+                // Entering Music: reclaim bottom on phone; leaving: always restore app tabs.
                 if tab == .music {
                     musicHidesAppTabBar = true
                 } else {
@@ -109,7 +142,8 @@ struct RootTabView: View {
                         }
                 }
                 .environmentObject(settings)
-                .presentationDetents([.medium, .large])
+                .presentationDetents(isRegularWidth ? [.large] : [.medium, .large])
+                .presentationDragIndicator(.visible)
             }
         }
         .sheet(item: $deepLink.presentSheet) { sheet in
@@ -122,11 +156,13 @@ struct RootTabView: View {
                     }
             }
             .environmentObject(settings)
+            .presentationDetents(isRegularWidth ? [.large] : [.medium, .large])
         }
         .onAppear {
             applyInitialLockState()
             updateSwitcherRedaction(for: scenePhase)
             shareInbox.consumeOnLaunch()
+            OrientationHelper.restoreDefault()
         }
         .onChange(of: scenePhase) { _, phase in
             handleScenePhase(phase)
@@ -196,6 +232,12 @@ struct RootTabView: View {
         }
         if phase == .active {
             LiveOpenNotifyService.evaluate(settings: settings)
+            // Re-assert chrome orientation after returning from background (e.g. after video).
+            if OrientationHelper.mask == .landscape {
+                // Still in a fullscreen player path — leave alone.
+            } else {
+                OrientationHelper.restoreDefault()
+            }
         }
     }
 

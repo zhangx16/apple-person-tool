@@ -45,6 +45,7 @@
 		00000000000000000000080B /* ControlCenterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000080A /* ControlCenterView.swift */; };
 		00000000000000000000080D /* ProxyNodePackView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000080C /* ProxyNodePackView.swift */; };
 		000000000000000000008137 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 000000000000000000008136 /* GRDB */; };
+		00000000000000000000EC03 /* KumoneCore in Frameworks */ = {isa = PBXBuildFile; productRef = 00000000000000000000EC02 /* KumoneCore */; };
 		000000000000000000008001 /* MusicRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008000 /* MusicRootView.swift */; };
 		000000000000000000008003 /* MeloXCompatibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008002 /* MeloXCompatibility.swift */; };
 		000000000000000000008005 /* AppLaunchExperience.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008004 /* AppLaunchExperience.swift */; };
@@ -1295,6 +1296,7 @@
 			packageProductDependencies = (
 				000000000000000000000701 /* Citadel */,
 				000000000000000000008136 /* GRDB */,
+				00000000000000000000EC02 /* KumoneCore */,
 			);
 			productName = PersonalToolbox;
 			productReference = 000000000000000000000202 /* PersonalToolbox.app */;
@@ -1382,6 +1384,7 @@
 			packageReferences = (
 				000000000000000000000700 /* XCRemoteSwiftPackageReference "Citadel" */,
 				000000000000000000008135 /* XCRemoteSwiftPackageReference "GRDB.swift" */,
+				00000000000000000000EC01 /* XCLocalSwiftPackageReference "Modules/Kumone" */,
 			);
 			targets = (
 				000000000000000000000203 /* PersonalToolbox */,
@@ -1401,6 +1404,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				000000000000000000008137 /* GRDB in Frameworks */,
+				00000000000000000000EC03 /* KumoneCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2018,7 +2022,19 @@
 		};
 /* End XCRemoteSwiftPackageReference section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		00000000000000000000EC01 /* XCLocalSwiftPackageReference "Modules/Kumone" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Modules/Kumone;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
+		00000000000000000000EC02 /* KumoneCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 00000000000000000000EC01 /* XCLocalSwiftPackageReference "Modules/Kumone" */;
+			productName = KumoneCore;
+		};
 		000000000000000000008136 /* GRDB */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 000000000000000000008135 /* XCRemoteSwiftPackageReference "GRDB.swift" */;

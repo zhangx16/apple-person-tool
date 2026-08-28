@@ -1,74 +1,21 @@
 import SwiftUI
+import KumoneCore
 
-/// Native MeloX music module entry for PersonalToolbox bottom tab.
+/// Kumone music module entry embedded in PersonalToolbox.
 struct MusicRootView: View {
-    /// Bound to RootTabView: hide system tab bar while immersed in music.
     @Binding var appTabBarHidden: Bool
-
-    @State private var settings: MeloXSettings
-    @State private var api: NeteaseAPI
-    @State private var library: LibraryStore
-    @State private var cloud: CloudMusicStore
-    @State private var downloads: DownloadStore
-    @State private var player: PlayerStore
-    @State private var screenAwakeCoordinator: ScreenAwakeCoordinator
-    @State private var isLowPowerModeEnabled = ProcessInfo.processInfo.isLowPowerModeEnabled
 
     init(appTabBarHidden: Binding<Bool> = .constant(true)) {
         _appTabBarHidden = appTabBarHidden
-        let settings = MeloXSettings()
-        if !settings.hasCompletedOnboarding {
-            settings.hasCompletedOnboarding = true
-        }
-        let api = NeteaseAPI(settings: settings)
-        let library = LibraryStore(api: api, settings: settings)
-        let cloud = CloudMusicStore(api: api, settings: settings)
-        let downloads = DownloadStore(api: api, settings: settings)
-        _settings = State(initialValue: settings)
-        _api = State(initialValue: api)
-        _library = State(initialValue: library)
-        _cloud = State(initialValue: cloud)
-        _downloads = State(initialValue: downloads)
-        _player = State(
-            initialValue: PlayerStore(
-                api: api,
-                settings: settings,
-                downloads: downloads,
-                onPlaybackRecorded: { song in
-                    library.recordRecentlyPlayed(song)
-                }
-            )
-        )
-        _screenAwakeCoordinator = State(initialValue: ScreenAwakeCoordinator())
     }
 
     var body: some View {
-        MeloXContentView(
-            initialTab: AppDeepLinkStore.shared.pendingMusicURL != nil ? .search : settings.launchTab,
-            appTabBarHidden: $appTabBarHidden
-        )
-        .environment(settings)
-        .environment(api)
-        .environment(library)
-        .environment(cloud)
-        .environment(downloads)
-        .environment(player)
-        .environment(screenAwakeCoordinator)
-        .environment(\.effectiveLyricsRefreshRate, effectiveLyricsRefreshRate)
-        .tint(.red)
-        .onReceive(
-            NotificationCenter.default.publisher(
-                for: .NSProcessInfoPowerStateDidChange
-            )
-        ) { _ in
-            isLowPowerModeEnabled = ProcessInfo.processInfo.isLowPowerModeEnabled
-        }
+        IOSMainWindow()
         .onAppear {
-            // Deep link music URL is consumed by SearchView.
+            appTabBarHidden = true
         }
-    }
-
-    private var effectiveLyricsRefreshRate: LyricsRefreshRate {
-        isLowPowerModeEnabled ? .lowPowerValue : settings.lyricsRefreshRate
+        .onDisappear {
+            appTabBarHidden = false
+        }
     }
 }

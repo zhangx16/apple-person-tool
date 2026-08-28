@@ -1,6 +1,7 @@
-# 音乐模块（原生 MeloX）
+# 音乐模块（Kumone）
 
-基于 [youshen2/MeloX](https://github.com/youshen2/MeloX) 的网易云音乐原生客户端。
+完整接入 [missuo/kumone](https://github.com/missuo/kumone) 的 iOS 客户端能力，
+通过本地 Swift Package `Modules/Kumone` 与 PersonalToolbox 主工程隔离。
 
 ## 构建要求（已升级）
 
@@ -8,14 +9,28 @@
 |----|-----|
 | CI Runner | `macos-15` |
 | Xcode | 优先 26.x → 16.x → 15.4 |
-| 部署目标 | **iOS 18.0**（启用 TextProxy / textRenderer / 全屏歌词等 API） |
+| 部署目标 | **iOS 18.0** |
 
-此前未直接升版本，是因为仓库 CI 长期锁在 Xcode 15.4 + iOS 17，全量 MeloX（iOS 26 API）无法过编；现已按你的要求升级。
+Kumone 支持 iOS 16+；PersonalToolbox 保持自身 iOS 18 部署目标。CI 应优先选择 Xcode 26，
+以覆盖 Kumone 最新的条件编译界面。
 
 ## 入口
 
-`MusicRootView` → `MeloXContentView`（顶部分段，避免双底栏）
+`MusicRootView` → `KumoneCore.IOSMainWindow`
 
 ## 登录
 
-设置 → 登录网易云（WKWebView 抓 Cookie，兼容面更广）
+Kumone 内置网易云二维码登录，Cookie 本地持久化并自动刷新。
+
+## 能力
+
+- 推荐、精选、私人漫游、聚合搜索和个人音乐库
+- 歌单、专辑、歌手、每日推荐、红心与最近播放
+- AVPlayer 队列、随机/单曲/列表循环与系统 Now Playing
+- 沉浸播放页、同步歌词、翻译歌词和逐字歌词
+- 原生灰色歌曲解锁与音质回退
+
+## 许可
+
+Kumone 使用 LGPL-3.0-only。其完整源码、LICENSE、COPYING 和修改历史保留在
+`Modules/Kumone`；PersonalToolbox 通过独立 Swift Package 产品 `KumoneCore` 链接。

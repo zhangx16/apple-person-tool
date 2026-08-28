@@ -314,8 +314,8 @@ struct ServicesHubView: View {
                 item("translator", "翻译器", "Google 翻译", .translator) {
                     AnyView(TranslatorHomeView())
                 },
-                item("express", "快递查询", "承运商识别 · 单号管理", .express) {
-                    AnyView(ExpressHomeView())
+                item("express", "快递助手", "多平台聚合 · 云雀 · 跟踪提醒", .express) {
+                    AnyView(ExpressAssistantRootView())
                 },
                 item("market", "油价 / 汇率 / 金价", "多源金价 · 油价 · 汇率", .market) {
                     AnyView(MarketQuotesHomeView())

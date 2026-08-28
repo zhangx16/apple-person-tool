@@ -249,7 +249,7 @@ struct QuickActionsHomeView: View {
                     toolLink("RSS 阅读", "dot.radiowaves.up.forward", Color(hex: 0xFF9500)) { RSSHomeView() }
                     toolLink("习惯与待办", "checklist", Color(hex: 0x30D158)) { HabitsTodosHomeView() }
                     toolLink("行情", "chart.line.uptrend.xyaxis", Color(hex: 0x34C759)) { MarketQuotesHomeView() }
-                    toolLink("快递", "shippingbox", Color(hex: 0xAC8E68)) { ExpressHomeView() }
+            toolLink("快递", "shippingbox", Color(hex: 0xAC8E68)) { ExpressAssistantRootView() }
                     toolLink("密码生成", "key.fill", Color(hex: 0xBF5AF2)) { PasswordGeneratorHomeView() }
                 }
             }
@@ -305,7 +305,7 @@ struct QuickActionRunnerView: View {
             case .openMarket:
                 MarketQuotesHomeView()
             case .openExpress:
-                ExpressHomeView(prefill: payload.url ?? payload.text)
+            ExpressAssistantRootView(prefill: payload.url ?? payload.text)
             case .openPassword:
                 PasswordGeneratorHomeView()
             case .openHealth:

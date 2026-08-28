@@ -76,7 +76,7 @@ struct ParcelCalendarView: View {
     var body: some View { List { Section { DatePicker("日期", selection: $selected, displayedComponents: .date).datePickerStyle(.graphical) }; Section("预计到达") { if arrivals.isEmpty { Text("当天暂无预计到达包裹").foregroundStyle(.secondary) }; ForEach(arrivals) { parcel in NavigationLink(parcel.title) { ParcelDetailView(id: parcel.id) } } } }.navigationTitle("快递日历") }
 }
 
-struct SettingsView: View {
+struct ExpressAssistantSettingsView: View {
     @StateObject private var repository = AppRepository.shared
     @State private var customer = Secrets.get("customer"); @State private var key = Secrets.get("key")
     @State private var aiBase = Secrets.get("ai.base"); @State private var aiKey = Secrets.get("ai.key"); @State private var aiModel = Secrets.get("ai.model")

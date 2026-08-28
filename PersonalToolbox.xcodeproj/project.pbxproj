@@ -316,6 +316,17 @@
 		000000000000000000000515 /* ExpressService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000514 /* ExpressService.swift */; };
 		00000000000000000000A006 /* ExpressBackgroundRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000A005 /* ExpressBackgroundRefresh.swift */; };
 		000000000000000000000517 /* ToolsHomeViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000516 /* ToolsHomeViews.swift */; };
+		00000000000000000000EB01 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000EA01 /* Models.swift */; };
+		00000000000000000000EB02 /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000EA02 /* Keychain.swift */; };
+		00000000000000000000EB03 /* Kuaidi100Client.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000EA03 /* Kuaidi100Client.swift */; };
+		00000000000000000000EB04 /* ParcelStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000EA04 /* ParcelStore.swift */; };
+		00000000000000000000EB05 /* ExpressAssistantModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000EA05 /* ExpressAssistantModels.swift */; };
+		00000000000000000000EB06 /* AppRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000EA06 /* AppRepository.swift */; };
+		00000000000000000000EB07 /* Dashboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000EA07 /* Dashboard.swift */; };
+		00000000000000000000EB08 /* Accounts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000EA08 /* Accounts.swift */; };
+		00000000000000000000EB09 /* AI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000EA09 /* AI.swift */; };
+		00000000000000000000EB0A /* Views.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000EA0A /* Views.swift */; };
+		00000000000000000000EB0B /* Integration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000EA0B /* Integration.swift */; };
 
 		00000000000000000000051D /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000519 /* ShareViewController.swift */; };
 		00000000000000000000051F /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 00000000000000000000051C /* ShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -641,6 +652,17 @@
 		000000000000000000000514 /* ExpressService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpressService.swift; sourceTree = "<group>"; };
 		00000000000000000000A005 /* ExpressBackgroundRefresh.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpressBackgroundRefresh.swift; sourceTree = "<group>"; };
 		000000000000000000000516 /* ToolsHomeViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolsHomeViews.swift; sourceTree = "<group>"; };
+		00000000000000000000EA01 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		00000000000000000000EA02 /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
+		00000000000000000000EA03 /* Kuaidi100Client.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Kuaidi100Client.swift; sourceTree = "<group>"; };
+		00000000000000000000EA04 /* ParcelStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParcelStore.swift; sourceTree = "<group>"; };
+		00000000000000000000EA05 /* ExpressAssistantModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpressAssistantModels.swift; sourceTree = "<group>"; };
+		00000000000000000000EA06 /* AppRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRepository.swift; sourceTree = "<group>"; };
+		00000000000000000000EA07 /* Dashboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Dashboard.swift; sourceTree = "<group>"; };
+		00000000000000000000EA08 /* Accounts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Accounts.swift; sourceTree = "<group>"; };
+		00000000000000000000EA09 /* AI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AI.swift; sourceTree = "<group>"; };
+		00000000000000000000EA0A /* Views.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views.swift; sourceTree = "<group>"; };
+		00000000000000000000EA0B /* Integration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Integration.swift; sourceTree = "<group>"; };
 
 		000000000000000000000519 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
 		00000000000000000000051A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -1165,10 +1187,29 @@
 			isa = PBXGroup;
 			children = (
 				000000000000000000000310 /* PersonalToolbox */,
+				00000000000000000000EA10 /* ExpressAssistant */,
 				0000000000000000000090AA /* PersonalToolboxTests */,
 				00000000000000000000030F /* Products */,
 			);
 			sourceTree = "<group>";
+		};
+		00000000000000000000EA10 /* ExpressAssistant */ = {
+			isa = PBXGroup;
+			children = (
+				00000000000000000000EA01 /* Models.swift */,
+				00000000000000000000EA02 /* Keychain.swift */,
+				00000000000000000000EA03 /* Kuaidi100Client.swift */,
+				00000000000000000000EA04 /* ParcelStore.swift */,
+				00000000000000000000EA05 /* ExpressAssistantModels.swift */,
+				00000000000000000000EA06 /* AppRepository.swift */,
+				00000000000000000000EA07 /* Dashboard.swift */,
+				00000000000000000000EA08 /* Accounts.swift */,
+				00000000000000000000EA09 /* AI.swift */,
+				00000000000000000000EA0A /* Views.swift */,
+				00000000000000000000EA0B /* Integration.swift */,
+			);
+			path = Modules/ExpressTools/ExpressTools;
+			sourceTree = SOURCE_ROOT;
 		};
 		000000000000000000000518 /* Tools */ = {
 			isa = PBXGroup;
@@ -1445,6 +1486,17 @@
 				000000000000000000000515 /* ExpressService.swift in Sources */,
 				00000000000000000000A006 /* ExpressBackgroundRefresh.swift in Sources */,
 				000000000000000000000517 /* ToolsHomeViews.swift in Sources */,
+				00000000000000000000EB01 /* Models.swift in Sources */,
+				00000000000000000000EB02 /* Keychain.swift in Sources */,
+				00000000000000000000EB03 /* Kuaidi100Client.swift in Sources */,
+				00000000000000000000EB04 /* ParcelStore.swift in Sources */,
+				00000000000000000000EB05 /* ExpressAssistantModels.swift in Sources */,
+				00000000000000000000EB06 /* AppRepository.swift in Sources */,
+				00000000000000000000EB07 /* Dashboard.swift in Sources */,
+				00000000000000000000EB08 /* Accounts.swift in Sources */,
+				00000000000000000000EB09 /* AI.swift in Sources */,
+				00000000000000000000EB0A /* Views.swift in Sources */,
+				00000000000000000000EB0B /* Integration.swift in Sources */,
 				00000000000000000000010C /* KeychainStore.swift in Sources */,
 				00000000000000000000010E /* NetworkClient.swift in Sources */,
 				000000000000000000000110 /* SSEParser.swift in Sources */,

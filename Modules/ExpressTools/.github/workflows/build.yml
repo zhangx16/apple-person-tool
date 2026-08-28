@@ -1,0 +1,43 @@
+name: iOS Build
+on:
+  workflow_dispatch:
+  push:
+  pull_request:
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate
+      - name: Build for iOS Simulator
+        run: |
+          set -o pipefail
+          set +e
+          xcodebuild \
+            -project ExpressTools.xcodeproj \
+            -scheme ExpressTools \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build 2>&1 | tee "$RUNNER_TEMP/xcodebuild.log"
+          STATUS=${PIPESTATUS[0]}
+          if [ "$STATUS" -ne 0 ]; then
+            grep -E 'error:|fatal error' "$RUNNER_TEMP/xcodebuild.log" | tail -n 80 | while IFS= read -r line; do
+              echo "::error::$line"
+            done
+            tail -n 80 "$RUNNER_TEMP/xcodebuild.log" | while IFS= read -r line; do
+              echo "::notice::$line"
+            done
+          fi
+          exit "$STATUS"
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-log
+          path: ${{ runner.temp }}/xcodebuild.log
+          if-no-files-found: ignore

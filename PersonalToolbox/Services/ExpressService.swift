@@ -51,6 +51,7 @@ enum ExpressBucket: String, CaseIterable, Identifiable {
     }
 }
 
+@MainActor
 extension ExpressRecord {
     var bucket: ExpressBucket {
         switch state {

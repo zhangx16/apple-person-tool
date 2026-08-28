@@ -9,7 +9,7 @@ struct MiniPlayerView: View {
 
     var body: some View {
         if let song = player.currentSong {
-            HStack(spacing: isInline ? 8 : 10) {
+            HStack(spacing: isInline ? 8 : 6) {
                 Button(action: onExpand) {
                     HStack(spacing: isInline ? 8 : 10) {
                         ArtworkImage(url: song.album?.artworkURL, cornerRadius: 6)
@@ -66,6 +66,17 @@ struct MiniPlayerView: View {
 
                 if !isInline {
                     Button {
+                        Task { await player.previous() }
+                    } label: {
+                        Image(systemName: "backward.fill")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(width: 36, height: 36)
+                            .contentShape(.circle)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("上一首")
+
+                    Button {
                         Task { await player.next() }
                     } label: {
                         Image(systemName: "forward.fill")
@@ -80,9 +91,14 @@ struct MiniPlayerView: View {
             .padding(.horizontal, isInline ? 8 : 10)
             .padding(.vertical, isInline ? 2 : 4)
             .frame(maxWidth: .infinity)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .background(.regularMaterial, in: Capsule(style: .continuous))
+            .overlay {
+                Capsule(style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5)
+            }
+            .shadow(color: .black.opacity(0.10), radius: 10, y: 3)
             .contentShape(.rect)
-            .simultaneousGesture(trackSwipeGesture)
+            .simultaneousGesture(playerGesture)
             .accessibilityAction(named: "上一首") {
                 Task { await player.previous() }
             }
@@ -113,11 +129,14 @@ struct MiniPlayerView: View {
         return song.artistText
     }
 
-    private var trackSwipeGesture: some Gesture {
+    private var playerGesture: some Gesture {
         DragGesture(minimumDistance: 28)
             .onEnded { value in
-                guard abs(value.translation.width) > abs(value.translation.height) else { return }
-                if value.translation.width < 0 {
+                if abs(value.translation.height) > abs(value.translation.width) {
+                    if value.translation.height < -36 || value.predictedEndTranslation.height < -70 {
+                        onExpand()
+                    }
+                } else if value.translation.width < 0 {
                     Task { await player.next() }
                 } else {
                     Task { await player.previous() }

@@ -16,6 +16,8 @@ struct MeloXContentView: View {
     @Environment(DownloadStore.self) private var downloads
 
     @State private var selectedTab: MeloXTab
+    /// Lazily mount each section once, then keep it alive to preserve scroll/navigation state.
+    @State private var mountedTabs: Set<MeloXTab>
     @State private var homePath = NavigationPath()
     @State private var explorePath = NavigationPath()
     @State private var libraryPath = NavigationPath()
@@ -26,10 +28,12 @@ struct MeloXContentView: View {
     @State private var nowPlayingSharePresentation: NeteaseSharePresentation?
     @State private var pendingMusicRoute: MusicRoute?
     @Namespace private var musicNavigationNamespace
+    @Namespace private var nowPlayingNamespace
     @ObservedObject private var deepLink = AppDeepLinkStore.shared
 
     init(initialTab: MeloXTab = .home, appTabBarHidden: Binding<Bool> = .constant(true)) {
         _selectedTab = State(initialValue: initialTab)
+        _mountedTabs = State(initialValue: [initialTab])
         _appTabBarHidden = appTabBarHidden
     }
 
@@ -55,6 +59,7 @@ struct MeloXContentView: View {
                 switch destination {
                 case .nowPlaying:
                     NowPlayingView(initialPage: initialNowPlayingPage)
+                        .navigationTransition(.zoom(sourceID: "music-now-playing", in: nowPlayingNamespace))
                         .environment(\.openMusicRoute, OpenMusicRouteAction(action: openMusicRoute))
                         .environment(
                             \.openNeteaseShare,
@@ -86,6 +91,7 @@ struct MeloXContentView: View {
             .task { await player.restore() }
             .task(id: settings.cookie) { await library.refresh() }
             .onChange(of: selectedTab) { _, tab in
+                mountedTabs.insert(tab)
                 settings.lastSelectedTab = tab
             }
             .alert(
@@ -144,6 +150,7 @@ struct MeloXContentView: View {
                 MiniPlayerView {
                     playerPresentation = .nowPlaying
                 }
+                .matchedTransitionSource(id: "music-now-playing", in: nowPlayingNamespace)
                 .padding(.horizontal, 10)
                 .padding(.top, 4)
                 .padding(.bottom, 2)
@@ -151,11 +158,6 @@ struct MeloXContentView: View {
             }
 
             musicSectionBar
-        }
-        .background {
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .ignoresSafeArea(edges: .bottom)
         }
         // Swipe up → show app tabs; swipe down → hide app tabs (music bar stays).
         .gesture(tabBarRevealGesture)
@@ -195,69 +197,57 @@ struct MeloXContentView: View {
                     .accessibilityLabel("上滑显示应用底部导航")
             }
 
-            HStack(spacing: 0) {
-                ForEach(MeloXTab.allCases) { tab in
-                    let on = selectedTab == tab
-                    Button {
-                        if selectedTab == tab {
-                            popToRoot(tab)
-                        } else {
-                            withAnimation(.snappy(duration: 0.2)) {
-                                selectedTab = tab
-                            }
-                        }
-                    } label: {
-                        VStack(spacing: 2) {
-                            Image(systemName: tab.systemImage)
-                                .font(.system(size: 16, weight: on ? .semibold : .regular))
-                                .symbolVariant(on ? .fill : .none)
-                            Text(tab.title)
-                                .font(.system(size: 9, weight: on ? .semibold : .medium))
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.75)
-                        }
-                        .foregroundStyle(on ? Color.red : Color.secondary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, appTabBarHidden ? 8 : 5)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityAddTraits(on ? .isSelected : [])
-                }
-            }
-            .padding(.horizontal, 2)
-            .padding(.bottom, appTabBarHidden ? 4 : 0)
+            MusicGlassTabBar(
+                tabs: MeloXTab.allCases,
+                selection: $selectedTab,
+                onReselect: popToRoot
+            )
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
         }
-        .overlay(alignment: .top) { Divider() }
     }
 
     @ViewBuilder
     private var sectionStack: some View {
-        switch selectedTab {
-        case .home:
-            NavigationStack(path: $homePath) {
-                HomeView()
-                    .musicDestinations(in: musicNavigationNamespace)
+        ZStack {
+            if mountedTabs.contains(.home) {
+                NavigationStack(path: $homePath) {
+                    HomeView()
+                        .musicDestinations(in: musicNavigationNamespace)
+                }
+                .musicTabPage(.home, selection: selectedTab)
             }
-        case .explore:
-            NavigationStack(path: $explorePath) {
-                ExploreView()
-                    .musicDestinations(in: musicNavigationNamespace)
+
+            if mountedTabs.contains(.explore) {
+                NavigationStack(path: $explorePath) {
+                    ExploreView()
+                        .musicDestinations(in: musicNavigationNamespace)
+                }
+                .musicTabPage(.explore, selection: selectedTab)
             }
-        case .library:
-            NavigationStack(path: $libraryPath) {
-                LibraryView()
-                    .musicDestinations(in: musicNavigationNamespace)
+
+            if mountedTabs.contains(.library) {
+                NavigationStack(path: $libraryPath) {
+                    LibraryView()
+                        .musicDestinations(in: musicNavigationNamespace)
+                }
+                .musicTabPage(.library, selection: selectedTab)
             }
-        case .search:
-            NavigationStack(path: $searchPath) {
-                SearchView()
-                    .musicDestinations(in: musicNavigationNamespace)
+
+            if mountedTabs.contains(.search) {
+                NavigationStack(path: $searchPath) {
+                    SearchView()
+                        .musicDestinations(in: musicNavigationNamespace)
+                }
+                .musicTabPage(.search, selection: selectedTab)
             }
-        case .settings:
-            NavigationStack(path: $settingsPath) {
-                MeloXSettingsView()
-                    .musicDestinations(in: musicNavigationNamespace)
+
+            if mountedTabs.contains(.settings) {
+                NavigationStack(path: $settingsPath) {
+                    MeloXSettingsView()
+                        .musicDestinations(in: musicNavigationNamespace)
+                }
+                .musicTabPage(.settings, selection: selectedTab)
             }
         }
     }
@@ -323,4 +313,13 @@ struct MeloXContentView: View {
     }
 
     /// Prefer native Apple Music app; fall back to web search.
+}
+
+private extension View {
+    func musicTabPage(_ tab: MeloXTab, selection: MeloXTab) -> some View {
+        opacity(selection == tab ? 1 : 0)
+            .allowsHitTesting(selection == tab)
+            .accessibilityHidden(selection != tab)
+            .zIndex(selection == tab ? 1 : 0)
+    }
 }

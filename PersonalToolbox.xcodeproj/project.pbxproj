@@ -127,6 +127,7 @@
 		00000000000000000000809F /* LyricGlowTextRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000809E /* LyricGlowTextRenderer.swift */; };
 		0000000000000000000080A1 /* LyricsTypography.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080A0 /* LyricsTypography.swift */; };
 		0000000000000000000080A3 /* MiniPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080A2 /* MiniPlayerView.swift */; };
+		00000000000000000000A002 /* MusicGlassTabBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000A001 /* MusicGlassTabBar.swift */; };
 		0000000000000000000080A5 /* NowPlayingArtworkPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080A4 /* NowPlayingArtworkPage.swift */; };
 		0000000000000000000080A7 /* NowPlayingBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080A6 /* NowPlayingBackground.swift */; };
 		0000000000000000000080A9 /* NowPlayingControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0000000000000000000080A8 /* NowPlayingControls.swift */; };
@@ -447,6 +448,7 @@
 		00000000000000000000809E /* LyricGlowTextRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/LyricGlowTextRenderer.swift; sourceTree = "<group>"; };
 		0000000000000000000080A0 /* LyricsTypography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/LyricsTypography.swift; sourceTree = "<group>"; };
 		0000000000000000000080A2 /* MiniPlayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/MiniPlayerView.swift; sourceTree = "<group>"; };
+		00000000000000000000A001 /* MusicGlassTabBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Shared/MusicGlassTabBar.swift; sourceTree = "<group>"; };
 		0000000000000000000080A4 /* NowPlayingArtworkPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/NowPlayingArtworkPage.swift; sourceTree = "<group>"; };
 		0000000000000000000080A6 /* NowPlayingBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/NowPlayingBackground.swift; sourceTree = "<group>"; };
 		0000000000000000000080A8 /* NowPlayingControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Player/NowPlayingControls.swift; sourceTree = "<group>"; };
@@ -737,6 +739,7 @@
 				00000000000000000000809E /* LyricGlowTextRenderer.swift */,
 				0000000000000000000080A0 /* LyricsTypography.swift */,
 				0000000000000000000080A2 /* MiniPlayerView.swift */,
+				00000000000000000000A001 /* MusicGlassTabBar.swift */,
 				0000000000000000000080A4 /* NowPlayingArtworkPage.swift */,
 				0000000000000000000080A6 /* NowPlayingBackground.swift */,
 				0000000000000000000080A8 /* NowPlayingControls.swift */,
@@ -1593,6 +1596,7 @@
 				00000000000000000000809F /* LyricGlowTextRenderer.swift in Sources */,
 				0000000000000000000080A1 /* LyricsTypography.swift in Sources */,
 				0000000000000000000080A3 /* MiniPlayerView.swift in Sources */,
+				00000000000000000000A002 /* MusicGlassTabBar.swift in Sources */,
 				0000000000000000000080A5 /* NowPlayingArtworkPage.swift in Sources */,
 				0000000000000000000080A7 /* NowPlayingBackground.swift in Sources */,
 				0000000000000000000080A9 /* NowPlayingControls.swift in Sources */,

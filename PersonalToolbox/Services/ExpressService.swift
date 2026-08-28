@@ -22,6 +22,61 @@ struct ExpressRecord: Identifiable, Codable, Hashable {
     var state: String?
     var tracks: [ExpressTrackEvent]
     var updatedAt: Date?
+    /// Optional keeps existing v2 JSON records backward compatible.
+    var isTracked: Bool?
+    var lastNotifiedEventID: String?
+}
+
+enum ExpressBucket: String, CaseIterable, Identifiable {
+    case active
+    case completed
+    case abnormal
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .active: "在途"
+        case .completed: "已完成"
+        case .abnormal: "异常"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .active: "box.truck.fill"
+        case .completed: "checkmark.circle.fill"
+        case .abnormal: "exclamationmark.triangle.fill"
+        }
+    }
+}
+
+extension ExpressRecord {
+    var bucket: ExpressBucket {
+        switch state {
+        case "3": .completed
+        case "2", "4", "6", "13", "14": .abnormal
+        default: .active
+        }
+    }
+
+    var displayName: String {
+        let clean = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        return clean.isEmpty ? (carrierName.isEmpty ? ExpressService.nameForCode(carrierCode) : carrierName) : clean
+    }
+
+    var stateText: String {
+        ExpressService.stateLabel(state) ?? (tracks.isEmpty ? "待查询" : "运输中")
+    }
+
+    var activityPriority: Int {
+        switch state {
+        case "5": 0       // 派件
+        case "0", "1": 1 // 在途 / 揽收
+        case nil: 2
+        default: 3
+        }
+    }
 }
 
 /// 快递100 实时查询（官方 poll/query 协议，对齐 Python/Java 示例）。
@@ -66,7 +121,9 @@ final class ExpressService: ObservableObject {
             lastStatus: hasAPICredentials ? "已保存，查询中…" : "已保存（请配置快递100密钥）",
             state: nil,
             tracks: [],
-            updatedAt: nil
+            updatedAt: nil,
+            isTracked: false,
+            lastNotifiedEventID: nil
         )
         packages.insert(rec, at: 0)
         persist()
@@ -76,6 +133,20 @@ final class ExpressService: ObservableObject {
         guard let i = packages.firstIndex(where: { $0.id == id }) else { return }
         packages[i].phoneTail = phoneTail.trimmingCharacters(in: .whitespacesAndNewlines)
         persist()
+    }
+
+    func updateNote(id: String, note: String) {
+        guard let i = packages.firstIndex(where: { $0.id == id }) else { return }
+        packages[i].note = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        persist()
+    }
+
+    func setTracked(id: String, tracked: Bool) async {
+        guard let i = packages.firstIndex(where: { $0.id == id }) else { return }
+        packages[i].isTracked = tracked
+        packages[i].lastNotifiedEventID = packages[i].tracks.first?.id
+        persist()
+        if tracked { _ = await LocalNotifier.ensureAuthorized() }
     }
 
     func delete(id: String) {
@@ -110,6 +181,7 @@ final class ExpressService: ObservableObject {
             var lastError: Error?
             let candidates = Self.queryCandidates(primary: rec.carrierCode, number: rec.trackingNo)
             var success = false
+            let previousEventID = rec.tracks.first?.id
             for com in candidates {
                 do {
                     let result = try await queryKuaidi100(
@@ -125,6 +197,21 @@ final class ExpressService: ObservableObject {
                     rec.lastStatus = result.tracks.first?.context ?? result.message
                     rec.state = result.stateLabel
                     rec.updatedAt = Date()
+                    let newestEventID = result.tracks.first?.id
+                    if rec.isTracked == true,
+                       previousEventID != nil,
+                       newestEventID != previousEventID,
+                       newestEventID != rec.lastNotifiedEventID,
+                       let latest = result.tracks.first {
+                        LocalNotifier.notify(
+                            id: "express.\(rec.id).\(latest.id.hashValue)",
+                            title: "\(rec.displayName)有新物流",
+                            body: latest.context,
+                            category: LocalNotifier.smartCategory,
+                            userInfo: ["route": "express", "tracking": rec.trackingNo]
+                        )
+                    }
+                    rec.lastNotifiedEventID = newestEventID
                     lastLookupMessage = "查询成功（\(rec.carrierName)）"
                     success = true
                     break
@@ -139,9 +226,22 @@ final class ExpressService: ObservableObject {
             packages[idx] = rec
             persist()
         } catch {
-            packages[idx].lastStatus = "查询失败：\(error.localizedDescription)"
-            lastLookupMessage = packages[idx].lastStatus
+            let message = "查询失败：\(error.localizedDescription)"
+            // Cache-first: a transient request error must not erase the last valid trace.
+            if packages[idx].tracks.isEmpty {
+                packages[idx].lastStatus = message
+            }
+            lastLookupMessage = message
             persist()
+        }
+    }
+
+    func refreshActive() async {
+        let ids = packages
+            .filter { $0.bucket == .active || $0.isTracked == true }
+            .map(\.id)
+        for id in ids {
+            await lookup(id)
         }
     }
 

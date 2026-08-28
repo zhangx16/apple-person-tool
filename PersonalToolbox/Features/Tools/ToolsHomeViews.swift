@@ -826,6 +826,26 @@ struct ExpressHomeView: View {
     @State private var note = ""
     @State private var phoneTail = ""
     @State private var didApplyPrefill = false
+    @State private var selectedBucket: ExpressBucket = .active
+    @State private var searchText = ""
+
+    private var visiblePackages: [ExpressRecord] {
+        store.packages
+            .filter { $0.bucket == selectedBucket }
+            .filter {
+                let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !query.isEmpty else { return true }
+                return $0.trackingNo.localizedCaseInsensitiveContains(query)
+                    || $0.displayName.localizedCaseInsensitiveContains(query)
+                    || $0.lastStatus.localizedCaseInsensitiveContains(query)
+            }
+            .sorted {
+                if selectedBucket == .active, $0.activityPriority != $1.activityPriority {
+                    return $0.activityPriority < $1.activityPriority
+                }
+                return ($0.updatedAt ?? $0.createdAt) > ($1.updatedAt ?? $1.createdAt)
+            }
+    }
 
     var body: some View {
         List {
@@ -884,39 +904,88 @@ struct ExpressHomeView: View {
                 }
             }
 
-            Section("包裹 (\(store.packages.count))") {
-                if store.packages.isEmpty {
-                    Text("暂无包裹").foregroundStyle(.secondary)
+            Section {
+                Picker("包裹状态", selection: $selectedBucket) {
+                    ForEach(ExpressBucket.allCases) { bucket in
+                        Text("\(bucket.title) \(store.packages.filter { $0.bucket == bucket }.count)")
+                            .tag(bucket)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+            }
+
+            Section("\(selectedBucket.title)包裹 (\(visiblePackages.count))") {
+                if visiblePackages.isEmpty {
+                    ContentUnavailableView(
+                        searchText.isEmpty ? "暂无\(selectedBucket.title)包裹" : "没有匹配的包裹",
+                        systemImage: selectedBucket.systemImage,
+                        description: Text(searchText.isEmpty ? "添加运单后会按物流状态自动归类" : "请尝试其他单号或备注")
+                    )
                 } else {
-                    ForEach(store.packages) { p in
+                    ForEach(visiblePackages) { p in
                         NavigationLink {
                             ExpressDetailView(packageId: p.id)
                         } label: {
-                            HStack(spacing: 12) {
+                            HStack(alignment: .top, spacing: 12) {
                                 Image(systemName: ExpressService.carrierSystemImage(p.carrierCode))
                                     .font(.body.weight(.semibold))
                                     .foregroundStyle(.white)
                                     .frame(width: 36, height: 36)
                                     .background(Color.accentColor.opacity(0.9), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text(p.trackingNo).font(.subheadline.weight(.semibold).monospaced())
-                                    Text("\(p.carrierName.isEmpty ? ExpressService.nameForCode(p.carrierCode) : p.carrierName) · \(p.lastStatus)")
+                                    HStack {
+                                        Text(p.displayName).font(.subheadline.weight(.semibold))
+                                        Spacer()
+                                        if p.isTracked == true {
+                                            Image(systemName: "bell.fill")
+                                                .font(.caption)
+                                                .foregroundStyle(.orange)
+                                        }
+                                    }
+                                    Text(p.trackingNo).font(.caption.monospaced()).foregroundStyle(.secondary)
+                                    Text(p.lastStatus)
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                         .lineLimit(2)
+                                    Text(p.stateText)
+                                        .font(.caption2.weight(.semibold))
+                                        .foregroundStyle(p.bucket == .abnormal ? .red : Color.accentColor)
                                 }
                             }
                             .padding(.vertical, 2)
                         }
-                    }
-                    .onDelete { idx in
-                        idx.map { store.packages[$0].id }.forEach(store.delete)
+                        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                            Button {
+                                Task { await store.setTracked(id: p.id, tracked: p.isTracked != true) }
+                            } label: {
+                                Label(p.isTracked == true ? "取消跟踪" : "跟踪", systemImage: p.isTracked == true ? "bell.slash" : "bell")
+                            }
+                            .tint(.orange)
+                        }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            Button(role: .destructive) { store.delete(id: p.id) } label: {
+                                Label("删除", systemImage: "trash")
+                            }
+                        }
                     }
                 }
             }
         }
         .navigationTitle("快递")
         .navigationBarTitleDisplayMode(.inline)
+        .searchable(text: $searchText, prompt: "搜索单号、备注或物流动态")
+        .refreshable { await store.refreshActive() }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { Task { await store.refreshActive() } } label: {
+                    if store.isQuerying { ProgressView() } else { Image(systemName: "arrow.clockwise") }
+                }
+                .disabled(store.isQuerying || store.packages.isEmpty)
+                .accessibilityLabel("刷新在途包裹")
+            }
+        }
         .onAppear {
             if let prefill, !prefill.isEmpty, number.isEmpty {
                 number = ActionRouter.extractTrackingNumber(from: prefill) ?? prefill
@@ -929,6 +998,7 @@ struct ExpressDetailView: View {
     let packageId: String
     @StateObject private var store = ExpressService.shared
     @State private var phoneDraft = ""
+    @State private var noteDraft = ""
 
     private var package: ExpressRecord? {
         store.packages.first { $0.id == packageId }
@@ -943,7 +1013,8 @@ struct ExpressDetailView: View {
                     if let st = p.state {
                         LabeledContent("状态", value: ExpressService.stateLabel(st) ?? st)
                     }
-                    if !p.note.isEmpty { LabeledContent("备注", value: p.note) }
+                    TextField("包裹名称或备注", text: $noteDraft)
+                        .onAppear { noteDraft = p.note }
                     TextField("手机后四位（顺丰等）", text: $phoneDraft)
                         .keyboardType(.numberPad)
                         .onAppear { phoneDraft = p.phoneTail }
@@ -954,6 +1025,7 @@ struct ExpressDetailView: View {
                             .foregroundStyle(.secondary)
                     }
                     Button {
+                        store.updateNote(id: p.id, note: noteDraft)
                         store.updatePhoneTail(id: p.id, phoneTail: phoneDraft)
                         Task { await store.lookup(p.id) }
                     } label: {
@@ -964,6 +1036,13 @@ struct ExpressDetailView: View {
                         }
                     }
                     .disabled(store.isQuerying)
+                    Toggle(
+                        "刷新发现新动态时通知",
+                        isOn: Binding(
+                            get: { p.isTracked == true },
+                            set: { tracked in Task { await store.setTracked(id: p.id, tracked: tracked) } }
+                        )
+                    )
                     if let url = ExpressService.kuaidi100URL(trackingNo: p.trackingNo) {
                         Link("在快递100网页打开", destination: url)
                     }
@@ -972,20 +1051,37 @@ struct ExpressDetailView: View {
                     if p.tracks.isEmpty {
                         Text("暂无轨迹，请点「实时查询」").foregroundStyle(.secondary)
                     } else {
-                        ForEach(p.tracks) { ev in
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack {
-                                    Text(ev.time).font(.caption2).foregroundStyle(.secondary)
-                                    if let s = ev.status, !s.isEmpty {
-                                        Text(s).font(.caption2.weight(.semibold)).foregroundStyle(Color.accentColor)
+                        ForEach(Array(p.tracks.enumerated()), id: \.element.id) { index, ev in
+                            HStack(alignment: .top, spacing: 12) {
+                                VStack(spacing: 0) {
+                                    Circle()
+                                        .fill(index == 0 ? Color.accentColor : Color.secondary.opacity(0.35))
+                                        .frame(width: index == 0 ? 12 : 8, height: index == 0 ? 12 : 8)
+                                    if index < p.tracks.count - 1 {
+                                        Rectangle()
+                                            .fill(Color.secondary.opacity(0.2))
+                                            .frame(width: 2)
+                                            .frame(minHeight: 52)
                                     }
                                 }
-                                Text(ev.context).font(.subheadline)
-                                if let loc = ev.location, !loc.isEmpty {
-                                    Text(loc).font(.caption2).foregroundStyle(.secondary)
+
+                                VStack(alignment: .leading, spacing: 5) {
+                                    HStack {
+                                        Text(ev.time).font(.caption2).foregroundStyle(.secondary)
+                                        if let s = ev.status, !s.isEmpty {
+                                            Text(s).font(.caption2.weight(.semibold)).foregroundStyle(Color.accentColor)
+                                        }
+                                    }
+                                    Text(ev.context)
+                                        .font(index == 0 ? .subheadline.weight(.semibold) : .subheadline)
+                                    if let loc = ev.location, !loc.isEmpty {
+                                        Label(loc, systemImage: "mappin.and.ellipse")
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                    }
                                 }
                             }
-                            .padding(.vertical, 2)
+                            .padding(.vertical, 1)
                         }
                     }
                 }

@@ -78,6 +78,48 @@ extension ExpressRecord {
         default: 3
         }
     }
+
+    var pickupCode: String? {
+        let text = tracks.map(\.context).joined(separator: " ")
+        guard let range = text.range(
+            of: #"(?:取件码|提货码|凭码)[：:\s]*([A-Z0-9-]{3,})"#,
+            options: [.regularExpression, .caseInsensitive]
+        ) else { return nil }
+        let match = String(text[range])
+        return match.components(separatedBy: CharacterSet(charactersIn: "：: "))
+            .last(where: { !$0.isEmpty })
+    }
+
+    var estimatedDeliveryDate: Date? {
+        let calendar = Calendar.current
+        let text = tracks.map(\.context).joined(separator: " ")
+        if let range = text.range(of: #"预计[^。；;]{0,16}?(\d{1,2})月(\d{1,2})日"#, options: .regularExpression) {
+            let numbers = String(text[range]).split(whereSeparator: { !$0.isNumber }).compactMap { Int($0) }
+            if numbers.count >= 2 {
+                var components = calendar.dateComponents([.year], from: Date())
+                components.month = numbers[numbers.count - 2]
+                components.day = numbers[numbers.count - 1]
+                return calendar.date(from: components)
+            }
+        }
+        if text.contains("预计明日") || text.contains("预计次日") {
+            return calendar.date(byAdding: .day, value: 1, to: Date())
+        }
+        if state == "5" { return Date() }
+        return nil
+    }
+
+    var progress: Double {
+        switch state {
+        case "1": 0.18
+        case "0", "7": 0.55
+        case "5": 0.88
+        case "3": 1
+        case "10", "11": 0.45
+        case "12": 0.65
+        default: tracks.isEmpty ? 0.05 : 0.35
+        }
+    }
 }
 
 /// 快递100 实时查询（官方 poll/query 协议，对齐 Python/Java 示例）。
@@ -147,7 +189,10 @@ final class ExpressService: ObservableObject {
         packages[i].isTracked = tracked
         packages[i].lastNotifiedEventID = packages[i].tracks.first?.id
         persist()
-        if tracked { _ = await LocalNotifier.ensureAuthorized() }
+        if tracked {
+            _ = await LocalNotifier.ensureAuthorized()
+            ExpressBackgroundRefresh.schedule()
+        }
     }
 
     func delete(id: String) {
@@ -244,6 +289,13 @@ final class ExpressService: ObservableObject {
         for id in ids {
             await lookup(id)
         }
+    }
+
+    func refreshTracked() async {
+        let ids = packages
+            .filter { $0.bucket == .active && $0.isTracked == true }
+            .map(\.id)
+        for id in ids { await lookup(id) }
     }
 
     // MARK: - Official API (matches kuaidi100 Python/Java samples)

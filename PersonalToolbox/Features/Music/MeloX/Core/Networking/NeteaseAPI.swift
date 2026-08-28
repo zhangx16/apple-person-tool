@@ -466,6 +466,22 @@ final class NeteaseAPI {
         return response.data.dailySongs
     }
 
+    func personalFM() async throws -> [Song] {
+        let response: PersonalFMResponse = try await client.weapi(
+            "/api/v1/radio/get",
+            data: [:]
+        )
+        return response.data ?? []
+    }
+
+    func discardFromPersonalFM(id: Int) async throws {
+        let response: APIStatusResponse = try await client.weapi(
+            "/api/radio/trash/add?alg=RT&songId=\(id)&time=25",
+            data: ["songId": id]
+        )
+        try validate(responseCode: response.code, message: response.message)
+    }
+
     func lyrics(id: Int) async throws -> [LyricLine] {
         do {
             let response: LyricResponse = try await client.eapi(

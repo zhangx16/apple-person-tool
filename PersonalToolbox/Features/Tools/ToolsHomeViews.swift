@@ -828,6 +828,7 @@ struct ExpressHomeView: View {
     @State private var didApplyPrefill = false
     @State private var selectedBucket: ExpressBucket = .active
     @State private var searchText = ""
+    @State private var showsCalendar = false
 
     private var visiblePackages: [ExpressRecord] {
         store.packages
@@ -905,6 +906,20 @@ struct ExpressHomeView: View {
             }
 
             Section {
+                HStack(spacing: 0) {
+                    ForEach(ExpressBucket.allCases) { bucket in
+                        VStack(spacing: 3) {
+                            Label(bucket.title, systemImage: bucket.systemImage)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(bucket == .abnormal ? .red : Color.accentColor)
+                            Text("\(store.packages.filter { $0.bucket == bucket }.count)")
+                                .font(.title3.bold().monospacedDigit())
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                }
+                .padding(.vertical, 6)
+
                 Picker("包裹状态", selection: $selectedBucket) {
                     ForEach(ExpressBucket.allCases) { bucket in
                         Text("\(bucket.title) \(store.packages.filter { $0.bucket == bucket }.count)")
@@ -952,6 +967,8 @@ struct ExpressHomeView: View {
                                     Text(p.stateText)
                                         .font(.caption2.weight(.semibold))
                                         .foregroundStyle(p.bucket == .abnormal ? .red : Color.accentColor)
+                                    ProgressView(value: p.progress)
+                                        .tint(p.bucket == .abnormal ? .red : Color.accentColor)
                                 }
                             }
                             .padding(.vertical, 2)
@@ -978,12 +995,28 @@ struct ExpressHomeView: View {
         .searchable(text: $searchText, prompt: "搜索单号、备注或物流动态")
         .refreshable { await store.refreshActive() }
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button { showsCalendar = true } label: {
+                    Image(systemName: "calendar")
+                }
+                .accessibilityLabel("快递日历")
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button { Task { await store.refreshActive() } } label: {
                     if store.isQuerying { ProgressView() } else { Image(systemName: "arrow.clockwise") }
                 }
                 .disabled(store.isQuerying || store.packages.isEmpty)
                 .accessibilityLabel("刷新在途包裹")
+            }
+        }
+        .sheet(isPresented: $showsCalendar) {
+            NavigationStack {
+                ExpressCalendarView(packages: store.packages)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("完成") { showsCalendar = false }
+                        }
+                    }
             }
         }
         .onAppear {
@@ -1012,6 +1045,18 @@ struct ExpressDetailView: View {
                     LabeledContent("承运商", value: "\(p.carrierName) (\(p.carrierCode))")
                     if let st = p.state {
                         LabeledContent("状态", value: ExpressService.stateLabel(st) ?? st)
+                    }
+                    ProgressView(value: p.progress) {
+                        Text("运输进度")
+                    } currentValueLabel: {
+                        Text("\(Int(p.progress * 100))%")
+                    }
+                    if let eta = p.estimatedDeliveryDate {
+                        LabeledContent("预计送达", value: eta.formatted(date: .abbreviated, time: .omitted))
+                    }
+                    if let pickup = p.pickupCode {
+                        LabeledContent("取件码", value: pickup)
+                            .font(.body.monospaced().weight(.semibold))
                     }
                     TextField("包裹名称或备注", text: $noteDraft)
                         .onAppear { noteDraft = p.note }
@@ -1096,6 +1141,50 @@ struct ExpressDetailView: View {
                 await store.lookup(p.id)
             }
         }
+    }
+}
+
+private struct ExpressCalendarView: View {
+    let packages: [ExpressRecord]
+    @State private var selectedDate = Date()
+
+    private var packagesOnSelectedDate: [ExpressRecord] {
+        packages.filter {
+            guard let eta = $0.estimatedDeliveryDate else { return false }
+            return Calendar.current.isDate(eta, inSameDayAs: selectedDate)
+        }
+    }
+
+    var body: some View {
+        List {
+            DatePicker(
+                "预计送达日期",
+                selection: $selectedDate,
+                displayedComponents: .date
+            )
+            .datePickerStyle(.graphical)
+
+            Section(selectedDate.formatted(date: .complete, time: .omitted)) {
+                if packagesOnSelectedDate.isEmpty {
+                    Text("这一天暂无预计送达包裹")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(packagesOnSelectedDate) { package in
+                        HStack(spacing: 12) {
+                            Image(systemName: ExpressService.carrierSystemImage(package.carrierCode))
+                                .foregroundStyle(Color.accentColor)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(package.displayName).font(.headline)
+                                Text(package.trackingNo).font(.caption.monospaced()).foregroundStyle(.secondary)
+                                Text(package.lastStatus).font(.caption).lineLimit(2)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .navigationTitle("快递日历")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

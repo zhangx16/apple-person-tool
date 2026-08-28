@@ -67,6 +67,11 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
+		<string>fetch</string>
+	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>app.parsnip6345.lake8262.express-refresh</string>
 	</array>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>

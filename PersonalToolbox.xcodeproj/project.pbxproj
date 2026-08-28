@@ -108,6 +108,7 @@
 		000000000000000000008079 /* DailySongsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008078 /* DailySongsView.swift */; };
 		00000000000000000000807B /* HomeComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000807A /* HomeComponents.swift */; };
 		00000000000000000000807D /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000807C /* HomeView.swift */; };
+		00000000000000000000A004 /* PersonalFMView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000A003 /* PersonalFMView.swift */; };
 		00000000000000000000807F /* NewAlbumsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000807E /* NewAlbumsView.swift */; };
 		000000000000000000008081 /* ProjectLicensesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008080 /* ProjectLicensesView.swift */; };
 		000000000000000000008083 /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000008082 /* LibraryView.swift */; };
@@ -313,6 +314,7 @@
 		000000000000000000000511 /* HabitTodoStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000510 /* HabitTodoStore.swift */; };
 		000000000000000000000513 /* MarketQuotesService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000512 /* MarketQuotesService.swift */; };
 		000000000000000000000515 /* ExpressService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000514 /* ExpressService.swift */; };
+		00000000000000000000A006 /* ExpressBackgroundRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00000000000000000000A005 /* ExpressBackgroundRefresh.swift */; };
 		000000000000000000000517 /* ToolsHomeViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000516 /* ToolsHomeViews.swift */; };
 
 		00000000000000000000051D /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000519 /* ShareViewController.swift */; };
@@ -429,6 +431,7 @@
 		000000000000000000008078 /* DailySongsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Home/DailySongsView.swift; sourceTree = "<group>"; };
 		00000000000000000000807A /* HomeComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Home/HomeComponents.swift; sourceTree = "<group>"; };
 		00000000000000000000807C /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Home/HomeView.swift; sourceTree = "<group>"; };
+		00000000000000000000A003 /* PersonalFMView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Home/PersonalFMView.swift; sourceTree = "<group>"; };
 		00000000000000000000807E /* NewAlbumsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Home/NewAlbumsView.swift; sourceTree = "<group>"; };
 		000000000000000000008080 /* ProjectLicensesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Legal/ProjectLicensesView.swift; sourceTree = "<group>"; };
 		000000000000000000008082 /* LibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeloX/Features/Library/LibraryView.swift; sourceTree = "<group>"; };
@@ -636,6 +639,7 @@
 		000000000000000000000510 /* HabitTodoStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitTodoStore.swift; sourceTree = "<group>"; };
 		000000000000000000000512 /* MarketQuotesService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketQuotesService.swift; sourceTree = "<group>"; };
 		000000000000000000000514 /* ExpressService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpressService.swift; sourceTree = "<group>"; };
+		00000000000000000000A005 /* ExpressBackgroundRefresh.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExpressBackgroundRefresh.swift; sourceTree = "<group>"; };
 		000000000000000000000516 /* ToolsHomeViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolsHomeViews.swift; sourceTree = "<group>"; };
 
 		000000000000000000000519 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
@@ -720,6 +724,7 @@
 				000000000000000000008078 /* DailySongsView.swift */,
 				00000000000000000000807A /* HomeComponents.swift */,
 				00000000000000000000807C /* HomeView.swift */,
+				00000000000000000000A003 /* PersonalFMView.swift */,
 				00000000000000000000807E /* NewAlbumsView.swift */,
 				000000000000000000008080 /* ProjectLicensesView.swift */,
 				000000000000000000008082 /* LibraryView.swift */,
@@ -954,6 +959,7 @@
 				000000000000000000000510 /* HabitTodoStore.swift */,
 				000000000000000000000512 /* MarketQuotesService.swift */,
 				000000000000000000000514 /* ExpressService.swift */,
+				00000000000000000000A005 /* ExpressBackgroundRefresh.swift */,
 				000000000000000000000164 /* AnniversaryStore.swift */,
 				000000000000000000000174 /* QRAssistantStore.swift */,
 				000000000000000000000182 /* TranslatorService.swift */,
@@ -1437,6 +1443,7 @@
 				000000000000000000000511 /* HabitTodoStore.swift in Sources */,
 				000000000000000000000513 /* MarketQuotesService.swift in Sources */,
 				000000000000000000000515 /* ExpressService.swift in Sources */,
+				00000000000000000000A006 /* ExpressBackgroundRefresh.swift in Sources */,
 				000000000000000000000517 /* ToolsHomeViews.swift in Sources */,
 				00000000000000000000010C /* KeychainStore.swift in Sources */,
 				00000000000000000000010E /* NetworkClient.swift in Sources */,
@@ -1577,6 +1584,7 @@
 				000000000000000000008079 /* DailySongsView.swift in Sources */,
 				00000000000000000000807B /* HomeComponents.swift in Sources */,
 				00000000000000000000807D /* HomeView.swift in Sources */,
+				00000000000000000000A004 /* PersonalFMView.swift in Sources */,
 				00000000000000000000807F /* NewAlbumsView.swift in Sources */,
 				000000000000000000008081 /* ProjectLicensesView.swift in Sources */,
 				000000000000000000008083 /* LibraryView.swift in Sources */,

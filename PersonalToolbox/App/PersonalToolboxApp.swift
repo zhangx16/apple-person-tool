@@ -5,6 +5,7 @@ struct PersonalToolboxApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     init() {
+        ExpressBackgroundRefresh.register()
         // Warm local tool stores so 服务 → 生活 tools open instantly. Deferred to
         // right after launch (instead of running synchronously here) so the
         // first frame isn't blocked on disk I/O.
@@ -16,6 +17,13 @@ struct PersonalToolboxApp: App {
         // iPhone chrome is portrait-first; iPad allows free rotation.
         // Live / video fullscreen temporarily locks landscape on both.
         OrientationHelper.restoreDefault()
+        Task { @MainActor in
+            if ExpressService.shared.packages.contains(where: {
+                $0.bucket == .active && $0.isTracked == true
+            }) {
+                ExpressBackgroundRefresh.schedule()
+            }
+        }
     }
 
     var body: some Scene {

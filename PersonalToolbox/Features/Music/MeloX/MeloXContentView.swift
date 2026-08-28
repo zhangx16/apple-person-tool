@@ -22,7 +22,7 @@ struct MeloXContentView: View {
     @State private var explorePath = NavigationPath()
     @State private var libraryPath = NavigationPath()
     @State private var searchPath = NavigationPath()
-    @State private var settingsPath = NavigationPath()
+    @State private var fmPath = NavigationPath()
     @State private var playerPresentation: PlayerPresentation?
     @State private var neteaseSharePresentation: NeteaseSharePresentation?
     @State private var nowPlayingSharePresentation: NeteaseSharePresentation?
@@ -242,12 +242,12 @@ struct MeloXContentView: View {
                 .musicTabPage(.search, selection: selectedTab)
             }
 
-            if mountedTabs.contains(.settings) {
-                NavigationStack(path: $settingsPath) {
-                    MeloXSettingsView()
+            if mountedTabs.contains(.fm) {
+                NavigationStack(path: $fmPath) {
+                    PersonalFMView()
                         .musicDestinations(in: musicNavigationNamespace)
                 }
-                .musicTabPage(.settings, selection: selectedTab)
+                .musicTabPage(.fm, selection: selectedTab)
             }
         }
     }
@@ -259,7 +259,7 @@ struct MeloXContentView: View {
             case .explore: explorePath = NavigationPath()
             case .library: libraryPath = NavigationPath()
             case .search: searchPath = NavigationPath()
-            case .settings: settingsPath = NavigationPath()
+            case .fm: fmPath = NavigationPath()
             }
         }
     }
@@ -308,7 +308,7 @@ struct MeloXContentView: View {
         case .explore: explorePath.append(route)
         case .library: libraryPath.append(route)
         case .search: searchPath.append(route)
-        case .settings: settingsPath.append(route)
+        case .fm: fmPath.append(route)
         }
     }
 

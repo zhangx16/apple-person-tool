@@ -5,7 +5,7 @@ enum MeloXTab: String, CaseIterable, Identifiable {
     case explore
     case library
     case search
-    case settings
+    case fm
 
     var id: String { rawValue }
 
@@ -15,7 +15,7 @@ enum MeloXTab: String, CaseIterable, Identifiable {
         case .explore: "发现"
         case .library: "音乐库"
         case .search: "搜索"
-        case .settings: "设置"
+        case .fm: "漫游"
         }
     }
 
@@ -25,7 +25,7 @@ enum MeloXTab: String, CaseIterable, Identifiable {
         case .explore: "safari"
         case .library: "music.note.list"
         case .search: "magnifyingglass"
-        case .settings: "gearshape"
+        case .fm: "wave.3.right.circle"
         }
     }
 }

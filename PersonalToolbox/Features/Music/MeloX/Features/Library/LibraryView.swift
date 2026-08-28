@@ -13,6 +13,7 @@ struct LibraryView: View {
     @State private var section: LibraryPage = .songs
     @State private var hasAppliedInitialPage = false
     @State private var showsLogin = false
+    @State private var showsSettings = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -36,6 +37,12 @@ struct LibraryView: View {
         .navigationTitle("音乐库")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { showsSettings = true } label: {
+                    Image(systemName: "gearshape")
+                }
+                .accessibilityLabel("音乐设置")
+            }
             if library.isLoggedIn {
                 ToolbarItem(placement: .primaryAction) {
                     NavigationLink(value: LibraryRoute.privateMessages) {
@@ -64,6 +71,16 @@ struct LibraryView: View {
         .sheet(isPresented: $showsLogin) {
             NavigationStack {
                 NeteaseLoginView()
+            }
+        }
+        .sheet(isPresented: $showsSettings) {
+            NavigationStack {
+                MeloXSettingsView()
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("完成") { showsSettings = false }
+                        }
+                    }
             }
         }
         .task(id: settings.cookie) {

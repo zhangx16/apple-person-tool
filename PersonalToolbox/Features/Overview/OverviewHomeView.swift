@@ -24,6 +24,7 @@ final class OverviewViewModel: ObservableObject {
         case ipCheck
         case servicesTab
         case liveTab
+        case musicTab
         case settingsTab
         case checkinSettings
         case notes
@@ -34,6 +35,14 @@ final class OverviewViewModel: ObservableObject {
         case controlCenter
         case proxyPack
         case watchLater
+        case expressAssistant
+        case qrAssistant
+        case translator
+        case rss
+        case market
+        case novel
+        case telegramChannel
+        case sublink
     }
 
     @Published private(set) var isLoading = false
@@ -307,6 +316,16 @@ struct OverviewHomeView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @StateObject private var viewModel = OverviewViewModel()
     @State private var path = NavigationPath()
+    @State private var moduleQuery = ""
+
+    private struct ModuleSearchItem: Identifiable {
+        let id: String
+        let title: String
+        let subtitle: String
+        let systemImage: String
+        let keywords: String
+        let destination: OverviewViewModel.OverviewDestination
+    }
 
     private var accent: Color { Color.accentColor }
 
@@ -319,18 +338,23 @@ struct OverviewHomeView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: AppleTheme.space5) {
                     heroHeader
-                    todayPulseStrip
-                    onboardingSection
-                    todayTodosSection
-                    attentionSection
-                    todayStrip
-                    servicesQuickGrid
-                    moreToolsRow
-                    if let err = viewModel.errorMessage, !err.isEmpty {
-                        Text(err)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 4)
+                    FloatingSearchBar(text: $moduleQuery, placeholder: "搜索并打开模块…")
+                    if moduleQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        todayPulseStrip
+                        onboardingSection
+                        todayTodosSection
+                        attentionSection
+                        todayStrip
+                        servicesQuickGrid
+                        moreToolsRow
+                        if let err = viewModel.errorMessage, !err.isEmpty {
+                            Text(err)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 4)
+                        }
+                    } else {
+                        moduleSearchResults
                     }
                 }
                 .padding(16)
@@ -368,6 +392,74 @@ struct OverviewHomeView: View {
             }
             .navigationDestination(for: OverviewViewModel.OverviewDestination.self) { dest in
                 destinationView(dest)
+            }
+        }
+    }
+
+    // MARK: - Global module search
+
+    private var moduleSearchItems: [ModuleSearchItem] {
+        [
+            .init(id: "express", title: "快递助手", subtitle: "多平台聚合、物流跟踪与云雀", systemImage: "shippingbox.fill", keywords: "快递 物流 包裹 京东 淘宝 菜鸟 拼多多 小米 云雀", destination: .expressAssistant),
+            .init(id: "download", title: "视频下载", subtitle: "YouTube、抖音与 B 站", systemImage: "arrow.down.circle.fill", keywords: "下载 视频 youtube 油管 抖音 bilibili b站", destination: .download),
+            .init(id: "live", title: "直播", subtitle: "多平台直播、关注与搜索", systemImage: "play.tv.fill", keywords: "直播 主播 虎牙 斗鱼 抖音 快手 bilibili", destination: .liveTab),
+            .init(id: "music", title: "音乐", subtitle: "音乐库、播放与歌词", systemImage: "music.note", keywords: "音乐 歌曲 播放 歌词 navidrome", destination: .musicTab),
+            .init(id: "checkin", title: "签到中心", subtitle: "GLaDOS、Emby 与签到状态", systemImage: "checkmark.seal.fill", keywords: "签到 glados emby", destination: .checkin),
+            .init(id: "sub2", title: "Sub2 管理", subtitle: "账号调度、用户与分组", systemImage: "chart.bar.fill", keywords: "sub2 账号 用户 api key 分组 监控", destination: .sub2Monitor),
+            .init(id: "cloudflare", title: "Cloudflare", subtitle: "域名、DNS 与用量", systemImage: "cloud.fill", keywords: "cloudflare cf 域名 dns 缓存", destination: .cloudflare),
+            .init(id: "komari", title: "Komari", subtitle: "服务器节点监控", systemImage: "server.rack", keywords: "komari 服务器 节点 监控", destination: .komari),
+            .init(id: "health", title: "服务健康", subtitle: "探测全部已配置服务", systemImage: "heart.text.square.fill", keywords: "服务 健康 探测 状态", destination: .serviceHealth),
+            .init(id: "ip", title: "IP 检测", subtitle: "出口风险、流媒体与节点档案", systemImage: "network", keywords: "ip 检测 出口 风险 流媒体 节点", destination: .ipCheck),
+            .init(id: "qr", title: "二维码助手", subtitle: "扫码、生成与安全规则", systemImage: "qrcode.viewfinder", keywords: "二维码 qr 扫码 生成", destination: .qrAssistant),
+            .init(id: "translator", title: "翻译器", subtitle: "多语言文本翻译", systemImage: "character.book.closed.fill", keywords: "翻译 translator 语言", destination: .translator),
+            .init(id: "rss", title: "RSS 阅读器", subtitle: "订阅与资讯聚合", systemImage: "dot.radiowaves.left.and.right", keywords: "rss 阅读 资讯 订阅", destination: .rss),
+            .init(id: "market", title: "行情", subtitle: "油价、汇率与金价", systemImage: "chart.line.uptrend.xyaxis", keywords: "行情 油价 汇率 金价 黄金", destination: .market),
+            .init(id: "novel", title: "小说阅读", subtitle: "书源、搜索与阅读器", systemImage: "books.vertical.fill", keywords: "小说 阅读 书源 legado txt", destination: .novel),
+            .init(id: "telegram", title: "TG 片库", subtitle: "Telegram 频道视频", systemImage: "paperplane.fill", keywords: "telegram tg 片库 频道 视频", destination: .telegramChannel),
+            .init(id: "sublink", title: "SublinkX", subtitle: "订阅与节点管理", systemImage: "link", keywords: "sublink 订阅 节点 clash v2ray surge", destination: .sublink),
+            .init(id: "notes", title: "笔记同步", subtitle: "Fast Note 与 Markdown", systemImage: "note.text", keywords: "笔记 note markdown 同步", destination: .notes),
+            .init(id: "reminders", title: "提醒", subtitle: "本地提醒事项", systemImage: "bell.fill", keywords: "提醒 待办 todo", destination: .reminders),
+            .init(id: "subscriptions", title: "订阅账单", subtitle: "订阅到期与费用", systemImage: "creditcard.fill", keywords: "订阅 账单 到期 费用", destination: .subscriptions),
+            .init(id: "certs", title: "证书到期", subtitle: "TLS 证书监视", systemImage: "lock.shield.fill", keywords: "证书 tls ssl 到期 域名", destination: .certs),
+            .init(id: "ssh", title: "SSH 主机", subtitle: "主机书签与终端", systemImage: "terminal.fill", keywords: "ssh 主机 服务器 终端", destination: .ssh),
+            .init(id: "control", title: "控制中心", subtitle: "通知、开播提醒与剪贴板", systemImage: "switch.2", keywords: "控制 中心 通知 剪贴板", destination: .controlCenter)
+        ]
+    }
+
+    private var filteredModuleSearchItems: [ModuleSearchItem] {
+        let terms = moduleQuery.lowercased().split(whereSeparator: { $0.isWhitespace }).map(String.init)
+        guard !terms.isEmpty else { return [] }
+        return moduleSearchItems.filter { item in
+            let haystack = "\(item.title) \(item.subtitle) \(item.keywords)".lowercased()
+            return terms.allSatisfy(haystack.contains)
+        }
+    }
+
+    @ViewBuilder
+    private var moduleSearchResults: some View {
+        if filteredModuleSearchItems.isEmpty {
+            EmptyStateView(
+                symbol: "magnifyingglass",
+                title: "没有匹配模块",
+                message: "没有找到「\(moduleQuery)」相关功能。",
+                pathHint: "试试模块名称、平台名或用途",
+                actionTitle: "清空搜索",
+                action: { moduleQuery = "" }
+            )
+            .frame(minHeight: 320)
+        } else {
+            VStack(alignment: .leading, spacing: 10) {
+                AppSectionTitle(title: "搜索结果", systemImage: "magnifyingglass")
+                ForEach(filteredModuleSearchItems) { item in
+                    Button {
+                        moduleQuery = ""
+                        navigate(item.destination)
+                    } label: {
+                        AppNavRow(title: item.title, subtitle: item.subtitle, systemImage: item.systemImage, tint: .accentColor)
+                            .appCard()
+                    }
+                    .buttonStyle(PressableButtonStyle(scale: 0.98))
+                }
             }
         }
     }
@@ -883,6 +975,8 @@ struct OverviewHomeView: View {
             selectedTab = .services
         case .liveTab:
             selectedTab = .live
+        case .musicTab:
+            selectedTab = .music
         case .settingsTab, .checkinSettings:
             selectedTab = .settings
         default:
@@ -938,9 +1032,25 @@ struct OverviewHomeView: View {
             ProxyNodePackView()
         case .watchLater:
             WatchLaterHomeView()
+        case .expressAssistant:
+            ExpressAssistantRootView()
+        case .qrAssistant:
+            QRAssistantHomeView()
+        case .translator:
+            TranslatorHomeView()
+        case .rss:
+            RSSHomeView()
+        case .market:
+            MarketQuotesHomeView()
+        case .novel:
+            NovelRootView()
+        case .telegramChannel:
+            TGChannelRootView().environmentObject(settings)
+        case .sublink:
+            SublinkHomeView()
         case .ssh:
             SSHHomeView()
-        case .servicesTab, .liveTab, .settingsTab, .checkinSettings:
+        case .servicesTab, .liveTab, .musicTab, .settingsTab, .checkinSettings:
             EmptyView()
         }
     }
@@ -953,4 +1063,3 @@ struct OverviewHomeView: View {
         return h
     }
 }
-

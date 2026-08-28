@@ -192,7 +192,7 @@ struct RootTabView: View {
             DownloadHomeView(isTabSelected: true, initialURL: url.isEmpty ? nil : url)
                 .navigationTitle("视频下载")
         case .express(let tracking):
-            ExpressHomeView(prefill: tracking)
+            ExpressAssistantRootView(prefill: tracking)
         case .watchLater:
             WatchLaterHomeView()
         case .proxyPack:

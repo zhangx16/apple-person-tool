@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>CFBundleDisplayName</key><string>快递助手</string>
+  <key>UILaunchScreen</key><dict/>
+  <key>BGTaskSchedulerPermittedIdentifiers</key><array><string>com.zhangx16.expresstools.refresh</string></array>
+</dict></plist>

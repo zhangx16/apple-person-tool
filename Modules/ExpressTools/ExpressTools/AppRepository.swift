@@ -5,7 +5,7 @@ import Foundation
     @Published var accounts: [BoundAccount] = [] { didSet { save(accounts, "accounts.json") } }
     @Published var addresses: [HomeAddress] = [] { didSet { save(addresses, "addresses.json") } }
     @Published var schedules: [ReportSchedule] = [] { didSet { save(schedules, "schedules.json") } }
-    @Published var chat: [ChatMessage] = [] { didSet { save(chat, "chat.json") } }
+    @Published var chat: [ExpressChatMessage] = [] { didSet { save(chat, "chat.json") } }
     @Published var pollingMinutes = 0 { didSet { UserDefaults.standard.set(pollingMinutes, forKey: "pollingMinutes") } }
     private let directory: URL
 
@@ -15,7 +15,7 @@ import Foundation
         accounts = load("accounts.json", as: [BoundAccount].self) ?? []
         addresses = load("addresses.json", as: [HomeAddress].self) ?? []
         schedules = load("schedules.json", as: [ReportSchedule].self) ?? []
-        chat = load("chat.json", as: [ChatMessage].self) ?? []
+        chat = load("chat.json", as: [ExpressChatMessage].self) ?? []
         pollingMinutes = UserDefaults.standard.integer(forKey: "pollingMinutes")
     }
     func addAccount(source: DeliverySource, label: String, credential: String) {

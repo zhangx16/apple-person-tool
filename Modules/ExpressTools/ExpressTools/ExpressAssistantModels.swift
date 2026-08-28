@@ -31,7 +31,7 @@ struct ReportSchedule: Codable, Identifiable, Hashable {
     var enabled = true
 }
 
-struct ChatMessage: Codable, Identifiable, Hashable {
+struct ExpressChatMessage: Codable, Identifiable, Hashable {
     enum Role: String, Codable { case user, assistant }
     var id = UUID(); var role: Role; var content: String; var date = Date()
 }

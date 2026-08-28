@@ -2,7 +2,7 @@ import Foundation
 import SwiftUI
 
 struct AIClient {
-    func complete(messages: [ChatMessage], parcels: [Parcel]) async throws -> String {
+    func complete(messages: [ExpressChatMessage], parcels: [Parcel]) async throws -> String {
         let base = Secrets.get("ai.base").isEmpty ? "https://api.deepseek.com" : Secrets.get("ai.base")
         guard let url = URL(string: base.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + "/chat/completions") else { throw QueryError.message("AI 地址无效") }
         let key = Secrets.get("ai.key"); guard !key.isEmpty else { throw QueryError.message("请先在设置中配置 AI") }
@@ -26,5 +26,5 @@ struct LarkChatView: View {
         }.padding(.vertical) }
         HStack { TextField("问问云雀…", text: $input, axis: .vertical).textFieldStyle(.roundedBorder); Button { send(input) } label: { Image(systemName: "arrow.up.circle.fill").font(.title) }.disabled(input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || loading) }.padding().background(.bar)
     }.navigationTitle("云雀").toolbar { if !repository.chat.isEmpty { Button("清空") { repository.chat = [] } } }.alert("请求失败", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) { Button("好") {} } message: { Text(error ?? "") } }
-    private func send(_ text: String) { let clean = text.trimmingCharacters(in: .whitespacesAndNewlines); guard !clean.isEmpty else { return }; repository.chat.append(ChatMessage(role: .user, content: clean)); input = ""; loading = true; Task { do { let reply = try await AIClient().complete(messages: repository.chat, parcels: store.parcels); repository.chat.append(ChatMessage(role: .assistant, content: reply)) } catch { self.error = error.localizedDescription }; loading = false } }
+    private func send(_ text: String) { let clean = text.trimmingCharacters(in: .whitespacesAndNewlines); guard !clean.isEmpty else { return }; repository.chat.append(ExpressChatMessage(role: .user, content: clean)); input = ""; loading = true; Task { do { let reply = try await AIClient().complete(messages: repository.chat, parcels: store.parcels); repository.chat.append(ExpressChatMessage(role: .assistant, content: reply)) } catch { self.error = error.localizedDescription }; loading = false } }
 }

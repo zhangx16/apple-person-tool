@@ -166,7 +166,6 @@ final class SettingsViewModel: ObservableObject {
         let base = settings.komariBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !base.isEmpty else {
             komariProbe = .failure("请填写 Base URL")
-            Haptics.error()
             return
         }
         komariProbe = .probing
@@ -174,10 +173,8 @@ final class SettingsViewModel: ObservableObject {
         do {
             let detail = try await komari.probe(baseURL: base)
             komariProbe = .success(latencyMs: elapsedMs(since: start), detail: detail)
-            Haptics.success()
         } catch {
             komariProbe = .failure(Self.chineseError(error))
-            Haptics.error()
         }
     }
 
@@ -349,7 +346,6 @@ final class SettingsViewModel: ObservableObject {
             group.addTask { await self.testAdmin() }
             group.addTask { await self.testYT() }
             group.addTask { await self.testSublink() }
-            group.addTask { await self.testKomari() }
             group.addTask { await self.testCheckin() }
             group.addTask { await self.testCloudflare() }
             group.addTask { await self.testBilibiliCookie() }
@@ -359,7 +355,7 @@ final class SettingsViewModel: ObservableObject {
 
         let results: [(name: String, state: ServiceProbeState)] = [
             ("Sub2API", sub2Probe), ("Admin", adminProbe), ("YT下载", ytProbe),
-            ("Sublink", sublinkProbe), ("Komari", komariProbe), ("签到", checkinProbe),
+            ("Sublink", sublinkProbe), ("签到", checkinProbe),
             ("Cloudflare", cloudflareProbe), ("B站Cookie", bilibiliCookieProbe),
             ("抖音Cookie", douyinCookieProbe), ("快手Cookie", kuaishouCookieProbe)
         ]

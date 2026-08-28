@@ -246,7 +246,6 @@ struct QuickActionsHomeView: View {
                 VStack(spacing: 10) {
                     toolLink("剪贴板", "doc.on.clipboard", Color(hex: 0x0A84FF)) { ClipboardHomeView() }
                     toolLink("服务健康", "heart.text.square", Color(hex: 0xFF375F)) { ServiceHealthHomeView() }
-                    toolLink("RSS 阅读", "dot.radiowaves.up.forward", Color(hex: 0xFF9500)) { RSSHomeView() }
                     toolLink("习惯与待办", "checklist", Color(hex: 0x30D158)) { HabitsTodosHomeView() }
                     toolLink("行情", "chart.line.uptrend.xyaxis", Color(hex: 0x34C759)) { MarketQuotesHomeView() }
             toolLink("快递", "shippingbox", Color(hex: 0xAC8E68)) { ExpressAssistantRootView() }
@@ -298,8 +297,6 @@ struct QuickActionRunnerView: View {
                 TranslatorJumpView(prefill: payload.text)
             case .openClipboard:
                 ClipboardHomeView()
-            case .openRSS:
-                RSSHomeView(initialURL: payload.url)
             case .openHabits, .openTodos:
                 HabitsTodosHomeView(initialTab: payload.action == .openTodos ? 1 : 0)
             case .openMarket:

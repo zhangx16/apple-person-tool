@@ -58,8 +58,6 @@ final class AppSettings: ObservableObject {
         didSet { KeychainStore.set(sublinkPassword, for: Keys.sublinkPassword) }
     }
 
-    // MARK: - Komari
-
     @Published var komariBaseURL: String {
         didSet { UserDefaults.standard.set(komariBaseURL, forKey: Keys.komariBaseURL) }
     }
@@ -116,7 +114,6 @@ final class AppSettings: ObservableObject {
         didSet { UserDefaults.standard.set(fastNoteVault, forKey: Keys.fastNoteVault) }
     }
 
-    /// Optional Next Terminal / web SSH portal URL.
     @Published var nextTerminalURL: String {
         didSet { UserDefaults.standard.set(nextTerminalURL, forKey: Keys.nextTerminalURL) }
     }
@@ -138,9 +135,6 @@ final class AppSettings: ObservableObject {
         didSet { UserDefaults.standard.set(cloudflareAccountName, forKey: Keys.cloudflareAccountName) }
     }
 
-    // MARK: - 财联社电报
-
-    /// RSS/Atom feed URL (default pyrsshub cls/telegraph).
     @Published var clsFeedURL: String {
         didSet { UserDefaults.standard.set(clsFeedURL, forKey: Keys.clsFeedURL) }
     }
@@ -366,8 +360,7 @@ final class AppSettings: ObservableObject {
         cloudflareEmail = d.string(forKey: Keys.cloudflareEmail) ?? ""
         cloudflareAccountId = d.string(forKey: Keys.cloudflareAccountId) ?? ""
         cloudflareAccountName = d.string(forKey: Keys.cloudflareAccountName) ?? ""
-        clsFeedURL = d.string(forKey: Keys.clsFeedURL)
-            ?? "https://pyrsshub.vercel.app/cls/telegraph/"
+        clsFeedURL = d.string(forKey: Keys.clsFeedURL) ?? "https://pyrsshub.vercel.app/cls/telegraph/"
         monitorProjectRaw = d.string(forKey: Keys.monitorProjectRaw) ?? "sub2"
         downloadProjectRaw = d.string(forKey: Keys.downloadProjectRaw) ?? "youtube"
         appearance = d.string(forKey: Keys.appearance) ?? Appearance.system.rawValue

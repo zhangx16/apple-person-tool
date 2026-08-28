@@ -7,7 +7,6 @@ enum AppDeepAction: String, Codable, CaseIterable, Identifiable, Hashable {
     case translate
     case scanQRHint
     case openClipboard
-    case openRSS
     case openHabits
     case openTodos
     case openMarket
@@ -26,7 +25,6 @@ enum AppDeepAction: String, Codable, CaseIterable, Identifiable, Hashable {
         case .translate: return "翻译"
         case .scanQRHint: return "二维码助手"
         case .openClipboard: return "剪贴板"
-        case .openRSS: return "RSS 阅读"
         case .openHabits: return "习惯打卡"
         case .openTodos: return "待办"
         case .openMarket: return "行情"
@@ -45,7 +43,6 @@ enum AppDeepAction: String, Codable, CaseIterable, Identifiable, Hashable {
         case .translate: return "translate"
         case .scanQRHint: return "qrcode.viewfinder"
         case .openClipboard: return "doc.on.clipboard"
-        case .openRSS: return "dot.radiowaves.up.forward"
         case .openHabits: return "checkmark.circle"
         case .openTodos: return "checklist"
         case .openMarket: return "chart.line.uptrend.xyaxis"
@@ -136,7 +133,6 @@ enum ActionRouter {
                 out.append(.init(action: .downloadYouTube, text: t, url: url))
             }
             out.append(.init(action: .translate, text: t, url: url))
-            out.append(.init(action: .openRSS, text: t, url: url))
         } else if t.count >= 2 {
             out.append(.init(action: .translate, text: t))
         }

@@ -99,13 +99,9 @@ private struct ReminderEditorSheet: View {
 // MARK: - Subscriptions
 
 struct SubscriptionHomeView: View {
-    @EnvironmentObject private var settings: AppSettings
     @StateObject private var store = SubscriptionStore.shared
     @State private var showAdd = false
     @State private var editingItem: SubscriptionItem?
-    @State private var isImporting = false
-    @State private var importMessage: String?
-    @State private var importNodes: [KomariNode]?
     /// Highlight row from deep link / overview.
     var focusId: String? = nil
 
@@ -114,13 +110,7 @@ struct SubscriptionHomeView: View {
     }
 
     private var grouped: [(String, [SubscriptionItem])] {
-        let komari = store.items.filter { $0.id.hasPrefix("komari-") }
-        let rest = store.items.filter { !$0.id.hasPrefix("komari-") }
-        var out: [(String, [SubscriptionItem])] = []
-        if !komari.isEmpty { out.append(("Komari VPS", komari)) }
-        if !rest.isEmpty { out.append(("其他订阅", rest)) }
-        if out.isEmpty { out.append(("列表", [])) }
-        return out
+        [("订阅", store.items)]
     }
 
     var body: some View {
@@ -128,26 +118,6 @@ struct SubscriptionHomeView: View {
             Section {
                 LabeledContent("月度估算", value: String(format: "¥%.2f", store.monthTotal))
                 LabeledContent("条目", value: "\(store.items.count)")
-            }
-            Section("从 Komari 导入") {
-                Text("读取节点 price / currency / expired_at，预览确认后再写入。标签含「年」时默认年付。")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Button {
-                    Task { await loadKomariPreview() }
-                } label: {
-                    if isImporting {
-                        ProgressView()
-                    } else {
-                        Label("预览并导入 Komari 节点账单", systemImage: "server.rack")
-                    }
-                }
-                .disabled(isImporting || settings.komariBaseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                if let importMessage {
-                    Text(importMessage)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
             }
             ForEach(grouped, id: \.0) { title, items in
                 Section(title) {
@@ -207,42 +177,11 @@ struct SubscriptionHomeView: View {
         .sheet(item: $editingItem) { item in
             SubscriptionEditorSheet(existing: item) { editingItem = nil }
         }
-        .sheet(item: Binding(
-            get: { importNodes.map { NodeBox(nodes: $0) } },
-            set: { importNodes = $0?.nodes }
-        )) { box in
-            KomariBillImportSheet(nodes: box.nodes) {
-                importMessage = "导入完成"
-                importNodes = nil
-            }
-        }
         .onDisappear {
             UserDefaults.standard.removeObject(forKey: "subscription.focusId")
         }
     }
 
-    private struct NodeBox: Identifiable {
-        var id: String { "nodes-\(nodes.count)" }
-        var nodes: [KomariNode]
-    }
-
-    private func loadKomariPreview() async {
-        isImporting = true
-        importMessage = nil
-        defer { isImporting = false }
-        do {
-            let nodes = try await KomariService.shared.listNodes(baseURL: settings.komariBaseURL)
-            let priced = nodes.filter { ($0.price ?? 0) > 0 }
-            if priced.isEmpty {
-                importMessage = "Komari 节点无 price 字段或列表为空"
-            } else {
-                importNodes = priced
-            }
-        } catch {
-            importMessage = error.localizedDescription
-            Haptics.error()
-        }
-    }
 }
 
 private struct SubscriptionEditorSheet: View {

@@ -44,22 +44,6 @@ enum SmartNotifyService {
             }
         }
 
-        // Certificates
-        if quietOK, settings.notifyCertExpiry {
-            let expiring = CertExpiryStore.shared.items.filter { ($0.daysLeft ?? 999) <= 14 && ($0.daysLeft ?? 999) >= 0 }
-            if let first = expiring.sorted(by: { ($0.daysLeft ?? 99) < ($1.daysLeft ?? 99) }).first,
-               let days = first.daysLeft {
-                LocalNotifier.notify(
-                    id: "smart.cert.\(first.id).\(dayKey())",
-                    title: "证书即将到期",
-                    body: "\(first.host) · 剩余 \(days) 天",
-                    category: LocalNotifier.smartCategory,
-                    userInfo: ["route": "certs", "certId": first.id],
-                    collapseByDay: true
-                )
-            }
-        }
-
         // Live open (also evaluated with throttle in LiveOpenNotifyService)
         if quietOK, settings.notifyLiveOpen {
             LiveOpenNotifyService.evaluate(settings: settings)

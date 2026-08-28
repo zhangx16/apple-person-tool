@@ -328,12 +328,6 @@ struct ServicesHubView: View {
                 item("tgChannel", "TG 片库", "频道视频 · 自建同步 · 油管/B站源", .tgChannel) {
                     AnyView(TGChannelRootView().environmentObject(settings))
                 },
-                item("rss", "RSS 阅读器", "多源订阅 · 下拉刷新", .rss) {
-                    AnyView(RSSHomeView())
-                },
-                item("cls", "财联社电报", "实时电报 · 本地缓存", .clsNews) {
-                    AnyView(CLSNewsHomeView())
-                }
             ]),
             SectionModel(title: "监控", symbol: "waveform.path.ecg", items: [
                 item(
@@ -355,21 +349,12 @@ struct ServicesHubView: View {
                 item("health", "服务健康总览", "一键探测全部已配置服务", .health) {
                     AnyView(ServiceHealthHomeView())
                 },
-                item("komari", "Komari", settings.komariBaseURL, .komari) {
-                    AnyView(KomariHomeView())
-                },
                 item("checkin", "签到中心", settings.isCheckinConfigured ? "GLaDOS / Emby / TG Bot 状态" : "未配置 · 设置里填写 Token", .checkin) {
                     AnyView(CheckinHomeView())
                 },
                 item("ip", "IP 检测", "出口风险 · 流媒体 · 节点探测档案", .ipCheck) {
                     AnyView(IPCheckHomeView())
                 },
-                item("certs", "证书到期", "域名 TLS 到期监视 · 自动探测", .cloudflare) {
-                    AnyView(CertMonitorHomeView())
-                },
-                item("ssh", "SSH 主机", "书签 · Next Terminal · 推荐 Blink/Citadel", .komari) {
-                    AnyView(SSHHomeView())
-                }
             ]),
             SectionModel(title: "订阅与节点", symbol: "link", items: [
                 item("sublink", "SublinkX", settings.sublinkBaseURL, .sublink) {

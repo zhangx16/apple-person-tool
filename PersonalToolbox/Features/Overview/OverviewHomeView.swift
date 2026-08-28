@@ -20,7 +20,6 @@ final class OverviewViewModel: ObservableObject {
         case download
         case sub2Monitor
         case cloudflare
-        case komari
         case ipCheck
         case servicesTab
         case liveTab
@@ -30,15 +29,12 @@ final class OverviewViewModel: ObservableObject {
         case notes
         case reminders
         case subscriptions
-        case certs
-        case ssh
         case controlCenter
         case proxyPack
         case watchLater
         case expressAssistant
         case qrAssistant
         case translator
-        case rss
         case market
         case novel
         case telegramChannel
@@ -54,9 +50,7 @@ final class OverviewViewModel: ObservableObject {
     @Published private(set) var liveNowCount = 0
     @Published private(set) var liveNowNames: [String] = []
     @Published private(set) var subsDueSoon: [SubscriptionItem] = []
-    @Published private(set) var certsDueSoon: Int = 0
     @Published private(set) var watchLaterCount = 0
-    @Published private(set) var komariOnlineHint: String?
 
     private let checkin = CheckinService.shared
     private let health = ServiceHealthService.shared
@@ -155,17 +149,6 @@ final class OverviewViewModel: ObservableObject {
             ))
         }
 
-        if certsDueSoon > 0 {
-            list.append(.init(
-                id: "cert-due",
-                title: "\(certsDueSoon) 张证书 14 天内到期",
-                subtitle: "打开证书监视查看详情",
-                tint: Color(hex: 0xFF453A),
-                systemImage: "lock.shield.fill",
-                destination: .certs
-            ))
-        }
-
         return list
     }
 
@@ -182,15 +165,11 @@ final class OverviewViewModel: ObservableObject {
     var healthFail: Int { healthItems.filter { $0.status == .fail }.count }
     var healthConfigured: Int { healthItems.filter { $0.status != .skip }.count }
 
-    private static let komariCacheKey = "overview.komariOnlineHint.v1"
-    private static let komariCacheAtKey = "overview.komariOnlineAt.v1"
-
     func refresh(settings: AppSettings) async {
         isLoading = true
         errorMessage = nil
         // Phase 0: local dashboard immediately (no network).
         reloadLocalDashboard(settings: settings)
-        loadKomariCache()
 
         defer {
             isLoading = false
@@ -252,9 +231,6 @@ final class OverviewViewModel: ObservableObject {
             SmartNotifyService.evaluate(settings: settings, checkin: nil)
         }
 
-        // Phase 4: Komari online (cache 5 min)
-        await refreshKomariIfNeeded(settings: settings)
-
         try? await Task.sleep(nanoseconds: 350_000_000)
         reloadLocalDashboard(settings: settings)
         activity = activityStore.recent
@@ -265,37 +241,7 @@ final class OverviewViewModel: ObservableObject {
         liveNowCount = live.count
         liveNowNames = live.map(\.displayName)
         subsDueSoon = SubscriptionStore.shared.dueSoon
-        certsDueSoon = CertExpiryStore.shared.items.filter { ($0.daysLeft ?? 999) <= 14 && ($0.daysLeft ?? 999) >= 0 }.count
         watchLaterCount = WatchLaterStore.shared.items.count
-    }
-
-    private func loadKomariCache() {
-        if let cached = UserDefaults.standard.string(forKey: Self.komariCacheKey), !cached.isEmpty {
-            komariOnlineHint = cached
-        }
-    }
-
-    private func refreshKomariIfNeeded(settings: AppSettings) async {
-        let komari = settings.komariBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !komari.isEmpty else {
-            komariOnlineHint = nil
-            return
-        }
-        let last = UserDefaults.standard.object(forKey: Self.komariCacheAtKey) as? Date
-        if let last, Date().timeIntervalSince(last) < 300, komariOnlineHint != nil {
-            return
-        }
-        do {
-            let rows = try await KomariService.shared.dashboard(baseURL: komari)
-            let online = rows.filter(\.isOnline).count
-            let text = "\(online)/\(rows.count) 在线"
-            komariOnlineHint = text
-            UserDefaults.standard.set(text, forKey: Self.komariCacheKey)
-            UserDefaults.standard.set(Date(), forKey: Self.komariCacheAtKey)
-        } catch {
-            // keep cache on failure
-            if komariOnlineHint == nil { komariOnlineHint = "—" }
-        }
     }
 
     var setupChecklist: [(String, Bool, OverviewDestination)] {
@@ -407,12 +353,10 @@ struct OverviewHomeView: View {
             .init(id: "checkin", title: "签到中心", subtitle: "GLaDOS、Emby 与签到状态", systemImage: "checkmark.seal.fill", keywords: "签到 glados emby", destination: .checkin),
             .init(id: "sub2", title: "Sub2 管理", subtitle: "账号调度、用户与分组", systemImage: "chart.bar.fill", keywords: "sub2 账号 用户 api key 分组 监控", destination: .sub2Monitor),
             .init(id: "cloudflare", title: "Cloudflare", subtitle: "域名、DNS 与用量", systemImage: "cloud.fill", keywords: "cloudflare cf 域名 dns 缓存", destination: .cloudflare),
-            .init(id: "komari", title: "Komari", subtitle: "服务器节点监控", systemImage: "server.rack", keywords: "komari 服务器 节点 监控", destination: .komari),
             .init(id: "health", title: "服务健康", subtitle: "探测全部已配置服务", systemImage: "heart.text.square.fill", keywords: "服务 健康 探测 状态", destination: .serviceHealth),
             .init(id: "ip", title: "IP 检测", subtitle: "出口风险、流媒体与节点档案", systemImage: "network", keywords: "ip 检测 出口 风险 流媒体 节点", destination: .ipCheck),
             .init(id: "qr", title: "二维码助手", subtitle: "扫码、生成与安全规则", systemImage: "qrcode.viewfinder", keywords: "二维码 qr 扫码 生成", destination: .qrAssistant),
             .init(id: "translator", title: "翻译器", subtitle: "多语言文本翻译", systemImage: "character.book.closed.fill", keywords: "翻译 translator 语言", destination: .translator),
-            .init(id: "rss", title: "RSS 阅读器", subtitle: "订阅与资讯聚合", systemImage: "dot.radiowaves.left.and.right", keywords: "rss 阅读 资讯 订阅", destination: .rss),
             .init(id: "market", title: "行情", subtitle: "油价、汇率与金价", systemImage: "chart.line.uptrend.xyaxis", keywords: "行情 油价 汇率 金价 黄金", destination: .market),
             .init(id: "novel", title: "小说阅读", subtitle: "书源、搜索与阅读器", systemImage: "books.vertical.fill", keywords: "小说 阅读 书源 legado txt", destination: .novel),
             .init(id: "telegram", title: "TG 片库", subtitle: "Telegram 频道视频", systemImage: "paperplane.fill", keywords: "telegram tg 片库 频道 视频", destination: .telegramChannel),
@@ -420,8 +364,6 @@ struct OverviewHomeView: View {
             .init(id: "notes", title: "笔记同步", subtitle: "Fast Note 与 Markdown", systemImage: "note.text", keywords: "笔记 note markdown 同步", destination: .notes),
             .init(id: "reminders", title: "提醒", subtitle: "本地提醒事项", systemImage: "bell.fill", keywords: "提醒 待办 todo", destination: .reminders),
             .init(id: "subscriptions", title: "订阅账单", subtitle: "订阅到期与费用", systemImage: "creditcard.fill", keywords: "订阅 账单 到期 费用", destination: .subscriptions),
-            .init(id: "certs", title: "证书到期", subtitle: "TLS 证书监视", systemImage: "lock.shield.fill", keywords: "证书 tls ssl 到期 域名", destination: .certs),
-            .init(id: "ssh", title: "SSH 主机", subtitle: "主机书签与终端", systemImage: "terminal.fill", keywords: "ssh 主机 服务器 终端", destination: .ssh),
             .init(id: "control", title: "控制中心", subtitle: "通知、开播提醒与剪贴板", systemImage: "switch.2", keywords: "控制 中心 通知 剪贴板", destination: .controlCenter)
         ]
     }
@@ -504,15 +446,6 @@ struct OverviewHomeView: View {
                 "订阅到期",
                 "\(first.name) · \(first.daysUntilDue) 天",
                 .subscriptions,
-                Color(hex: 0xFF9F0A)
-            ))
-        }
-        let certs = CertExpiryStore.shared.expiringSoon
-        if let c = certs.sorted(by: { ($0.daysLeft ?? 99) < ($1.daysLeft ?? 99) }).first, let d = c.daysLeft {
-            list.append((
-                "证书告警",
-                "\(c.host) · \(d) 天",
-                .certs,
                 Color(hex: 0xFF9F0A)
             ))
         }
@@ -635,22 +568,6 @@ struct OverviewHomeView: View {
                             navigate(.subscriptions)
                         }
                     }
-
-                    pulseChip(
-                        title: "证书",
-                        value: "\(viewModel.certsDueSoon)",
-                        caption: "14 天内到期",
-                        tint: Color(hex: 0xFF453A),
-                        systemImage: "lock.shield.fill"
-                    ) { navigate(.certs) }
-
-                    pulseChip(
-                        title: "Komari",
-                        value: viewModel.komariOnlineHint ?? "—",
-                        caption: "节点在线",
-                        tint: ServiceBrand.komari.tint,
-                        systemImage: "server.rack"
-                    ) { navigate(.komari) }
 
                     pulseChip(
                         title: "控制中心",
@@ -875,7 +792,6 @@ struct OverviewHomeView: View {
                 quickTile(brand: .checkin, title: "签到中心") { navigate(.checkin) }
                 quickTile(brand: .sub2, title: "Sub2 管理") { navigate(.sub2Monitor) }
                 quickTile(brand: .cloudflare, title: "Cloudflare") { navigate(.cloudflare) }
-                quickTile(brand: .komari, title: "Komari") { navigate(.komari) }
                 quickTile(brand: .health, title: "服务健康") { navigate(.serviceHealth) }
                 quickTile(brand: .ipCheck, title: "IP 检测") {
                     navigate(.ipCheck)
@@ -990,10 +906,8 @@ struct OverviewHomeView: View {
         case "health": navigate(.serviceHealth)
         case "download": navigate(.download)
         case "subscription": navigate(.subscriptions)
-        case "certs": navigate(.certs)
         case "reminder": navigate(.reminders)
         case "notes": navigate(.notes)
-        case "ssh": navigate(.ssh)
         case "live": navigate(.liveTab)
         case "proxy": navigate(.proxyPack)
         case "settings": selectedTab = .settings
@@ -1014,8 +928,6 @@ struct OverviewHomeView: View {
             MonitorHomeView()
         case .cloudflare:
             CloudflareHomeView()
-        case .komari:
-            KomariHomeView()
         case .ipCheck:
             IPCheckHomeView()
         case .notes:
@@ -1024,8 +936,6 @@ struct OverviewHomeView: View {
             ReminderHomeView()
         case .subscriptions:
             SubscriptionHomeView()
-        case .certs:
-            CertMonitorHomeView()
         case .controlCenter:
             ControlCenterView()
         case .proxyPack:
@@ -1038,8 +948,6 @@ struct OverviewHomeView: View {
             QRAssistantHomeView()
         case .translator:
             TranslatorHomeView()
-        case .rss:
-            RSSHomeView()
         case .market:
             MarketQuotesHomeView()
         case .novel:
@@ -1048,8 +956,6 @@ struct OverviewHomeView: View {
             TGChannelRootView().environmentObject(settings)
         case .sublink:
             SublinkHomeView()
-        case .ssh:
-            SSHHomeView()
         case .servicesTab, .liveTab, .musicTab, .settingsTab, .checkinSettings:
             EmptyView()
         }

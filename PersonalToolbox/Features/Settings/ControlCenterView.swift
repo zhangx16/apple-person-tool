@@ -21,7 +21,6 @@ struct ControlCenterView: View {
                     .disabled(!settings.notifySmartAlerts)
                 Toggle("订阅即将到期", isOn: $settings.notifySubscriptionDue)
                     .disabled(!settings.notifySmartAlerts)
-                Toggle("证书即将到期", isOn: $settings.notifyCertExpiry)
                     .disabled(!settings.notifySmartAlerts)
                 Toggle("关注主播开播", isOn: $settings.notifyLiveOpen)
                     .disabled(!settings.notifySmartAlerts)

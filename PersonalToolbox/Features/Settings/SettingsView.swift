@@ -48,14 +48,6 @@ struct SettingsView: View {
                             SublinkSettingsPage(viewModel: viewModel)
                         }
                         projectLink(
-                            brand: .komari,
-                            title: "Komari",
-                            subtitle: hostHint(settings.komariBaseURL),
-                            configured: !settings.komariBaseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        ) {
-                            KomariSettingsPage(viewModel: viewModel)
-                        }
-                        projectLink(
                             brand: .checkin,
                             title: "签到服务",
                             subtitle: settings.isCheckinConfigured
@@ -95,15 +87,6 @@ struct SettingsView: View {
                             configured: settings.isLiveNotifyConfigured
                         ) {
                             LiveNotifySettingsPage()
-                        }
-                        plainLink(
-                            systemImage: "terminal",
-                            title: "SSH / Next Terminal",
-                            subtitle: settings.nextTerminalURL.isEmpty ? "Web 终端 URL 可选" : hostHint(settings.nextTerminalURL),
-                            tint: ServiceBrand.komari.tint,
-                            configured: !settings.nextTerminalURL.isEmpty || !SSHHostStore.shared.hosts.isEmpty
-                        ) {
-                            SSHSettingsPage()
                         }
                         projectLink(
                             brand: .cloudflare,
@@ -1169,8 +1152,6 @@ struct NotificationSettingsPage: View {
                 Toggle("签到失败提醒", isOn: $settings.notifyCheckinFailed)
                     .disabled(!settings.notifySmartAlerts)
                 Toggle("订阅即将到期", isOn: $settings.notifySubscriptionDue)
-                    .disabled(!settings.notifySmartAlerts)
-                Toggle("证书即将到期", isOn: $settings.notifyCertExpiry)
                     .disabled(!settings.notifySmartAlerts)
                 Toggle("关注主播开播", isOn: $settings.notifyLiveOpen)
                     .disabled(!settings.notifySmartAlerts)

@@ -42,7 +42,6 @@ final class ServiceHealthService: ObservableObject {
             .init(id: "checkin", title: "签到服务", brand: .checkin, status: settings.isCheckinConfigured ? .unknown : .skip, latencyMs: nil, detail: settings.checkinBaseURL),
             .init(id: "yt", title: "YouTube 下载", brand: .youtube, status: settings.isYTConfigured ? .unknown : .skip, latencyMs: nil, detail: settings.ytBaseURL),
             .init(id: "sublink", title: "SublinkX", brand: .sublink, status: settings.isSublinkConfigured ? .unknown : .skip, latencyMs: nil, detail: settings.sublinkBaseURL),
-            .init(id: "komari", title: "Komari", brand: .komari, status: settings.komariBaseURL.isEmpty ? .skip : .unknown, latencyMs: nil, detail: settings.komariBaseURL),
             .init(id: "cf", title: "Cloudflare", brand: .cloudflare, status: settings.isCloudflareConfigured ? .unknown : .skip, latencyMs: nil, detail: "API Token")
         ]
     }
@@ -79,9 +78,6 @@ final class ServiceHealthService: ObservableObject {
         }
         if settings.isSublinkConfigured {
             let r = await probeSublink(); apply(r.0, r.1, r.2, r.3)
-        }
-        if !settings.komariBaseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            let r = await probeKomari(); apply(r.0, r.1, r.2, r.3)
         }
         if settings.isCloudflareConfigured {
             let r = await probeCF(); apply(r.0, r.1, r.2, r.3)
@@ -162,17 +158,6 @@ final class ServiceHealthService: ObservableObject {
             return ("sublink", .ok, ms, "验证码接口可用")
         } catch {
             return ("sublink", .fail, nil, error.localizedDescription)
-        }
-    }
-
-    private func probeKomari() async -> (String, ServiceHealthItem.Status, Int?, String) {
-        let start = ContinuousClock.now
-        do {
-            let detail = try await KomariService.shared.probe(baseURL: settings.komariBaseURL)
-            let ms = Int(start.duration(to: .now) / .milliseconds(1))
-            return ("komari", .ok, ms, detail)
-        } catch {
-            return ("komari", .fail, nil, error.localizedDescription)
         }
     }
 

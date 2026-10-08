@@ -1,68 +1,71 @@
-# PersonalToolbox
+# 随心直播 · Personal Live
 
-个人 iOS 工具箱：接入本机 **sub2api**（Grok 对话 + Imagine）、**outlookEmailPlus**（邮件）、**yt-dlp-web-ui**（视频下载）、**SublinkX**（节点/订阅管理台）、**Komari**（监控）等。
+PersonalToolbox 已完全重建为 Flutter 直播聚合播放器，原 Swift 工具箱工程及 IPA 已移除。
 
-设计文档见 [DESIGN.md](./DESIGN.md)。UI 对齐 [DESIGN_REFERENCE.md](./DESIGN_REFERENCE.md)（Apple Design）。
+基于 [liuchuancong/pure_live](https://github.com/liuchuancong/pure_live) 的
+`322c6547a2ea1b7c26e4f9090b8161f658d8906e`，遵循 [AGPL-3.0](LICENSE)。
+保留上游版权与许可证；代码中的 `pure_live` 包名沿用，应用展示名为「随心直播」。
 
-**打包安装到 iPhone（无 Mac）：** 见 [docs/INSTALL_IPA.md](./docs/INSTALL_IPA.md)。  
-GitHub Actions 会在 `macos-14` 上用你的 **Ad Hoc** 证书打 IPA。
+## 保留的平台
 
-## 签名 / Bundle
+哔哩哔哩、斗鱼、虎牙、抖音、快手、小红书、微博直播，以及 IPTV。
+自定义直播源复用 IPTV 的数据库、解析器和播放器。
+其他平台不会出现在平台列表、全平台搜索或账号设置中，其链接也不能进入直播播放流程。
 
-| 项 | 值 |
-|----|-----|
-| Bundle ID | `app.parsnip6345.lake8262` |
-| Team | `CTSQLK944L` |
-| 分发 | Ad Hoc（描述文件已含你的 iPhone UDID） |
+小红书主要通过直播分享链接或房间标识进入，目前没有经过确认的公开推荐目录。
+微博支持公共直播目录和房间查询。实际播放取决于开播状态、登录、地区限制及站点接口；
+不把注册了适配器等同于已完成各站真机验收。
 
-## 要求
+## 界面与功能
 
-- 云打包：GitHub Actions（仓库 Secrets 配置证书）
-- 或本地：macOS + Xcode 15+（iOS 17 SDK）
-- 本机服务可通过 HTTPS 域名访问（默认配置见设置页）
+- 发现首页：主播搜索、分享链接打开、IPTV 和自定义源快捷入口。
+- 青绿色 Material 3 主题，圆角底栏、统一平台图标、明暗主题。
+- 直播卡片根据屏幕宽度和字体缩放调整列数；横屏紧凑界面保留菜单入口。
+- 关注、分类、观看历史、弹幕、清晰度/线路切换、多画面及录像沿用上游实现。
+- IPTV 支持本地/网络 M3U、TXT、节目单和订阅管理。
+- 自定义源：频道名、直播 URL、可选 User-Agent/Referer，保存后在 IPTV 管理。
+- 禁用上游自动更新和上游 Firebase 登录入口；本地备份、WebDAV 与局域网同步保留。
 
-| 服务 | 默认域名 |
-|------|----------|
-| sub2api | `https://sub2api.996616.xyz` |
-| 邮件 | `https://mail.996616.xyz` |
-| yt-dlp | `https://yt.996616.xyz` |
-| SublinkX | `https://sub.996616.xyz` |
+## iPad 适配
 
-## 打开工程（有 Mac 时）
+- iPhone / iPad 通用应用，iPad 支持四个方向，允许 Split View 与 Stage Manager 窗口调整。
+- 宽窗口显示侧栏，1194px 等宽屏可展开文字导航；窄窗口切换底部导航。
+- 侧栏可滚动，缩小窗口或开启大字体后仍可访问搜索、直播源、历史和设置。
+- 竖屏视频在上、弹幕在下；横屏和较矮窗口并排显示，IPTV 保留纯视频布局。
+- iPad 不强制锁定横竖屏，跟随系统和用户方向设置。
+- 直播卡片根据当前内容区域与字号动态计算列数；直播源表单限宽并支持键盘避让。
+
+工程部署目标设为 iOS / iPadOS 15.6。实际设备兼容性和原生播放器能力仍需 Xcode 构建及真机验证。
+
+## 开发与验证
+
+固定 Flutter **3.47.5** / Dart **3.13.4**，见 `.fvmrc`。
 
 ```bash
-open PersonalToolbox.xcodeproj
+flutter pub get
+flutter test --concurrency=2 test/personal_live
+flutter analyze
 ```
+
+播放器和 WebView 依赖通过锁文件及固定 Git commit 解析，首次解析需要网络。
+Windows 工具入口为 `tool/flutterw.ps1`，Linux/macOS 可直接使用固定版本 Flutter。
+
+## 构建
 
 ```bash
-xcodebuild -project PersonalToolbox.xcodeproj -scheme PersonalToolbox \
-  -destination 'generic/platform=iOS' -configuration Release archive
+# Android，需要 Android SDK / JDK 17；没有 release 密钥时仅为测试签名。
+flutter build apk --release --target-platform android-arm64
+
+# iOS，需要 macOS / Xcode / CocoaPods；不生成可直接安装的签名 IPA。
+flutter build ios --release --no-codesign
 ```
 
-## 功能概览
+Android 应用 ID：`app.personaltoolbox.live`。
+iOS 沿用原项目 Bundle ID `app.parsnip6345.lake8262` 和 Team `CTSQLK944L`。
+分享扩展使用 `app.parsnip6345.lake8262.ShareExtension`，App Group 为
+`group.app.parsnip6345.lake8262`；签名安装需为主应用和扩展配置匹配的描述文件。
 
-1. **助手** — ChatGPT 风格流式对话（默认 `grok-4.3`）；「创作」入口支持 Grok Imagine 生图 / 编辑 / 视频  
-2. **邮件** — 会话登录列账号，或 External API Key + 默认邮箱  
-3. **下载** — 解析、清晰度、队列、完成文件分享  
-4. **服务 → SublinkX** — 完整管理台：登录、看板、节点增删改/批量导入、订阅增删改、复制 Clash/V2Ray/Surge 客户端链接  
-5. **服务 → Komari** — 公开监控台：节点列表/搜索、在线状态、详情负载历史与 Ping、30s 自动刷新（[komari](https://github.com/komari-monitor/komari) 公开 API）  
-6. **服务 → 纪念日** — 本地人物与纪念日（公历/农历、倒计时、本地通知）；图标 `IconAnniversary`；数据仅存本机 Documents  
-7. **服务 → 二维码助手** — 相机/相册扫码、生成二维码、历史、关键字智能跳转规则；图标 `IconQRAssistant`  
-8. **服务 → 翻译器** — 多引擎并行翻译（默认 Sub2API / Google）；图标 `IconTranslator`；可配自定义 AI 接口  
-9. **服务 → 财联社电报** — RSS 电报列表、下拉刷新、本地缓存、复制；图标 `IconCLS`  
-10. **服务 → 监控** — Sub2 管理、Komari、**Cloudflare**（域名/DNS/今日用量/清缓存）、**IP 检测**（出口 IP / 分流启发式）  
-11. **监控 Tab（Sub2 管理）** — 对齐 [sub2api-mobile](https://github.com/ckken/sub2api-mobile)：仪表盘 + 上游账号调度/测试/刷新 + 用户启停/余额/API Keys + 分组浏览  
-12. **设置** — 各服务凭证（含 Cloudflare Token）、连通性探测、外观 / 隐私 / 通知
-13. **效率** — 快捷动作中心、剪贴板工具箱（CAIS 类）、密码生成器
-14. **习惯与待办 / RSS / 行情 / 快递** — 本地打卡待办、多源 RSS、汇率油价金价参考、快递单号本机管理
-15. **服务健康总览** — 一键探测 Sub2 / yt-dlp / Sublink / Komari / Cloudflare
-16. **对话→动作** — 助手输入识别下载/翻译/快递/行情等意图并一键执行
-## 仓库说明
+`.github/workflows/check.yml` 提供手动质量检查；`build-ios.yml` 提供手动未签名 iOS 构建。
+没有自动发布、推送、Telegram 发送或部署步骤。
 
-- 集成产物在 `main`（`PLAN_ID=dbf5d164` 执行计划完成态）  
-- 增量分支：`execute-plan/dbf5d164-pr-*`  
-- PR-8（本地通知/弱网缓存）按产品决策首期跳过  
-
-## 安全建议
-
-个人服务暴露在公网时，建议配合 Tailscale / IP 白名单；API Key 与密码仅存 Keychain。
+本次验证结果见 [docs/PERSONAL_LIVE_REBUILD.md](docs/PERSONAL_LIVE_REBUILD.md)。

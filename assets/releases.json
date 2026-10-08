@@ -1,0 +1,15 @@
+[
+  {
+    "version": "1.0.0",
+    "title": "随心直播 1.0.0",
+    "date": "2026-10-08",
+    "github": "",
+    "author": {
+      "name": "PersonalToolbox",
+      "avatar": "",
+      "profile": ""
+    },
+    "changelog": "基于 pure_live 重建。仅保留哔哩哔哩、斗鱼、虎牙、抖音、快手、小红书、微博直播及 IPTV；新增自定义源入口与响应式发现页。",
+    "files": []
+  }
+]

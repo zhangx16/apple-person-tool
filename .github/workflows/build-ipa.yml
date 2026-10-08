@@ -1,68 +1,25 @@
 name: Build Ad Hoc IPA
-
 on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths-ignore:
-      - "**.md"
-      - "DESIGN*"
-
+    paths-ignore: ['docs/**', '**.md']
 permissions:
-  contents: write
-  actions: read
-  issues: write
-
+  contents: read
 jobs:
   build:
-    name: Archive & export IPA
     runs-on: macos-15
-    timeout-minutes: 75
-
+    timeout-minutes: 90
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Select newest Xcode
-        run: |
-          set -euo pipefail
-          echo "Available Xcode apps:"
-          ls /Applications | grep -i xcode || true
-          SELECTED=""
-          for app in \
-            /Applications/Xcode_26.6.app \
-            /Applications/Xcode_26.5.app \
-            /Applications/Xcode_26.4.app \
-            /Applications/Xcode_26.3.app \
-            /Applications/Xcode_26.2.app \
-            /Applications/Xcode_26.1.app \
-            /Applications/Xcode_26.0.app \
-            /Applications/Xcode_26.app \
-            /Applications/Xcode_16.4.app \
-            /Applications/Xcode_16.3.app \
-            /Applications/Xcode_16.2.app \
-            /Applications/Xcode_16.1.app \
-            /Applications/Xcode_16.0.app \
-            /Applications/Xcode_16.app \
-            /Applications/Xcode_15.4.app \
-            /Applications/Xcode.app
-          do
-            if [ -d "$app/Contents/Developer" ]; then
-              SELECTED="$app"
-              break
-            fi
-          done
-          if [ -z "$SELECTED" ]; then
-            echo "::error::No Xcode.app found"
-            exit 1
-          fi
-          sudo xcode-select -s "$SELECTED/Contents/Developer"
-          echo "Selected $SELECTED"
-          xcodebuild -version
-          xcrun --show-sdk-version --sdk iphoneos || true
-          openssl version
-
-      - name: Build signing keychain from PEM secrets
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+      - name: Resolve dependencies
+        run: flutter pub get
+      - name: Install signing certificate and profile
         env:
           SIGNING_CERT_PEM: ${{ secrets.SIGNING_CERT_PEM }}
           SIGNING_KEY_PEM: ${{ secrets.SIGNING_KEY_PEM }}
@@ -70,313 +27,53 @@ jobs:
           BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
         run: |
           set -euo pipefail
-          if [ -z "${SIGNING_CERT_PEM:-}" ] || [ -z "${SIGNING_KEY_PEM:-}" ]; then
-            echo "::error::Missing SIGNING_CERT_PEM or SIGNING_KEY_PEM"
-            exit 1
-          fi
-          if [ -z "${BUILD_PROVISION_PROFILE_BASE64:-}" ]; then
-            echo "::error::Missing BUILD_PROVISION_PROFILE_BASE64"
-            exit 1
-          fi
-
-          CERT_PEM="$RUNNER_TEMP/cert.pem"
-          KEY_PEM="$RUNNER_TEMP/key.pem"
-          P12_PATH="$RUNNER_TEMP/dist.p12"
-          PP_PATH="$RUNNER_TEMP/profile.mobileprovision"
-          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
-          KEYCHAIN_PASSWORD="$(openssl rand -base64 32)"
-
-          printf '%s\n' "$SIGNING_CERT_PEM" > "$CERT_PEM"
-          printf '%s\n' "$SIGNING_KEY_PEM" > "$KEY_PEM"
-          # normalize PEM newlines if secret was stored with escaped content
-          if ! grep -q "BEGIN CERTIFICATE" "$CERT_PEM"; then
-            echo "::error::SIGNING_CERT_PEM does not look like a PEM certificate"
-            exit 1
-          fi
-          if ! grep -q "BEGIN" "$KEY_PEM"; then
-            echo "::error::SIGNING_KEY_PEM does not look like a PEM private key"
-            exit 1
-          fi
-
-          # Create PKCS12 with algorithms macOS security accepts
-          openssl pkcs12 -export \
-            -inkey "$KEY_PEM" \
-            -in "$CERT_PEM" \
-            -out "$P12_PATH" \
-            -passout "pass:${P12_PASSWORD}" \
-            -name "iPhone Distribution" \
-            -keypbe PBE-SHA1-3DES \
-            -certpbe PBE-SHA1-3DES \
-            -macalg sha1
-
-          echo "P12 size=$(wc -c < "$P12_PATH")"
-          openssl pkcs12 -in "$P12_PATH" -passin "pass:${P12_PASSWORD}" -noout
-          echo "P12 self-check OK"
-
-          # Decode provisioning profile (macOS base64 is picky; use Python)
-          export PP_PATH
-          python3 -c 'import base64,os,pathlib; raw=os.environ["BUILD_PROVISION_PROFILE_BASE64"].strip().replace("\n","").replace(" ",""); data=base64.b64decode(raw); p=pathlib.Path(os.environ["PP_PATH"]); p.write_bytes(data); print("Profile decoded bytes=",len(data)); assert len(data)>=1000, "profile too small"'
-          echo "Profile size=$(wc -c < "$PP_PATH")"
-
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security import "$P12_PATH" \
-            -k "$KEYCHAIN_PATH" \
-            -P "$P12_PASSWORD" \
-            -T /usr/bin/codesign \
-            -T /usr/bin/security \
-            -T /usr/bin/productbuild
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security list-keychain -d user -s "$KEYCHAIN_PATH" login.keychain-db
-          security default-keychain -s "$KEYCHAIN_PATH"
-
-          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
-          PROFILE_UUID=$(security cms -D -i "$PP_PATH" | plutil -extract UUID raw -)
-          cp "$PP_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/${PROFILE_UUID}.mobileprovision"
-          echo "Installed profile UUID=${PROFILE_UUID}"
-
-          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
-          security find-identity -v -p codesigning "$KEYCHAIN_PATH" | grep -q "iPhone Distribution"
-          echo "Codesigning identity ready"
-
-      - name: CocoaPods (MobileVLCKit for FLV)
-        id: pods
-        continue-on-error: true
-        run: |
-          set -euo pipefail
-          # Prefer VLC when CocoaPods is healthy; otherwise archive falls back to xcodeproj
-          # (Live uses AVPlayer/HLS via #if canImport(MobileVLCKit)).
-          export COCOAPODS_DISABLE_STATS=true
-          LOG="$RUNNER_TEMP/pod-install.log"
-          : > "$LOG"
-          {
-            echo "ruby: $(ruby -v 2>&1 || true)"
-            gem install cocoapods --no-document || sudo gem install cocoapods --no-document
-            hash -r || true
-            pod --version
-            pod install --repo-update
-            test -f PersonalToolbox.xcworkspace/contents.xcworkspacedata
-            ls -la Pods/ | head
-            echo "HAS_WORKSPACE=1" >> "$GITHUB_ENV"
-          } 2>&1 | tee -a "$LOG"
-
-      - name: Resolve schemes
-        continue-on-error: true
-        run: |
-          set +e
-          if [ -f PersonalToolbox.xcworkspace/contents.xcworkspacedata ]; then
-            echo "HAS_WORKSPACE=1" >> "$GITHUB_ENV"
-            xcodebuild -workspace PersonalToolbox.xcworkspace -list
-          else
-            echo "HAS_WORKSPACE=0" >> "$GITHUB_ENV"
-            echo "No CocoaPods workspace — using PersonalToolbox.xcodeproj"
-            xcodebuild -project PersonalToolbox.xcodeproj -list
-          fi
-          exit 0
-
-      - name: Configure Share Extension (optional)
+          printf '%s' "$SIGNING_CERT_PEM" > "$RUNNER_TEMP/cert.pem"
+          printf '%s' "$SIGNING_KEY_PEM" > "$RUNNER_TEMP/key.pem"
+          openssl pkcs12 -export -in "$RUNNER_TEMP/cert.pem" -inkey "$RUNNER_TEMP/key.pem" -out "$RUNNER_TEMP/signing.p12" -passout env:P12_PASSWORD -keypbe PBE-SHA1-3DES -certpbe PBE-SHA1-3DES -macalg sha1
+          KEYCHAIN_PASSWORD="$(openssl rand -hex 24)"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$RUNNER_TEMP/build.keychain-db"
+          security set-keychain-settings -lut 21600 "$RUNNER_TEMP/build.keychain-db"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$RUNNER_TEMP/build.keychain-db"
+          security import "$RUNNER_TEMP/signing.p12" -k "$RUNNER_TEMP/build.keychain-db" -P "$P12_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$RUNNER_TEMP/build.keychain-db" >/dev/null
+          security list-keychains -d user -s "$RUNNER_TEMP/build.keychain-db" "$HOME/Library/Keychains/login.keychain-db"
+          security default-keychain -s "$RUNNER_TEMP/build.keychain-db"
+          python3 -c 'import base64,os,pathlib; pathlib.Path(os.environ["RUNNER_TEMP"],"profile.mobileprovision").write_bytes(base64.b64decode(os.environ["BUILD_PROVISION_PROFILE_BASE64"]))'
+          security cms -D -i "$RUNNER_TEMP/profile.mobileprovision" > "$RUNNER_TEMP/profile.plist"
+          python3 scripts/prepare-ios-profile.py
+      - name: Configure application signing
         env:
-          SHARE_BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.SHARE_BUILD_PROVISION_PROFILE_BASE64 }}
-          SHARE_PROVISION_PROFILE_SPECIFIER: ${{ secrets.SHARE_PROVISION_PROFILE_SPECIFIER }}
-        run: bash scripts/ci-configure-share-extension.sh
-
-      - name: Resolve Swift packages (Citadel)
+          SIGNING_METADATA: ${{ runner.temp }}/signing.json
         run: |
-          set -euo pipefail
-          if [ -f PersonalToolbox.xcworkspace/contents.xcworkspacedata ]; then
-            xcodebuild -resolvePackageDependencies -workspace PersonalToolbox.xcworkspace -scheme PersonalToolbox
-          else
-            xcodebuild -resolvePackageDependencies -project PersonalToolbox.xcodeproj -scheme PersonalToolbox
-          fi
-
-      - name: Archive
+          gem install xcodeproj --no-document
+          ruby scripts/configure-ios-signing.rb
+      - name: Build signed iPad and iPhone IPA
         run: |
-          set -euo pipefail
           set -o pipefail
-          set +e
-          # Do NOT pass PROVISIONING_PROFILE_SPECIFIER on the CLI — it applies to
-          # CocoaPods targets too and breaks archive. Profile is set in pbxproj
-          # for PersonalToolbox / ShareExtension only.
-          if [ -f PersonalToolbox.xcworkspace/contents.xcworkspacedata ]; then
-            echo "Archiving with CocoaPods workspace (MobileVLCKit linked)"
-            xcodebuild \
-              -workspace PersonalToolbox.xcworkspace \
-              -scheme PersonalToolbox \
-              -configuration Release \
-              -destination 'generic/platform=iOS' \
-              -archivePath "$RUNNER_TEMP/PersonalToolbox.xcarchive" \
-              clean archive \
-              CODE_SIGN_STYLE=Manual \
-              DEVELOPMENT_TEAM=CTSQLK944L \
-              CODE_SIGN_IDENTITY="iPhone Distribution" \
-              2>&1 | tee "$RUNNER_TEMP/xcodebuild-archive.log"
-          else
-            echo "Archiving with xcodeproj (no MobileVLCKit — HLS/AVPlayer fallback)"
-            xcodebuild \
-              -project PersonalToolbox.xcodeproj \
-              -scheme PersonalToolbox \
-              -configuration Release \
-              -destination 'generic/platform=iOS' \
-              -archivePath "$RUNNER_TEMP/PersonalToolbox.xcarchive" \
-              clean archive \
-              CODE_SIGN_STYLE=Manual \
-              DEVELOPMENT_TEAM=CTSQLK944L \
-              CODE_SIGN_IDENTITY="iPhone Distribution" \
-              2>&1 | tee "$RUNNER_TEMP/xcodebuild-archive.log"
-          fi
-          STATUS=${PIPESTATUS[0]}
-          set -e
-          if [ "$STATUS" -ne 0 ]; then
-            {
-              echo "### ❌ Archive failed"
-              echo
-              echo "#### Grep errors"
-              echo '```'
-              grep -E 'error:|fatal error' "$RUNNER_TEMP/xcodebuild-archive.log" | tail -n 100 || echo "(no grep hits)"
-              echo '```'
-              echo
-              echo "#### Tail (200 lines)"
-              echo '```'
-              tail -n 200 "$RUNNER_TEMP/xcodebuild-archive.log" || true
-              echo '```'
-            } | tee -a "$GITHUB_STEP_SUMMARY"
-            # Emit public annotations (readable via REST without log download).
-            while IFS= read -r line; do
-              if [[ "$line" =~ ([^[:space:]]+\.swift):([0-9]+):([0-9]+):\ error:\ (.*) ]]; then
-                echo "::error file=${BASH_REMATCH[1]},line=${BASH_REMATCH[2]},col=${BASH_REMATCH[3]}::${BASH_REMATCH[4]}"
-              else
-                echo "::error::${line}"
-              fi
-            done < <(grep -E 'error:|fatal error' "$RUNNER_TEMP/xcodebuild-archive.log" | tail -n 80 || true)
-            echo "::group::Swift / xcodebuild errors"
-            grep -E 'error:|warning:.*error|❌|fatal error' "$RUNNER_TEMP/xcodebuild-archive.log" | tail -n 80 || true
-            echo "::endgroup::"
-            exit "$STATUS"
-          fi
-
-      - name: Export IPA
+          flutter build ipa --release --build-number "$((5000 + GITHUB_RUN_NUMBER))" --export-options-plist "$RUNNER_TEMP/ExportOptions.plist" 2>&1 | tee "$RUNNER_TEMP/flutter-build.log"
+      - name: Verify package
         run: |
-          set -euo pipefail
-          xcodebuild -exportArchive \
-            -archivePath "$RUNNER_TEMP/PersonalToolbox.xcarchive" \
-            -exportOptionsPlist ExportOptions.plist \
-            -exportPath "$RUNNER_TEMP/export" \
-            | tee "$RUNNER_TEMP/xcodebuild-export.log"
-          ls -la "$RUNNER_TEMP/export"
-          test -f "$RUNNER_TEMP/export/PersonalToolbox.ipa"
-          cp "$RUNNER_TEMP/export/PersonalToolbox.ipa" "$GITHUB_WORKSPACE/PersonalToolbox.ipa"
-          ls -lh PersonalToolbox.ipa
-
-      - name: Upload IPA artifact
-        uses: actions/upload-artifact@v4
+          mkdir -p "$RUNNER_TEMP/ipa-check"
+          unzip -q build/ios/ipa/*.ipa -d "$RUNNER_TEMP/ipa-check"
+          APP="$(find "$RUNNER_TEMP/ipa-check/Payload" -maxdepth 1 -name '*.app' -print -quit)"
+          codesign --verify --deep --strict "$APP"
+          /usr/libexec/PlistBuddy -c 'Print UIDeviceFamily' "$APP/Info.plist"
+          shasum -a 256 build/ios/ipa/*.ipa
+      - uses: actions/upload-artifact@v4
         with:
-          name: PersonalToolbox-ipa
-          path: PersonalToolbox.ipa
+          name: PersonalLive-ipa
+          path: build/ios/ipa/*.ipa
           if-no-files-found: error
           retention-days: 14
-
-      - name: Upload build logs on failure
+      - uses: actions/upload-artifact@v4
         if: failure()
-        uses: actions/upload-artifact@v4
         with:
-          name: build-logs
+          name: ios-build-logs
           path: |
-            ${{ runner.temp }}/xcodebuild-archive.log
-            ${{ runner.temp }}/xcodebuild-export.log
-            ${{ runner.temp }}/pod-install.log
-          if-no-files-found: ignore
-      # Publish errors to public branch (readable without PAT / log login).
-      - name: Publish archive errors to ci-errors branch
-        if: failure()
-        env:
-          GH_TOKEN: ${{ github.token }}
-        continue-on-error: true
+            ${{ runner.temp }}/flutter-build.log
+            /Users/runner/Library/Logs/CocoaPods
+      - name: Remove temporary signing files
+        if: always()
         run: |
-          set -euo pipefail
-          python3 <<'PY'
-          import base64, json, os, re, urllib.error, urllib.request
-
-          log_path = os.path.join(os.environ["RUNNER_TEMP"], "xcodebuild-archive.log")
-          greps = ""
-          tail = ""
-          if os.path.isfile(log_path):
-              err = open(log_path, errors="replace").read()
-              greps = "\n".join(re.findall(r".*(?:error:|fatal error).*", err)[-100:])
-              tail = "\n".join(err.splitlines()[-150:])
-          sha = os.environ["GITHUB_SHA"]
-          short = sha[:7]
-          run = os.environ["GITHUB_RUN_ID"]
-          repo = os.environ["GITHUB_REPOSITORY"]
-          server = os.environ.get("GITHUB_SERVER_URL", "https://github.com")
-          content = f"""# Archive failed on `{short}`
-
-          Run: {server}/{repo}/actions/runs/{run}
-          Commit: `{sha}`
-
-          ## Grep errors
-          ```
-          {greps or "(no grep hits)"}
-          ```
-
-          ## Tail
-          ```
-          {tail}
-          ```
-          """
-          token = os.environ["GH_TOKEN"]
-          headers = {
-              "Authorization": f"Bearer {token}",
-              "Accept": "application/vnd.github+json",
-              "User-Agent": "ci-log-bot",
-              "Content-Type": "application/json",
-          }
-
-          def api(method, url, data=None):
-              req = urllib.request.Request(url, data=data, method=method, headers=headers)
-              try:
-                  with urllib.request.urlopen(req) as resp:
-                      body = resp.read()
-                      return resp.status, json.loads(body) if body else {}
-              except urllib.error.HTTPError as e:
-                  body = e.read().decode(errors="replace")
-                  print(method, url, e.code, body[:800])
-                  raise
-
-          # Ensure branch exists (from current SHA).
-          ref_url = f"https://api.github.com/repos/{repo}/git/ref/heads/ci-errors"
-          try:
-              api("GET", ref_url)
-          except urllib.error.HTTPError as e:
-              if e.code != 404:
-                  raise
-              api(
-                  "POST",
-                  f"https://api.github.com/repos/{repo}/git/refs",
-                  json.dumps({"ref": "refs/heads/ci-errors", "sha": sha}).encode(),
-              )
-
-          path = "latest-archive-errors.md"
-          file_url = f"https://api.github.com/repos/{repo}/contents/{path}?ref=ci-errors"
-          sha_file = None
-          try:
-              st, existing = api("GET", file_url)
-              sha_file = existing.get("sha")
-          except urllib.error.HTTPError as e:
-              if e.code != 404:
-                  raise
-
-          payload = {
-              "message": f"ci: archive errors {short}",
-              "content": base64.b64encode(content.encode()).decode(),
-              "branch": "ci-errors",
-          }
-          if sha_file:
-              payload["sha"] = sha_file
-          st, out = api(
-              "PUT",
-              f"https://api.github.com/repos/{repo}/contents/{path}",
-              json.dumps(payload).encode(),
-          )
-          print("published", out.get("content", {}).get("html_url") or out)
-          PY
+          security delete-keychain "$RUNNER_TEMP/build.keychain-db" || true
+          rm -f "$RUNNER_TEMP/cert.pem" "$RUNNER_TEMP/key.pem" "$RUNNER_TEMP/signing.p12"

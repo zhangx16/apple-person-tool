@@ -12,6 +12,11 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
+      - name: Select newest installed Xcode
+        run: |
+          XCODE_APP="$(python3 -c 'import glob,plistlib; paths=glob.glob("/Applications/Xcode*.app"); version=lambda p: tuple(int(v) for v in plistlib.load(open(p+"/Contents/Info.plist","rb"))["CFBundleShortVersionString"].split(".")); print(max(paths,key=version))')"
+          sudo xcode-select -s "$XCODE_APP/Contents/Developer"
+          xcodebuild -version
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.47.5'

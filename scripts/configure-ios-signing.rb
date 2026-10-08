@@ -9,6 +9,10 @@ share = project.targets.find { |target| target.name == 'ShareExtension' }
 # previous native build, omit the optional share extension from the archive.
 runner.dependencies.select { |dependency| dependency.target == share }.each(&:remove_from_project)
 runner.copy_files_build_phases.select { |phase| phase.name.to_s.include?('Extensions') }.each(&:remove_from_project)
+share.remove_from_project if share
+podfile = File.read('ios/Podfile')
+podfile.sub!(/  # share_handler addition start.*?  # share_handler addition end\n/m, '')
+File.write('ios/Podfile', podfile)
 runner.build_configurations.each do |config|
   settings = config.build_settings
   settings['CODE_SIGN_STYLE'] = 'Manual'

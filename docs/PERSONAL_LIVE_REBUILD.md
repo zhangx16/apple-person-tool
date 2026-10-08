@@ -45,5 +45,14 @@ Xcode 工程、旧 IPA、旧发布流程和凭证辅助脚本；工作目录现�
 应用主体 Dart 编译和资源打包成功，输出在 `build/flutter_assets/`。
 该目录是调试资源包，不是 APK、iOS .app 或 IPA，不能直接安装到 iPad。
 
-未进行真机安装或平台直播实播验收。本机为 Linux，不具备 Xcode，因此没有生成或签名 iOS IPA；
-新增的手动 iOS workflow 用于在 macOS 构建未签名 .app，尚未推送或触发。
+未进行真机安装或平台直播实播验收。已按原项目方式通过 GitHub macOS runner 完成 Ad Hoc 签名 IPA。
+
+- 成功构建：https://github.com/zhangx16/apple-person-tool/actions/runs/37760809712
+- 源码提交：ede2847；版本 1.0.0 (5189)，最低 iOS/iPadOS 15.6。
+- 使用仓库原有签名 Secret，自动选择最新安装的 Xcode，动态读取描述文件标识。
+- 延续旧版只签名主应用的方式，本 IPA 不包含系统分享扩展。
+- CI 已通过 codesign --verify --deep --strict；产物已下载并检查 Info.plist。
+- UIDeviceFamily 为 [1, 2]，iPad 四向旋转开启，UIRequiresFullScreen 为 false。
+- 本地产物：dist/PersonalLive-iPad-iPhone.ipa（不纳入 Git）。
+- SHA-256：72b10afaf3195fca87d73326a1355f3398876689a00fa762b5837fd0d0692654。
+- Ad Hoc 安装仍受原描述文件登记设备范围限制。

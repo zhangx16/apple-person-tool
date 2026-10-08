@@ -12,7 +12,8 @@ runner.copy_files_build_phases.select { |phase| phase.name.to_s.include?('Extens
 # Keep the unbuilt target so Xcode's synchronized folder exception records
 # remain valid; only the host dependency, embed phase and Podfile entry go away.
 podfile = File.read('ios/Podfile')
-podfile.sub!(/  # share_handler addition start.*?  # share_handler addition end\n/m, '')
+podfile.sub!(/  # share_handler addition start.*?  # share_handler addition end\n/m,
+  "  pod 'share_handler_ios_models', :path => '.symlinks/plugins/share_handler_ios/ios/Models'\n")
 File.write('ios/Podfile', podfile)
 runner.build_configurations.each do |config|
   settings = config.build_settings
